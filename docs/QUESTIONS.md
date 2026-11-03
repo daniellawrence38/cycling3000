@@ -82,6 +82,12 @@ Options: follow the mockups; follow the spec.
 Default used: the spec, for both (behaviour is the spec's). The screenshots therefore differ from the mockups there.
 Answer:
 
+### Q25 · WP5 · open
+Question: Brief 7.5 takes bearings over 30 m before and after each vertex, then merges candidates within 40 m "summing the angle". Neighbouring vertices' 30 m windows overlap, so summing them counts one corner several times (a 90° corner drawn with three points would read as about 180°, a U-turn).
+Options: (a) as written; (b) sum the local heading change at each vertex over a cluster of vertices less than 40 m apart, which is the true total change of direction; (c) keep the largest windowed angle in each cluster.
+Default used: (b). The bands (35, 60, 120, 165 degrees) are unchanged and the turn is placed at the cluster's sharpest vertex. Tested on synthetic corners drawn with one and with several points.
+Answer:
+
 ## Document errors
 
 ### E5 · brief 5.6 (finish sequence)

@@ -1,0 +1,1476 @@
+{
+ "w1": {
+  "doc": {
+   "v": 1,
+   "name": "4 x 8 min threshold",
+   "steps": [
+    {
+     "label": "Warm up",
+     "secs": 600,
+     "ftp_pct": [
+      50,
+      70
+     ],
+     "ramp": true
+    },
+    {
+     "reps": 4,
+     "steps": [
+      {
+       "label": "Threshold",
+       "secs": 480,
+       "ftp_pct": [
+        95,
+        100
+       ]
+      },
+      {
+       "label": "Recover",
+       "secs": 240,
+       "ftp_pct": [
+        45,
+        55
+       ]
+      }
+     ]
+    },
+    {
+     "label": "Cool down",
+     "secs": 600,
+     "ftp_pct": [
+      55,
+      40
+     ],
+     "ramp": true
+    }
+   ]
+  },
+  "hex": "435701001812240e1809c011f00f00000a133420782038206d696e207468726573686f6c645802f401bc0201000000075761726d207570e001b603e80300000104095468726573686f6c64f000c201260200000104075265636f766572e001b603e80300000204095468726573686f6c64f000c201260200000204075265636f766572e001b603e80300000304095468726573686f6c64f000c201260200000304075265636f766572e001b603e80300000404095468726573686f6c64f000c201260200000404075265636f7665725802260290010100000009436f6f6c20646f776e",
+  "id": "1812240e1809c011",
+  "crc": 153098894
+ },
+ "w2": {
+  "doc": {
+   "v": 1,
+   "name": "Cadence and tempo",
+   "steps": [
+    {
+     "label": "Spin up",
+     "secs": 60,
+     "ftp_pct": [
+      45,
+      55
+     ],
+     "rpm": 110
+    },
+    {
+     "reps": 2,
+     "steps": [
+      {
+       "label": "Tempo",
+       "secs": 300,
+       "ftp_pct": 80,
+       "rpm": 85
+      },
+      {
+       "label": "Recover",
+       "secs": 120,
+       "ftp_pct": [
+        45,
+        55
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "hex": "4357010034a5604c1d73985e840300000511436164656e636520616e642074656d706f3c00c2012602006e0000075370696e2075702c01f8024803005501020554656d706f7800c201260200000102075265636f7665722c01f8024803005502020554656d706f7800c201260200000202075265636f766572",
+  "id": "34a5604c1d73985e",
+  "crc": 3515509338
+ },
+ "valid": [
+  {
+   "name": "minimal",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "a",
+      "secs": 5,
+      "ftp_pct": 50
+     }
+    ]
+   }
+  },
+  {
+   "name": "exactly 100 steps after expansion",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "reps": 30,
+      "steps": [
+       {
+        "label": "Steady",
+        "secs": 60,
+        "ftp_pct": 50
+       },
+       {
+        "label": "Steady",
+        "secs": 60,
+        "ftp_pct": 50
+       },
+       {
+        "label": "Steady",
+        "secs": 60,
+        "ftp_pct": 50
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "descending ramp",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": [
+       55,
+       40
+      ],
+      "ramp": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "range step",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": [
+       45,
+       55
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "0.1 percent resolution",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 55.5
+     }
+    ]
+   }
+  },
+  {
+   "name": "single target of 300 percent (widens to 2850 to 3150)",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 300
+     }
+    ]
+   }
+  },
+  {
+   "name": "rpm at both limits",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50,
+      "rpm": 40
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50,
+      "rpm": 130
+     }
+    ]
+   }
+  },
+  {
+   "name": "name of 40 characters",
+   "doc": {
+    "v": 1,
+    "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     }
+    ]
+   }
+  },
+  {
+   "name": "single step of 12 hours",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 43200,
+      "ftp_pct": 50
+     }
+    ]
+   }
+  },
+  {
+   "name": "total exactly 24 hours",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 43200,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 43200,
+      "ftp_pct": 50
+     }
+    ]
+   }
+  },
+  {
+   "name": "group with reps 2 and 30",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "reps": 2,
+      "steps": [
+       {
+        "label": "Steady",
+        "secs": 60,
+        "ftp_pct": 50
+       }
+      ]
+     },
+     {
+      "reps": 30,
+      "steps": [
+       {
+        "label": "Steady",
+        "secs": 60,
+        "ftp_pct": 50
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "label with digits and spaces",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "VO2max 3",
+      "secs": 60,
+      "ftp_pct": 50
+     }
+    ]
+   }
+  }
+ ],
+ "invalid": [
+  {
+   "name": "not an object",
+   "doc": [
+    1,
+    2
+   ],
+   "code": "E_JSON",
+   "path": ""
+  },
+  {
+   "name": "v missing",
+   "doc": {
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_VERSION",
+   "path": "/v"
+  },
+  {
+   "name": "v is 2",
+   "doc": {
+    "v": 2,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_VERSION",
+   "path": "/v"
+  },
+  {
+   "name": "v is true",
+   "doc": {
+    "v": true,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_VERSION",
+   "path": "/v"
+  },
+  {
+   "name": "unknown top-level field",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     }
+    ],
+    "ftp": 260
+   },
+   "code": "E_UNKNOWN_FIELD",
+   "path": "/ftp"
+  },
+  {
+   "name": "name empty",
+   "doc": {
+    "v": 1,
+    "name": "",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_NAME",
+   "path": "/name"
+  },
+  {
+   "name": "name 41 characters",
+   "doc": {
+    "v": 1,
+    "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_NAME",
+   "path": "/name"
+  },
+  {
+   "name": "name not ASCII",
+   "doc": {
+    "v": 1,
+    "name": "Café",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_NAME",
+   "path": "/name"
+  },
+  {
+   "name": "steps empty",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": []
+   },
+   "code": "E_STEPS_EMPTY",
+   "path": "/steps"
+  },
+  {
+   "name": "label 17 characters",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "xxxxxxxxxxxxxxxxx",
+      "secs": 60,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_LABEL",
+   "path": "/steps/0/label"
+  },
+  {
+   "name": "label with punctuation",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Sprint!",
+      "secs": 60,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_LABEL",
+   "path": "/steps/0/label"
+  },
+  {
+   "name": "label empty",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "",
+      "secs": 60,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_LABEL",
+   "path": "/steps/0/label"
+  },
+  {
+   "name": "label only spaces",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "   ",
+      "secs": 60,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_LABEL",
+   "path": "/steps/0/label"
+  },
+  {
+   "name": "secs 4",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 4,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_SECS",
+   "path": "/steps/0/secs"
+  },
+  {
+   "name": "secs fractional",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 5.5,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_SECS",
+   "path": "/steps/0/secs"
+  },
+  {
+   "name": "secs a string",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": "60",
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_SECS",
+   "path": "/steps/0/secs"
+  },
+  {
+   "name": "secs true",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": true,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_SECS",
+   "path": "/steps/0/secs"
+  },
+  {
+   "name": "secs over 12 hours",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 43201,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_SECS",
+   "path": "/steps/0/secs"
+  },
+  {
+   "name": "ftp_pct missing",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "a",
+      "secs": 60
+     }
+    ]
+   },
+   "code": "E_FIELD_MISSING",
+   "path": "/steps/0/ftp_pct"
+  },
+  {
+   "name": "pair without ramp, descending",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": [
+       60,
+       50
+      ]
+     }
+    ]
+   },
+   "code": "E_PCT",
+   "path": "/steps/0/ftp_pct"
+  },
+  {
+   "name": "pair of three",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": [
+       50,
+       60,
+       70
+      ]
+     }
+    ]
+   },
+   "code": "E_PCT",
+   "path": "/steps/0/ftp_pct"
+  },
+  {
+   "name": "ftp_pct 0",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 0
+     }
+    ]
+   },
+   "code": "E_PCT",
+   "path": "/steps/0/ftp_pct"
+  },
+  {
+   "name": "ftp_pct 301",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 301
+     }
+    ]
+   },
+   "code": "E_PCT",
+   "path": "/steps/0/ftp_pct"
+  },
+  {
+   "name": "ftp_pct finer than 0.1",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 55.55
+     }
+    ]
+   },
+   "code": "E_PCT",
+   "path": "/steps/0/ftp_pct"
+  },
+  {
+   "name": "ftp_pct a string",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": "80"
+     }
+    ]
+   },
+   "code": "E_PCT",
+   "path": "/steps/0/ftp_pct"
+  },
+  {
+   "name": "ramp with a single number",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 60,
+      "ramp": true
+     }
+    ]
+   },
+   "code": "E_RAMP",
+   "path": "/steps/0/ramp"
+  },
+  {
+   "name": "ramp with equal ends",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": [
+       60,
+       60
+      ],
+      "ramp": true
+     }
+    ]
+   },
+   "code": "E_RAMP",
+   "path": "/steps/0/ramp"
+  },
+  {
+   "name": "ramp not boolean",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": [
+       50,
+       60
+      ],
+      "ramp": "yes"
+     }
+    ]
+   },
+   "code": "E_RAMP",
+   "path": "/steps/0/ramp"
+  },
+  {
+   "name": "rpm 39",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50,
+      "rpm": 39
+     }
+    ]
+   },
+   "code": "E_RPM",
+   "path": "/steps/0/rpm"
+  },
+  {
+   "name": "rpm 131",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50,
+      "rpm": 131
+     }
+    ]
+   },
+   "code": "E_RPM",
+   "path": "/steps/0/rpm"
+  },
+  {
+   "name": "rpm fractional",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50,
+      "rpm": 90.5
+     }
+    ]
+   },
+   "code": "E_RPM",
+   "path": "/steps/0/rpm"
+  },
+  {
+   "name": "watts field in a step",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50,
+      "watts": 200
+     }
+    ]
+   },
+   "code": "E_UNKNOWN_FIELD",
+   "path": "/steps/0/watts"
+  },
+  {
+   "name": "reps 1",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "reps": 1,
+      "steps": [
+       {
+        "label": "Steady",
+        "secs": 60,
+        "ftp_pct": 50
+       }
+      ]
+     }
+    ]
+   },
+   "code": "E_REPS",
+   "path": "/steps/0/reps"
+  },
+  {
+   "name": "reps 31",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "reps": 31,
+      "steps": [
+       {
+        "label": "Steady",
+        "secs": 60,
+        "ftp_pct": 50
+       }
+      ]
+     }
+    ]
+   },
+   "code": "E_REPS",
+   "path": "/steps/0/reps"
+  },
+  {
+   "name": "group steps empty",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "reps": 2,
+      "steps": []
+     }
+    ]
+   },
+   "code": "E_STEPS_EMPTY",
+   "path": "/steps/0/steps"
+  },
+  {
+   "name": "nested group",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "reps": 2,
+      "steps": [
+       {
+        "reps": 2,
+        "steps": [
+         {
+          "label": "Steady",
+          "secs": 60,
+          "ftp_pct": 50
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "code": "E_NESTED",
+   "path": "/steps/0/steps/0"
+  },
+  {
+   "name": "unknown field in group",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "reps": 2,
+      "steps": [
+       {
+        "label": "Steady",
+        "secs": 60,
+        "ftp_pct": 50
+       }
+      ],
+      "label": "x"
+     }
+    ]
+   },
+   "code": "E_UNKNOWN_FIELD",
+   "path": "/steps/0/label"
+  },
+  {
+   "name": "101 steps after expansion",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 60,
+      "ftp_pct": 50
+     },
+     {
+      "reps": 30,
+      "steps": [
+       {
+        "label": "Steady",
+        "secs": 60,
+        "ftp_pct": 50
+       },
+       {
+        "label": "Steady",
+        "secs": 60,
+        "ftp_pct": 50
+       },
+       {
+        "label": "Steady",
+        "secs": 60,
+        "ftp_pct": 50
+       }
+      ]
+     }
+    ]
+   },
+   "code": "E_TOO_MANY_STEPS",
+   "path": "/steps"
+  },
+  {
+   "name": "total over 24 hours",
+   "doc": {
+    "v": 1,
+    "name": "t",
+    "steps": [
+     {
+      "label": "Steady",
+      "secs": 43200,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 43200,
+      "ftp_pct": 50
+     },
+     {
+      "label": "Steady",
+      "secs": 43200,
+      "ftp_pct": 50
+     }
+    ]
+   },
+   "code": "E_TOO_LONG",
+   "path": "/steps"
+  }
+ ],
+ "messages": [
+  {
+   "name": "HELLO request (phone)",
+   "hex": "010101"
+  },
+  {
+   "name": "HELLO response (unit): status 0, proto 1, fw 0.1.0, battery 68, state idle, 13 workout and 7 route slots free",
+   "hex": "8101000100010044000d07"
+  },
+  {
+   "name": "FTP_SET 260 (phone)",
+   "hex": "03020401"
+  },
+  {
+   "name": "FTP_SET response: OK",
+   "hex": "830200"
+  },
+  {
+   "name": "OBJ_PUT_BEGIN for W1: kind 1, id, size, crc",
+   "hex": "1103011812240e1809c011e30000008e1a2009"
+  },
+  {
+   "name": "OBJ_PUT_END",
+   "hex": "1305"
+  }
+ ],
+ "v8": {
+  "profile": [
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.0,
+   20.5,
+   21.0,
+   21.5,
+   22.0,
+   22.5,
+   23.0,
+   23.5,
+   24.0,
+   24.5,
+   25.0,
+   25.5,
+   26.0,
+   26.5,
+   27.0,
+   27.5,
+   28.0,
+   28.5,
+   29.0,
+   29.5,
+   30.0,
+   30.5,
+   31.0,
+   31.5,
+   32.0,
+   32.5,
+   33.0,
+   33.5,
+   34.0,
+   34.5,
+   35.0,
+   35.5,
+   36.0,
+   36.5,
+   37.0,
+   37.5,
+   38.0,
+   38.5,
+   39.0,
+   39.5,
+   40.0,
+   40.5,
+   41.0,
+   41.5,
+   42.0,
+   42.5,
+   43.0,
+   43.5,
+   44.0,
+   44.5,
+   45.0,
+   45.5,
+   46.0,
+   46.5,
+   47.0,
+   47.5,
+   48.0,
+   48.5,
+   49.0,
+   49.5,
+   50.0,
+   49.0,
+   48.0,
+   47.0,
+   46.0,
+   45.0,
+   44.0,
+   44.6,
+   45.2,
+   45.8,
+   46.4,
+   47.0,
+   47.6,
+   48.2,
+   48.8,
+   49.4,
+   50.0,
+   50.6,
+   51.2,
+   51.8,
+   52.4,
+   53.0,
+   53.6,
+   54.2,
+   54.8,
+   55.4,
+   56.0,
+   56.6,
+   57.2,
+   57.8,
+   58.4,
+   59.0,
+   59.6,
+   60.2,
+   60.8,
+   61.4,
+   62.0,
+   62.599999999999994,
+   63.2,
+   63.8,
+   64.4,
+   65.0,
+   65.6,
+   66.2,
+   66.8,
+   67.4,
+   68.0,
+   67.6,
+   67.2,
+   66.8,
+   66.4,
+   66.0,
+   65.6,
+   65.2,
+   64.8,
+   64.4,
+   64.0,
+   63.6,
+   63.2,
+   62.8,
+   62.4,
+   62.0,
+   61.6,
+   61.2,
+   60.8,
+   60.4,
+   60.0,
+   59.6,
+   59.2,
+   58.8,
+   58.4,
+   58.0,
+   57.6,
+   57.2,
+   56.8,
+   56.4,
+   56.0,
+   55.6,
+   55.2,
+   54.8,
+   54.4,
+   54.0,
+   53.6,
+   53.2,
+   52.8,
+   52.4,
+   52.0,
+   51.599999999999994,
+   51.2,
+   50.8,
+   50.4,
+   50.0,
+   49.599999999999994,
+   49.2,
+   48.8,
+   48.4,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.0,
+   48.3,
+   48.6,
+   48.9,
+   49.2,
+   49.5,
+   49.8,
+   50.1,
+   50.4,
+   50.7,
+   51.0,
+   51.3,
+   51.6,
+   51.9,
+   52.2,
+   52.5,
+   52.8,
+   53.1,
+   53.4,
+   53.7,
+   54.0
+  ],
+  "spacing": 10,
+  "climbs": [
+   {
+    "start_m": 490,
+    "length_m": 1060,
+    "ascent_m": 48,
+    "avg_x10": 45,
+    "max_x10": 60
+   }
+  ]
+ },
+ "v9": {
+  "points": [
+   [
+    -319640000,
+    1158300000
+   ],
+   [
+    -319630000,
+    1158310000
+   ],
+   [
+    -319610000,
+    1158340000
+   ],
+   [
+    -319600000,
+    1158400000
+   ],
+   [
+    -319650000,
+    1158420000
+   ],
+   [
+    -319700000,
+    1158400000
+   ]
+  ],
+  "prof_step": 100,
+  "profile_dm": [
+   200,
+   208,
+   219,
+   224,
+   232,
+   240,
+   251,
+   256,
+   264,
+   272,
+   283,
+   288,
+   296,
+   304,
+   315,
+   320,
+   328,
+   336,
+   347,
+   352,
+   360,
+   368,
+   379
+  ],
+  "turns": [
+   {
+    "dist_m": 250,
+    "type": 5,
+    "exit": 0,
+    "street": "Fraser Ave"
+   },
+   {
+    "dist_m": 520,
+    "type": 2,
+    "exit": 0,
+    "street": ""
+   }
+  ],
+  "climbs": [
+   {
+    "start_m": 100,
+    "length_m": 300,
+    "ascent_m": 18,
+    "avg_x10": 60,
+    "max_x10": 85
+   }
+  ],
+  "name": "Test loop",
+  "hex": "4352010099ed9263a898d434d108000011000600020001170064000954657374206c6f6f7040aef2ec60410a45a09c01a09c01c0b802e0d403a09c01c0a9079f8d06c0b8029f8d06bfb802c800d000db00e000e800f000fb000001080110011b012001280130013b014001480150015b016001680170017b01fa00000005000a4672617365722041766508020000020000640000002c0112003c005500",
+  "id": "99ed9263a898d434",
+  "crc": 875825895,
+  "dist": 2257,
+  "ascent": 17
+ }
+}
