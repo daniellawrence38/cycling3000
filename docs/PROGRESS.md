@@ -109,3 +109,7 @@ Linux container: GCC 13.3, CMake 3.28, Python 3.13 (pytest, fitdecode from PyPI)
 **Unverified.** Everything on the unit: the ST7789 colours and gamma, touch accuracy with gloves, real redraw speed, the font cost in the real build.
 
 **Stop.** WP4 stops here for Daniel's review of `docs/wp4/contact-sheet.png`. Golden images follow approval. Next in order: WP5 (Android core and tools) and WP6 (Android app), which the brief allows while waiting.
+
+## Future enhancements (not scheduled)
+
+- **Shimano 12-speed Di2 gear display (105 R7100).** Requested by Daniel on 3 November 2026, deferred. No public specification exists for the Di2 gear data over BLE; the only open work decodes Shimano's private ANT profile, and the unit has no identified ANT+ radio. First step when picked up: a BLE capture with nRF Connect while shifting, to see whether the gear is readable. Then: gear in the ride data, FIT front and rear gear-change events, and a gear display (needs a mockup change; the Main grid is full).
