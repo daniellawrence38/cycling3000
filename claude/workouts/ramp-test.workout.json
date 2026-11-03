@@ -1,0 +1,137 @@
+{
+  "v": 1,
+  "name": "Ramp test to failure",
+  "steps": [
+    {
+      "label": "Warm up",
+      "secs": 300,
+      "ftp_pct": [
+        45,
+        60
+      ],
+      "ramp": true
+    },
+    {
+      "label": "Easy",
+      "secs": 300,
+      "ftp_pct": [
+        55,
+        65
+      ]
+    },
+    {
+      "label": "Ramp 50",
+      "secs": 60,
+      "ftp_pct": 50
+    },
+    {
+      "label": "Ramp 56",
+      "secs": 60,
+      "ftp_pct": 56
+    },
+    {
+      "label": "Ramp 62",
+      "secs": 60,
+      "ftp_pct": 62
+    },
+    {
+      "label": "Ramp 68",
+      "secs": 60,
+      "ftp_pct": 68
+    },
+    {
+      "label": "Ramp 74",
+      "secs": 60,
+      "ftp_pct": 74
+    },
+    {
+      "label": "Ramp 80",
+      "secs": 60,
+      "ftp_pct": 80
+    },
+    {
+      "label": "Ramp 86",
+      "secs": 60,
+      "ftp_pct": 86
+    },
+    {
+      "label": "Ramp 92",
+      "secs": 60,
+      "ftp_pct": 92
+    },
+    {
+      "label": "Ramp 98",
+      "secs": 60,
+      "ftp_pct": 98
+    },
+    {
+      "label": "Ramp 104",
+      "secs": 60,
+      "ftp_pct": 104
+    },
+    {
+      "label": "Ramp 110",
+      "secs": 60,
+      "ftp_pct": 110
+    },
+    {
+      "label": "Ramp 116",
+      "secs": 60,
+      "ftp_pct": 116
+    },
+    {
+      "label": "Ramp 122",
+      "secs": 60,
+      "ftp_pct": 122
+    },
+    {
+      "label": "Ramp 128",
+      "secs": 60,
+      "ftp_pct": 128
+    },
+    {
+      "label": "Ramp 134",
+      "secs": 60,
+      "ftp_pct": 134
+    },
+    {
+      "label": "Ramp 140",
+      "secs": 60,
+      "ftp_pct": 140
+    },
+    {
+      "label": "Ramp 146",
+      "secs": 60,
+      "ftp_pct": 146
+    },
+    {
+      "label": "Ramp 152",
+      "secs": 60,
+      "ftp_pct": 152
+    },
+    {
+      "label": "Ramp 158",
+      "secs": 60,
+      "ftp_pct": 158
+    },
+    {
+      "label": "Ramp 164",
+      "secs": 60,
+      "ftp_pct": 164
+    },
+    {
+      "label": "Ramp 170",
+      "secs": 60,
+      "ftp_pct": 170
+    },
+    {
+      "label": "Cool down",
+      "secs": 600,
+      "ftp_pct": [
+        55,
+        40
+      ],
+      "ramp": true
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "v": 1,
+  "name": "Sweet spot 3 x 12",
+  "steps": [
+    {
+      "label": "Warm up",
+      "secs": 600,
+      "ftp_pct": [
+        50,
+        75
+      ],
+      "ramp": true
+    },
+    {
+      "reps": 3,
+      "steps": [
+        {
+          "label": "Sweet spot",
+          "secs": 720,
+          "ftp_pct": [
+            86,
+            90
+          ]
+        },
+        {
+          "label": "Recover",
+          "secs": 240,
+          "ftp_pct": [
+            45,
+            55
+          ]
+        }
+      ]
+    },
+    {
+      "label": "Cool down",
+      "secs": 480,
+      "ftp_pct": [
+        55,
+        40
+      ],
+      "ramp": true
+    }
+  ]
+}

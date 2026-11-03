@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Mockup tool output
+claude/tools/design/canvas/
+claude/tools/design/out/
+claude/tools/design/node_modules/
+tools/design/canvas/
+tools/design/out/
+tools/design/node_modules/
+node_modules/
+
+# C and firmware builds
+build/
+ui/out/
+fw/build/
+fw/sdkconfig.old
+fw/managed_components/
+
+# Android
+.gradle/
+android/**/build/
+android/local.properties
+*.apk
+*.aab
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,62 @@
+{
+  "v": 1,
+  "name": "Threshold 2 x 20",
+  "steps": [
+    {
+      "label": "Warm up",
+      "secs": 600,
+      "ftp_pct": [
+        50,
+        75
+      ],
+      "ramp": true
+    },
+    {
+      "label": "Spin up",
+      "secs": 60,
+      "ftp_pct": [
+        90,
+        100
+      ],
+      "rpm": 100
+    },
+    {
+      "label": "Recover",
+      "secs": 240,
+      "ftp_pct": [
+        45,
+        55
+      ]
+    },
+    {
+      "reps": 2,
+      "steps": [
+        {
+          "label": "Threshold",
+          "secs": 1200,
+          "ftp_pct": [
+            95,
+            100
+          ]
+        },
+        {
+          "label": "Recover",
+          "secs": 300,
+          "ftp_pct": [
+            45,
+            55
+          ]
+        }
+      ]
+    },
+    {
+      "label": "Cool down",
+      "secs": 600,
+      "ftp_pct": [
+        55,
+        40
+      ],
+      "ramp": true
+    }
+  ]
+}

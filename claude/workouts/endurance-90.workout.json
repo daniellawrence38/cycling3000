@@ -1,0 +1,46 @@
+{
+  "v": 1,
+  "name": "Endurance 90",
+  "steps": [
+    {
+      "label": "Warm up",
+      "secs": 600,
+      "ftp_pct": [
+        50,
+        65
+      ],
+      "ramp": true
+    },
+    {
+      "reps": 4,
+      "steps": [
+        {
+          "label": "Endurance",
+          "secs": 990,
+          "ftp_pct": [
+            65,
+            72
+          ]
+        },
+        {
+          "label": "Spin up",
+          "secs": 60,
+          "ftp_pct": [
+            65,
+            72
+          ],
+          "rpm": 105
+        }
+      ]
+    },
+    {
+      "label": "Cool down",
+      "secs": 600,
+      "ftp_pct": [
+        55,
+        40
+      ],
+      "ramp": true
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "v": 1,
+  "name": "VO2max 30-15 3 x 13",
+  "steps": [
+    {
+      "label": "Warm up",
+      "secs": 600,
+      "ftp_pct": [
+        50,
+        75
+      ],
+      "ramp": true
+    },
+    {
+      "label": "Tempo",
+      "secs": 300,
+      "ftp_pct": [
+        76,
+        85
+      ]
+    },
+    {
+      "label": "Recover",
+      "secs": 180,
+      "ftp_pct": [
+        45,
+        55
+      ]
+    },
+    {
+      "reps": 13,
+      "steps": [
+        {
+          "label": "VO2max",
+          "secs": 30,
+          "ftp_pct": [
+            112,
+            120
+          ]
+        },
+        {
+          "label": "Recover",
+          "secs": 15,
+          "ftp_pct": [
+            45,
+            55
+          ]
+        }
+      ]
+    },
+    {
+      "label": "Recover",
+      "secs": 180,
+      "ftp_pct": [
+        45,
+        55
+      ]
+    },
+    {
+      "reps": 13,
+      "steps": [
+        {
+          "label": "VO2max",
+          "secs": 30,
+          "ftp_pct": [
+            112,
+            120
+          ]
+        },
+        {
+          "label": "Recover",
+          "secs": 15,
+          "ftp_pct": [
+            45,
+            55
+          ]
+        }
+      ]
+    },
+    {
+      "label": "Recover",
+      "secs": 180,
+      "ftp_pct": [
+        45,
+        55
+      ]
+    },
+    {
+      "reps": 13,
+      "steps": [
+        {
+          "label": "VO2max",
+          "secs": 30,
+          "ftp_pct": [
+            112,
+            120
+          ]
+        },
+        {
+          "label": "Recover",
+          "secs": 15,
+          "ftp_pct": [
+            45,
+            55
+          ]
+        }
+      ]
+    },
+    {
+      "label": "Cool down",
+      "secs": 600,
+      "ftp_pct": [
+        55,
+        40
+      ],
+      "ramp": true
+    }
+  ]
+}
