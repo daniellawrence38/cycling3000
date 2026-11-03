@@ -115,8 +115,9 @@ def build_route():
 def route_ride():
     """5 m/s. Positions along the route as (x, y) in metres:
     t 0..99    on route, distance 5*t (0..495 m along leg A)
-    t 100..119 off route: moving south from (500, 0) at 5 m/s, 5..100 m from the route
-    t 120..139 coming back north at 5 m/s: 95..0 m from the route
+    t 100..119 off route: moving south from (500, 0) at 5 m/s, 7.5..102.5 m from the route
+    t 120..139 coming back north at 5 m/s: 97.5..2.5 m from the route
+               (the 2.5 m offset keeps every sample clear of the 40 m and 25 m thresholds)
     t 140..239 on route, 500..995 m
     t 240..359 leg B north (the climb), 1000..1595 m along the route
     t 360..419 leg C east, 1600..1895 m
@@ -129,9 +130,9 @@ def route_ride():
         if t < 100:
             x, y = 5.0 * t, 0.0
         elif t < 120:
-            x, y = 500.0, -5.0 * (t - 99)
+            x, y = 500.0, -5.0 * (t - 99) - 2.5
         elif t < 140:
-            x, y = 500.0, -100.0 + 5.0 * (t - 119)
+            x, y = 500.0, -102.5 + 5.0 * (t - 119)
         elif t < 240:
             x, y = 5.0 * (t - 40), 0.0
         elif t < 360:
