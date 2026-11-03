@@ -49,6 +49,30 @@ class HttpTest {
         assertTrue(body.contains("name=\"file\"; filename=\"1793000000.fit\""))
     }
 
+    /** The duplicate check must survive the list naming the field `start_date_local` instead of
+     * `start_date`, and must refuse to answer "no duplicate" when it cannot read any start time at
+     * all — that answer uploads the ride twice (E9). */
+    @Test fun duplicateCheckReadsEitherFieldName() {
+        srv.enqueue(MockResponse().setBody("""[{"id":"i7","start_date_local":"2026-10-26T07:34:10Z"}]"""))
+        assertEquals(UploadResult.Duplicate("i7"), client().upload(fit, "x.fit", start))
+    }
+
+    @Test fun unreadableActivityListDoesNotUploadAgain() {
+        // Entries present, but no field this code can read: must not fall through to an upload.
+        srv.enqueue(MockResponse().setBody("""[{"id":"i7","started":"2026-10-26T07:34:10Z"}]"""))
+        val r = client().upload(fit, "x.fit", start)
+        assertTrue(r is UploadResult.Failed, "expected Failed, got $r")
+        assertEquals(1, srv.requestCount) // the POST was never made
+    }
+
+    @Test fun zonelessLocalTimeIsSkippedNotGuessed() {
+        // No offset: cannot be converted to UTC without the athlete's zone. Skipped, so the list reads
+        // as unusable rather than producing a wrong match.
+        srv.enqueue(MockResponse().setBody("""[{"id":"i7","start_date_local":"2026-10-26T07:34:10"}]"""))
+        val r = client().upload(fit, "x.fit", start)
+        assertTrue(r is UploadResult.Failed, "expected Failed, got $r")
+    }
+
     @Test fun duplicateIsNotSentAgain() {
         srv.enqueue(MockResponse().setBody("""[{"id":"i7","start_date":"2026-10-26T07:34:10Z"}]""")) // 50 s later
         assertEquals(UploadResult.Duplicate("i7"), client().upload(fit, "x.fit", start))

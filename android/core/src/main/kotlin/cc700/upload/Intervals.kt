@@ -57,17 +57,38 @@ class IntervalsClient(
         http.newCall(Request.Builder().url(url).header("Authorization", auth()).build()).execute().use { r ->
             if (!r.isSuccessful) throw HttpStatus(r.code, r.body?.string().orEmpty())
             val arr = json.parseToJsonElement(r.body?.string() ?: "[]") as? JsonArray ?: return null
+            var entries = 0
+            var usable = 0
             for (e in arr) {
                 val o = e as? JsonObject ?: continue
-                val s = (o["start_date"] as? JsonPrimitive)?.content ?: continue
+                entries++
+                // The service documents `start_date` (UTC). Community examples of this endpoint show
+                // `start_date_local` as well, and at least one response carried only the local one, so
+                // accept either name (E9). Only an exact instant is ever compared: a zone-less local
+                // time cannot be turned into UTC without the athlete's zone, and guessing one would
+                // invent duplicates or miss them, so such a value is skipped rather than assumed.
+                val s = (o["start_date"] as? JsonPrimitive)?.content
+                    ?: (o["start_date_local"] as? JsonPrimitive)?.content
+                    ?: continue
                 val t = runCatching { Instant.parse(s).epochSecond }.getOrNull() ?: continue
+                usable++
                 if (kotlin.math.abs(t - startUtc) <= 60) return (o["id"] as? JsonPrimitive)?.content ?: ""
             }
+            // A non-empty list none of whose entries carried a comparable start time means the field
+            // name or format is not what is assumed here. Saying so beats returning "no duplicate",
+            // which uploads the ride a second time and is the exact failure E9 is about.
+            if (entries > 0 && usable == 0) throw UnreadableActivityList(entries)
             return null
         }
     }
 
     class HttpStatus(val code: Int, val body: String) : Exception("HTTP $code")
+
+    /** The activity list came back with entries but none carried a start time this code could read,
+     * so a duplicate cannot be ruled out. Raised rather than reporting "no duplicate", because that
+     * answer uploads the ride a second time (E9). */
+    class UnreadableActivityList(val entries: Int) :
+        Exception("the duplicate check could not read a start time from any of the $entries activities returned")
 
     fun upload(fit: ByteArray, fileName: String, startUtc: Long): UploadResult {
         try {
@@ -75,6 +96,9 @@ class IntervalsClient(
             if (dup != null) return UploadResult.Duplicate(dup.ifEmpty { null })
         } catch (e: HttpStatus) {
             return classify(e.code, e.body)
+        } catch (e: UnreadableActivityList) {
+            // Visible and retryable, never a silent second upload (E9).
+            return UploadResult.Failed(0, e.message ?: "the duplicate check could not be completed")
         } catch (e: java.io.IOException) {
             return UploadResult.RetryLater(-1)
         }

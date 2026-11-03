@@ -36,11 +36,14 @@ Options: (a) reset it; (b) hold its state and dwell count, show no state, and re
 Default used: (b). The spec says only that the pill shows nothing while the 3 s power is invalid; holding the state means a short dropout does not restart the 2 s dwell or the 5 s settle period.
 Answer:
 
-### Q16 · WP2 · open
+### Q16 · WP2 · answered
 Question: Are FIT `record` messages written while the ride is paused?
 Options: (a) one record per second from START to finish, paused or not; (b) records only while RECORDING, with the pause shown by timer stop and start events.
 Default used: (b). Brief 5.1 already limits ride statistics to RECORDING seconds; Intervals.icu and other tools read the timer events for moving time. Totals in the session come from the records, so a pause adds elapsed time but no samples.
-Answer:
+Answer: **(b), and the implementation is already safe against the one way this goes wrong.** (b) is the ordinary convention: a pause is a timer `stop` event and a resume a timer `start` event, which is what the Garmin FIT SDK forum shows people doing and what importers read.
+The risk worth naming is **a stop with no matching start**. A reported GPSMAP 67 file had exactly that, and Strava imported only up to the first stop — the rest of the ride was silently dropped. So (b) is only correct if every stop is paired.
+Checked in this codebase and it is: `core/src/core.c` writes `cc_fit_event_timer(..., 1)` on start (line 353) and on resume (line 398), and `..., 0)` on pause (line 387); `cc_fit_finish` (`core/src/fit.c:348`) writes a closing stop *only if the timer is running*, so it never emits a second, dangling one. `core/tests/test_fit.c` drives a pause at 600 s and a resume at 660 s and checks the session's timer total excludes the gap. A power cut while paused leaves a file ending in a stop, which is a truthful end rather than a truncation.
+Not checked against the live service: how Intervals.icu specifically derives moving time. It is unaffected by the choice above and stays part of Daniel's first live upload.
 
 ### Q17 · WP2 · open
 Question: While storage fails, brief 5.6 asks for recording "in RAM as far as a 5-minute ring allows". A ring keeps the newest records, but dropping the oldest unsaved bytes out of the middle of a FIT stream is awkward.
@@ -52,6 +55,7 @@ Answer:
 Question: The workout banner and the Lap banner say "LAP n". Should n count only manual laps, or every FIT lap including the automatic laps at workout step changes?
 Options: (a) manual laps only; (b) every lap in the file.
 Default used: (b), so the number on the banner matches the lap number in Intervals.icu. With a workout loaded this makes the numbers jump.
+Research: this one is genuinely yours — it is a preference about what the number on the banner is *for*, and both readings are defensible. The trade is: (b) keeps the banner honest against what you will later see in Intervals.icu, at the cost of the number jumping mid-workout as automatic step laps are counted; (a) keeps "LAP 3" meaning "the third time I pressed lap", which is what the number means to a rider pressing the button, at the cost of disagreeing with the upload. The deciding evidence is a ride with a workout loaded, watching whether the jumping number is confusing in practice. Nothing in the code depends on which you pick — it is one counter — so changing it later is cheap.
 Answer:
 
 ### Q19 · WP2 · open
@@ -158,7 +162,8 @@ Answer:
 Question: `simunit` does not build on Windows. It includes `<arpa/inet.h>` and `<sys/statvfs.h>`, which MinGW-w64 does not provide, so on a Windows PC the 3 Python simunit tests, the 9 JVM simunit tests and the whole WP6 manual flow (which needs `tools/android/demo_unit.sh`) cannot run. The C core itself builds and all 14 of its tests pass.
 Options: (a) run simunit under WSL; (b) port it with a small socket and free-space shim (Winsock, `GetDiskFreeSpaceEx`); (c) leave it POSIX-only and document that the simunit-backed tests need Linux, macOS or WSL.
 Default used: (c) for now, because nothing in the brief asks for a Windows build and the tests self-skip cleanly rather than failing. (a) is the cheap unlock on Daniel's PC: WSL is present but has no distribution installed.
-Answer:
+Answer: **(c) stands, and (a) is now done on Daniel's PC, so nothing is blocked.** Ubuntu was installed into the existing WSL 2 (no elevation needed — only a distribution was missing) and the full gate then ran natively: `make test` green end to end, 16/16 C tests plain, 14/14 under ASan and UBSan, and 20/20 Python with no skips. The JVM suite run under WSL is 61 tests, 0 failures, **0 skipped** — the 9 simunit-backed tests that had always skipped now run and pass. `simunit` itself builds unchanged under Linux.
+So the Windows port (b) buys nothing now and is not worth doing; `IDEAS.md` I1 keeps it on record if a Windows-native workflow is ever wanted. Two practical notes for anyone repeating this: the WSL virtual disk defaults to C:, which is where it filled the system drive here, and `make test-c-asan` still cannot link on Windows at all because MinGW ships no sanitizer runtime (`IDEAS.md` I2).
 
 ## Document errors
 
