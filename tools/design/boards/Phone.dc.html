@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone pairing</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=Barlow:wght@500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:240px;height:320px;box-sizing:border-box;overflow:hidden;background:#0B0D10;color:#F2F5F8;font-family:'Barlow','Arial',sans-serif;display:flex;flex-direction:column;">
+
+<div style="flex:none;height:22px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;background:#12161B;color:#C9D1DA">
+<div role="group" aria-label="Connected: GPS, power meter, heart rate, phone" style="display:flex;align-items:center;gap:9px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"></path><circle cx="12" cy="11" r="2"></circle></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L5 14h6l-1 8 8-12h-6z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.4-7 10-7 10z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2"></rect><path d="M11 18.5h2"></path></svg>
+</div>
+<div style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;line-height:1">
+<span>14:32</span>
+<span style="display:flex;align-items:center;gap:3px"><svg width="16" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"></rect><path d="M22 10v4"></path><rect x="4.5" y="9.5" width="9" height="5" fill="currentColor" stroke="none"></rect></svg><span>68%</span></span>
+</div>
+</div><div style="flex:none;height:44px;box-sizing:border-box;display:flex;align-items:center;border-bottom:1px solid #232830"><button type="button" aria-label="Back to menu" style="flex:none;width:44px;height:43px;margin:0;padding:0;border:0;background:transparent;color:#F2F5F8;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></button><span style="flex:1;min-width:0;padding-right:8px;font-size:18px;font-weight:700;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Phone</span><button type="button" aria-label="More" style="flex:none;display:{{ kebabDisplay }};width:44px;height:43px;margin:0;padding:0;border:0;background:transparent;color:#F2F5F8;align-items:center;justify-content:center;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="12" cy="19" r="1.8"></circle></svg></button></div><div style="flex:none;height:44px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #232830"><span style="display:flex;flex-direction:column"><span style="font-size:16px;font-weight:700;line-height:20px">{{ phoneName }}</span><span style="font-size:12px;font-weight:500;line-height:14px;color:#9AA4B0">{{ phoneSub }}</span></span><span style="box-sizing:border-box;height:22px;padding:0 8px;line-height:20px;border-radius:11px;font-size:11px;font-weight:700;letter-spacing:.06em;white-space:nowrap;flex:none;background:{{ chipBg }};color:{{ chipFg }};border:1px {{ chipBorder }}">{{ chipText }}</span></div><div style="flex:none;height:132px;box-sizing:border-box;border-bottom:1px solid #232830"><div style="display:{{ infoDisplay }};flex-direction:column"><div style="height:44px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #232830"><span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0">LAST SYNC</span><span style="font-size:14px;font-weight:600">14:20 today</span></div><div style="height:44px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #232830"><span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0">RIDES WAITING</span><span style="font-size:14px;font-weight:600">1</span></div></div><div style="display:{{ codeDisplay }};flex-direction:column;align-items:center;padding-top:10px"><div style="height:14px;line-height:14px;font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0;text-align:center">PAIRING CODE</div><div style="margin-top:4px"><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:700;font-size:60px;line-height:62px;font-variant-numeric:tabular-nums">{{ code }}</span></div></div><div style="display:{{ btnDisplay }};padding:44px 8px 0"><button type="button" style="margin:0;padding:0;width:100%;height:44px;border-radius:10px;background:#F2F5F8;color:#0B0D10;border:0;font-family:'Barlow','Arial',sans-serif;font-size:16px;font-weight:700;letter-spacing:.06em;cursor:pointer;">PAIR PHONE</button></div></div><div style="flex:1;min-height:0;box-sizing:border-box;padding:8px;font-size:12px;font-weight:500;line-height:16px;color:#9AA4B0">{{ hint }}</div><div style="flex:none;height:32px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;background:#12161B;color:#C9D1DA;font-size:12px;font-weight:700;letter-spacing:.08em"><span style="display:flex;align-items:center;gap:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>{{ footLeft }}</span><span style="display:{{ footRightDisplay }};align-items:center;gap:4px">{{ footRight }}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg></span></div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"scenario": {"editor": "enum", "default": "connected", "options": ["connected", "pairing", "notpaired"]}, "$preview": {"width": 240, "height": 320}}'>
+class Component extends DCLogic {
+renderVals() {
+const key = this.props.scenario || 'connected';
+const table = {
+ "connected": {
+  "kebabDisplay": "flex",
+  "phoneName": "Pixel 8",
+  "phoneSub": "Paired · Bluetooth",
+  "chipText": "CONNECTED",
+  "chipBg": "#1B2027",
+  "chipFg": "#F2F5F8",
+  "chipBorder": "solid #3A424C",
+  "infoDisplay": "flex",
+  "codeDisplay": "none",
+  "btnDisplay": "none",
+  "hint": "Open the CC700 app on your phone to send workouts and routes.",
+  "footLeft": "BACK",
+  "footRight": "",
+  "footRightDisplay": "none",
+  "code": ""
+ },
+ "pairing": {
+  "kebabDisplay": "none",
+  "phoneName": "Pairing…",
+  "phoneSub": "Waiting for the phone",
+  "chipText": "PAIRING",
+  "chipBg": "transparent",
+  "chipFg": "#F2C230",
+  "chipBorder": "dashed #F2C230",
+  "infoDisplay": "none",
+  "codeDisplay": "flex",
+  "btnDisplay": "none",
+  "code": "482 916",
+  "hint": "Enter this code in the CC700 app on your phone. Pairing stops after 60 seconds.",
+  "footLeft": "CANCEL",
+  "footRight": "",
+  "footRightDisplay": "none"
+ },
+ "notpaired": {
+  "kebabDisplay": "none",
+  "phoneName": "No phone paired",
+  "phoneSub": "For workouts and routes",
+  "chipText": "NOT PAIRED",
+  "chipBg": "#1B2027",
+  "chipFg": "#F2F5F8",
+  "chipBorder": "solid #3A424C",
+  "infoDisplay": "none",
+  "codeDisplay": "none",
+  "btnDisplay": "block",
+  "code": "",
+  "hint": "Open the CC700 app, choose Add unit, then enter the code shown here.",
+  "footLeft": "BACK",
+  "footRight": "PAIR",
+  "footRightDisplay": "flex"
+ }
+};
+return table[key] || table['connected'];
+}
+}
+</script>
+</body>
+</html>

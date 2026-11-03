@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Empty states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=Barlow:wght@500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:240px;height:320px;box-sizing:border-box;overflow:hidden;background:#0B0D10;color:#F2F5F8;font-family:'Barlow','Arial',sans-serif;display:flex;flex-direction:column;">
+
+<div style="flex:none;height:22px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;background:#12161B;color:#C9D1DA">
+<div role="group" aria-label="Connected: GPS, power meter, heart rate, phone" style="display:flex;align-items:center;gap:9px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"></path><circle cx="12" cy="11" r="2"></circle></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L5 14h6l-1 8 8-12h-6z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.4-7 10-7 10z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2"></rect><path d="M11 18.5h2"></path></svg>
+</div>
+<div style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;line-height:1">
+<span>14:32</span>
+<span style="display:flex;align-items:center;gap:3px"><svg width="16" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"></rect><path d="M22 10v4"></path><rect x="4.5" y="9.5" width="9" height="5" fill="currentColor" stroke="none"></rect></svg><span>68%</span></span>
+</div>
+</div><div style="flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 22px;text-align:center"><div style="width:68px;height:68px;border-radius:34px;border:2px dashed #5B6673;display:flex;align-items:center;justify-content:center;color:#9AA4B0"><span style="display:{{ icoBolt }}"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L5 14h6l-1 8 8-12h-6z"></path></svg></span><span style="display:{{ icoRoute }}"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="2"></circle><circle cx="18" cy="5" r="2"></circle><path d="M8 19h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7"></path></svg></span><span style="display:{{ icoPin }}"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"></path><circle cx="12" cy="11" r="2"></circle></svg></span></div><div style="margin-top:14px;font-size:20px;font-weight:700;line-height:24px">{{ title }}</div><div style="margin-top:6px;font-size:13px;font-weight:500;line-height:17px;color:#9AA4B0">{{ hint }}</div></div><div style="flex:none;height:20px;display:flex;align-items:center;justify-content:center;gap:6px"><span style="width:{{ d1w }};height:6px;border-radius:3px;background:{{ d1c }}"></span><span style="width:{{ d2w }};height:6px;border-radius:3px;background:{{ d2c }}"></span><span style="width:{{ d3w }};height:6px;border-radius:3px;background:{{ d3c }}"></span><span style="width:{{ d4w }};height:6px;border-radius:3px;background:{{ d4c }}"></span></div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"scenario": {"editor": "enum", "default": "noworkout", "options": ["noworkout", "noroute", "gpswait"]}, "$preview": {"width": 240, "height": 320}}'>
+class Component extends DCLogic {
+renderVals() {
+const key = this.props.scenario || 'noworkout';
+const table = {
+ "noworkout": {
+  "icoBolt": "block",
+  "icoRoute": "none",
+  "icoPin": "none",
+  "title": "No workout loaded",
+  "hint": "Load one from Menu, then Workouts, before you start. You can still ride without one.",
+  "d1w": "6px",
+  "d1c": "#5B6673",
+  "d2w": "18px",
+  "d2c": "#F2F5F8",
+  "d3w": "6px",
+  "d3c": "#5B6673",
+  "d4w": "6px",
+  "d4c": "#5B6673"
+ },
+ "noroute": {
+  "icoBolt": "none",
+  "icoRoute": "block",
+  "icoPin": "none",
+  "title": "No route loaded",
+  "hint": "Load a route from Menu, then Routes, for turn prompts. Your track is still recorded.",
+  "d1w": "6px",
+  "d1c": "#5B6673",
+  "d2w": "6px",
+  "d2c": "#5B6673",
+  "d3w": "6px",
+  "d3c": "#5B6673",
+  "d4w": "18px",
+  "d4c": "#F2F5F8"
+ },
+ "gpswait": {
+  "icoBolt": "none",
+  "icoRoute": "none",
+  "icoPin": "block",
+  "title": "Waiting for GPS",
+  "hint": "Move to open sky. Navigation starts once your position is fixed.",
+  "d1w": "6px",
+  "d1c": "#5B6673",
+  "d2w": "6px",
+  "d2c": "#5B6673",
+  "d3w": "6px",
+  "d3c": "#5B6673",
+  "d4w": "18px",
+  "d4c": "#F2F5F8"
+ }
+};
+return table[key] || table['noworkout'];
+}
+}
+</script>
+</body>
+</html>

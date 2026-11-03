@@ -314,6 +314,25 @@ board('Confirm', 'Confirm dialog',
       default='discard')
 
 # 19 Alerts -----------------------------------------------------------
+def _main_cell(lbl, value, u, right, bottom):
+    """One cell of the Main page's 2 x 3 grid (spec 0.5, section 5): numerals 36 px, not below 34."""
+    br = 'border-right:1px solid #232830;' if right else ''
+    bb = 'border-bottom:1px solid #232830;' if bottom else ''
+    us = f'<span style="padding-bottom:3px;font-size:12px;font-weight:600;color:#9AA4B0">{u}</span>' if u else ''
+    return (f'<div style="box-sizing:border-box;padding:4px 8px 0;{br}{bb}">' + label(lbl)
+            + f'<div style="height:34px;display:flex;align-items:flex-end;gap:4px">{num(value, 36, 600, 34)}{us}</div></div>')
+
+
+def _main_grid():
+    """2 x 3 grid: heart rate, cadence, speed, distance, elapsed, lap time (board 1 and the Alerts board)."""
+    return ('<div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));'
+            'grid-template-rows:repeat(3,minmax(0,1fr))">'
+            + _main_cell('HEART RATE', '152', 'bpm', True, True) + _main_cell('CADENCE', '[[cadText]]', 'rpm', False, True)
+            + _main_cell('SPEED', '32.4', 'km/h', True, True) + _main_cell('DISTANCE', '32.6', 'km', False, True)
+            + _main_cell('ELAPSED', '1:12:47', '', True, False) + _main_cell('LAP TIME', '5:12', '', False, False)
+            + '</div>')
+
+
 _main_page = (
     '<div style="flex:none;height:118px;box-sizing:border-box;padding:8px 8px 4px;display:flex;flex-direction:column;border-bottom:1px solid #232830">'
     + label('POWER · 3S')
@@ -325,15 +344,7 @@ _main_page = (
     '<div style="flex:1;border-radius:2px;background:#1B2027"></div><div style="flex:1;border-radius:2px;background:#1B2027"></div>'
     '<div style="flex:1;border-radius:2px;background:[[seg4]]"></div><div style="flex:1;border-radius:2px;background:#1B2027"></div>'
     '<div style="flex:1;border-radius:2px;background:#1B2027"></div><div style="flex:1;border-radius:2px;background:#1B2027"></div></div></div>'
-    '<div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr))">'
-    '<div style="box-sizing:border-box;padding:6px 8px;border-right:1px solid #232830;border-bottom:1px solid #232830">' + label('HEART RATE')
-    + f'<div style="height:48px;display:flex;align-items:flex-end;gap:4px">{num("152", 46, 600, 46)}<span style="padding-bottom:5px;font-size:13px;font-weight:600;color:#9AA4B0">bpm</span></div></div>'
-    '<div style="box-sizing:border-box;padding:6px 8px;border-bottom:1px solid #232830">' + label('CADENCE')
-    + f'<div style="height:48px;display:flex;align-items:flex-end;gap:4px">{num("[[cadText]]", 46, 600, 46)}<span style="padding-bottom:5px;font-size:13px;font-weight:600;color:#9AA4B0">rpm</span></div></div>'
-    '<div style="box-sizing:border-box;padding:6px 8px;border-right:1px solid #232830">' + label('SPEED')
-    + f'<div style="height:48px;display:flex;align-items:flex-end;gap:4px">{num("32.4", 46, 600, 46)}<span style="padding-bottom:5px;font-size:13px;font-weight:600;color:#9AA4B0">km/h</span></div></div>'
-    '<div style="box-sizing:border-box;padding:6px 8px">' + label('ELAPSED')
-    + f'<div style="height:48px;display:flex;align-items:flex-end"><span style="padding-bottom:2px">{num("1:12:47", 34, 600, 34)}</span></div></div></div>'
+    + _main_grid()
     + dots(1))
 _ico = lambda key, name: f'<span style="display:[[{key}]];align-items:center">{icon(name, 20, 3)}</span>'
 _banner = (
@@ -373,6 +384,14 @@ board('Alerts', 'Ride alerts',
           'holdpause': _a(bnDisplay='none', holdDisplay='flex', holdSecs='0.6 / 1 s', holdPct='60%'),
       },
       default='nextstep', root_extra='position:relative;')
+
+# 0 Main (board 1) ----------------------------------------------------
+# Board 1 was drawn by hand with a 2 x 2 grid; spec 0.5 makes it 2 x 3 (brief 6.1). It is generated here
+# from the same body as the Alerts board so the two stay identical.
+board('Main', 'Main ride screen',
+      STATUS + _main_page,
+      scen={'only': dict(powerText='248', powerFg='#F2F5F8', zoneText='Z4', zoneBg='#F2C230', zoneFg='#0B0D10',
+                         seg4='#F2C230', cadText='88')})
 
 # 20 Empty states -----------------------------------------------------
 board('Empty', 'Empty states',
@@ -497,6 +516,11 @@ def render_dc(b):
         table = json.dumps({k: {n: v for n, v in vals.items()} for k, vals in b['scen'].items()}, ensure_ascii=False, indent=1)
         script = (f"class Component extends DCLogic {{\nrenderVals() {{\nconst key = this.props.scenario || '{b['default']}';\n"
                   f"const table = {table};\nreturn table[key] || table['{b['default']}'];\n}}\n}}")
+    elif any(b['scen'].values()):
+        # one scenario whose holes still need values (board 1, Main)
+        props = {"$preview": {"width": 240, "height": 320}}
+        vals = json.dumps(list(b['scen'].values())[0], ensure_ascii=False, indent=1)
+        script = f"class Component extends DCLogic {{\nrenderVals() {{\nreturn {vals};\n}}\n}}"
     else:
         props = {"$preview": {"width": 240, "height": 320}}
         script = "class Component extends DCLogic {\nrenderVals() {\nreturn {};\n}\n}"

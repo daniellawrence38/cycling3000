@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ride alerts</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=Barlow:wght@500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:240px;height:320px;box-sizing:border-box;overflow:hidden;background:#0B0D10;color:#F2F5F8;font-family:'Barlow','Arial',sans-serif;display:flex;flex-direction:column;position:relative;">
+
+<div style="flex:none;height:22px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;background:#12161B;color:#C9D1DA">
+<div role="group" aria-label="Connected: GPS, power meter, heart rate, phone" style="display:flex;align-items:center;gap:9px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"></path><circle cx="12" cy="11" r="2"></circle></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L5 14h6l-1 8 8-12h-6z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.4-7 10-7 10z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2"></rect><path d="M11 18.5h2"></path></svg>
+</div>
+<div style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;line-height:1">
+<span>14:32</span>
+<span style="display:flex;align-items:center;gap:3px"><svg width="16" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"></rect><path d="M22 10v4"></path><rect x="4.5" y="9.5" width="9" height="5" fill="currentColor" stroke="none"></rect></svg><span>{{ battPct }}</span></span>
+</div>
+</div><div style="flex:none;height:118px;box-sizing:border-box;padding:8px 8px 4px;display:flex;flex-direction:column;border-bottom:1px solid #232830"><div style="height:14px;line-height:14px;font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0;">POWER · 3S</div><div style="flex:1;display:flex;align-items:center;gap:6px"><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:700;font-size:96px;line-height:84px;font-variant-numeric:tabular-nums;color:{{ powerFg }}">{{ powerText }}</span><span style="align-self:flex-end;padding-bottom:12px;font-size:22px;font-weight:600;color:#9AA4B0">W</span><span style="margin-left:auto;padding:1px 8px;border-radius:5px;background:{{ zoneBg }};color:{{ zoneFg }};font-size:20px;font-weight:700">{{ zoneText }}</span></div><div style="display:flex;gap:2px;height:8px"><div style="flex:1;border-radius:2px;background:#1B2027"></div><div style="flex:1;border-radius:2px;background:#1B2027"></div><div style="flex:1;border-radius:2px;background:#1B2027"></div><div style="flex:1;border-radius:2px;background:{{ seg4 }}"></div><div style="flex:1;border-radius:2px;background:#1B2027"></div><div style="flex:1;border-radius:2px;background:#1B2027"></div><div style="flex:1;border-radius:2px;background:#1B2027"></div></div></div><div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr))"><div style="box-sizing:border-box;padding:6px 8px;border-right:1px solid #232830;border-bottom:1px solid #232830"><div style="height:14px;line-height:14px;font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0;">HEART RATE</div><div style="height:48px;display:flex;align-items:flex-end;gap:4px"><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:600;font-size:46px;line-height:46px;font-variant-numeric:tabular-nums">152</span><span style="padding-bottom:5px;font-size:13px;font-weight:600;color:#9AA4B0">bpm</span></div></div><div style="box-sizing:border-box;padding:6px 8px;border-bottom:1px solid #232830"><div style="height:14px;line-height:14px;font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0;">CADENCE</div><div style="height:48px;display:flex;align-items:flex-end;gap:4px"><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:600;font-size:46px;line-height:46px;font-variant-numeric:tabular-nums">{{ cadText }}</span><span style="padding-bottom:5px;font-size:13px;font-weight:600;color:#9AA4B0">rpm</span></div></div><div style="box-sizing:border-box;padding:6px 8px;border-right:1px solid #232830"><div style="height:14px;line-height:14px;font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0;">SPEED</div><div style="height:48px;display:flex;align-items:flex-end;gap:4px"><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:600;font-size:46px;line-height:46px;font-variant-numeric:tabular-nums">32.4</span><span style="padding-bottom:5px;font-size:13px;font-weight:600;color:#9AA4B0">km/h</span></div></div><div style="box-sizing:border-box;padding:6px 8px"><div style="height:14px;line-height:14px;font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0;">ELAPSED</div><div style="height:48px;display:flex;align-items:flex-end"><span style="padding-bottom:2px"><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:600;font-size:34px;line-height:34px;font-variant-numeric:tabular-nums">1:12:47</span></span></div></div></div><div style="flex:none;height:20px;display:flex;align-items:center;justify-content:center;gap:6px"><span style="width:18px;height:6px;border-radius:3px;background:#F2F5F8"></span><span style="width:6px;height:6px;border-radius:3px;background:#5B6673"></span><span style="width:6px;height:6px;border-radius:3px;background:#5B6673"></span><span style="width:6px;height:6px;border-radius:3px;background:#5B6673"></span></div><div style="position:absolute;left:0;right:0;bottom:0;height:52px;box-sizing:border-box;display:{{ bnDisplay }};align-items:center;gap:8px;padding:0 10px;background:{{ bnBg }};color:{{ bnFg }};border-left:6px solid {{ bnAccent }};box-shadow:0 -2px 0 #0B0D10"><span style="display:{{ icoNext }};align-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5l7 7-7 7M13 5l7 7-7 7"></path></svg></span><span style="display:{{ icoCheck }};align-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span><span style="display:{{ icoWarn }};align-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"></path><path d="M12 10v5M12 18v.5"></path></svg></span><span style="display:{{ icoFlag }};align-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h12l-2 4 2 4H5"></path></svg></span><span style="display:{{ icoBatt }};align-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"></rect><path d="M22 10v4"></path></svg></span><span style="flex:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700;letter-spacing:.04em;line-height:18px;white-space:nowrap">{{ bnTitle }}</span><span style="display:block;font-size:12px;font-weight:600;line-height:14px;white-space:nowrap">{{ bnSub }}</span></span><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:700;font-size:28px;line-height:28px;font-variant-numeric:tabular-nums">{{ bnRight }}</span></div><div style="position:absolute;left:0;right:0;bottom:0;height:36px;box-sizing:border-box;display:{{ holdDisplay }};flex-direction:column;justify-content:center;padding:0 10px;background:#12161B;border-top:1px solid #3A424C"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;letter-spacing:.08em"><span>HOLD TO PAUSE</span><span style="color:#9AA4B0">{{ holdSecs }}</span></div><div style="margin-top:4px;height:6px;border-radius:3px;background:#1B2027;overflow:hidden"><div style="width:{{ holdPct }};height:100%;background:#F2F5F8"></div></div></div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"scenario": {"editor": "enum", "default": "nextstep", "options": ["nextstep", "lap", "complete", "powerlost", "gpslost", "lowbatt", "holdpause"]}, "$preview": {"width": 240, "height": 320}}'>
+class Component extends DCLogic {
+renderVals() {
+const key = this.props.scenario || 'nextstep';
+const table = {
+ "nextstep": {
+  "bnDisplay": "flex",
+  "bnBg": "#1B2027",
+  "bnFg": "#F2F5F8",
+  "bnAccent": "#8E9AA6",
+  "bnTitle": "NEXT · RECOVER",
+  "bnSub": "136–150 W for 4:00",
+  "bnRight": "5 s",
+  "icoNext": "flex",
+  "icoCheck": "none",
+  "icoWarn": "none",
+  "icoFlag": "none",
+  "icoBatt": "none",
+  "holdDisplay": "none",
+  "holdSecs": "",
+  "holdPct": "0%",
+  "powerText": "248",
+  "powerFg": "#F2F5F8",
+  "zoneText": "Z4",
+  "zoneBg": "#F2C230",
+  "zoneFg": "#0B0D10",
+  "seg4": "#F2C230",
+  "cadText": "88",
+  "battPct": "68%"
+ },
+ "lap": {
+  "bnDisplay": "flex",
+  "bnBg": "#1B2027",
+  "bnFg": "#F2F5F8",
+  "bnAccent": "#F2F5F8",
+  "bnTitle": "LAP 3",
+  "bnSub": "5:12 · 2.4 km",
+  "bnRight": "",
+  "icoNext": "none",
+  "icoCheck": "none",
+  "icoWarn": "none",
+  "icoFlag": "flex",
+  "icoBatt": "none",
+  "holdDisplay": "none",
+  "holdSecs": "",
+  "holdPct": "0%",
+  "powerText": "248",
+  "powerFg": "#F2F5F8",
+  "zoneText": "Z4",
+  "zoneBg": "#F2C230",
+  "zoneFg": "#0B0D10",
+  "seg4": "#F2C230",
+  "cadText": "88",
+  "battPct": "68%"
+ },
+ "complete": {
+  "bnDisplay": "flex",
+  "bnBg": "#3DBE6B",
+  "bnFg": "#0B0D10",
+  "bnAccent": "#3DBE6B",
+  "bnTitle": "WORKOUT COMPLETE",
+  "bnSub": "4 x 8 min threshold",
+  "bnRight": "",
+  "icoNext": "none",
+  "icoCheck": "flex",
+  "icoWarn": "none",
+  "icoFlag": "none",
+  "icoBatt": "none",
+  "holdDisplay": "none",
+  "holdSecs": "",
+  "holdPct": "0%",
+  "powerText": "248",
+  "powerFg": "#F2F5F8",
+  "zoneText": "Z4",
+  "zoneBg": "#F2C230",
+  "zoneFg": "#0B0D10",
+  "seg4": "#F2C230",
+  "cadText": "88",
+  "battPct": "68%"
+ },
+ "powerlost": {
+  "bnDisplay": "flex",
+  "bnBg": "#E5484D",
+  "bnFg": "#0B0D10",
+  "bnAccent": "#E5484D",
+  "bnTitle": "POWER METER LOST",
+  "bnSub": "Trying to reconnect",
+  "bnRight": "",
+  "icoNext": "none",
+  "icoCheck": "none",
+  "icoWarn": "flex",
+  "icoFlag": "none",
+  "icoBatt": "none",
+  "holdDisplay": "none",
+  "holdSecs": "",
+  "holdPct": "0%",
+  "powerText": "--",
+  "powerFg": "#9AA4B0",
+  "zoneText": "--",
+  "zoneBg": "#1B2027",
+  "zoneFg": "#9AA4B0",
+  "seg4": "#1B2027",
+  "cadText": "--",
+  "battPct": "68%"
+ },
+ "gpslost": {
+  "bnDisplay": "flex",
+  "bnBg": "#F2C230",
+  "bnFg": "#0B0D10",
+  "bnAccent": "#F2C230",
+  "bnTitle": "GPS SIGNAL LOST",
+  "bnSub": "No speed or distance",
+  "bnRight": "",
+  "icoNext": "none",
+  "icoCheck": "none",
+  "icoWarn": "flex",
+  "icoFlag": "none",
+  "icoBatt": "none",
+  "holdDisplay": "none",
+  "holdSecs": "",
+  "holdPct": "0%",
+  "powerText": "248",
+  "powerFg": "#F2F5F8",
+  "zoneText": "Z4",
+  "zoneBg": "#F2C230",
+  "zoneFg": "#0B0D10",
+  "seg4": "#F2C230",
+  "cadText": "88",
+  "battPct": "68%"
+ },
+ "lowbatt": {
+  "bnDisplay": "flex",
+  "bnBg": "#F08A24",
+  "bnFg": "#0B0D10",
+  "bnAccent": "#F08A24",
+  "bnTitle": "LOW BATTERY 15%",
+  "bnSub": "Recording continues",
+  "bnRight": "",
+  "icoNext": "none",
+  "icoCheck": "none",
+  "icoWarn": "none",
+  "icoFlag": "none",
+  "icoBatt": "flex",
+  "holdDisplay": "none",
+  "holdSecs": "",
+  "holdPct": "0%",
+  "powerText": "248",
+  "powerFg": "#F2F5F8",
+  "zoneText": "Z4",
+  "zoneBg": "#F2C230",
+  "zoneFg": "#0B0D10",
+  "seg4": "#F2C230",
+  "cadText": "88",
+  "battPct": "15%"
+ },
+ "holdpause": {
+  "bnDisplay": "none",
+  "bnBg": "#1B2027",
+  "bnFg": "#F2F5F8",
+  "bnAccent": "#F2F5F8",
+  "bnTitle": "",
+  "bnSub": "",
+  "bnRight": "",
+  "icoNext": "none",
+  "icoCheck": "none",
+  "icoWarn": "none",
+  "icoFlag": "none",
+  "icoBatt": "none",
+  "holdDisplay": "flex",
+  "holdSecs": "0.6 / 1 s",
+  "holdPct": "60%",
+  "powerText": "248",
+  "powerFg": "#F2F5F8",
+  "zoneText": "Z4",
+  "zoneBg": "#F2C230",
+  "zoneFg": "#0B0D10",
+  "seg4": "#F2C230",
+  "cadText": "88",
+  "battPct": "68%"
+ }
+};
+return table[key] || table['nextstep'];
+}
+}
+</script>
+</body>
+</html>

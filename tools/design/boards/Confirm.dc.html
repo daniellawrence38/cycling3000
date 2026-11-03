@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Confirm dialog</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=Barlow:wght@500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:240px;height:320px;box-sizing:border-box;overflow:hidden;background:#0B0D10;color:#F2F5F8;font-family:'Barlow','Arial',sans-serif;display:flex;flex-direction:column;">
+
+<div style="flex:none;height:22px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;background:#12161B;color:#C9D1DA">
+<div role="group" aria-label="Connected: GPS, power meter, heart rate, phone" style="display:flex;align-items:center;gap:9px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"></path><circle cx="12" cy="11" r="2"></circle></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L5 14h6l-1 8 8-12h-6z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.4-7 10-7 10z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2"></rect><path d="M11 18.5h2"></path></svg>
+</div>
+<div style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;line-height:1">
+<span>14:32</span>
+<span style="display:flex;align-items:center;gap:3px"><svg width="16" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"></rect><path d="M22 10v4"></path><rect x="4.5" y="9.5" width="9" height="5" fill="currentColor" stroke="none"></rect></svg><span>68%</span></span>
+</div>
+</div><div style="flex:none;height:44px;box-sizing:border-box;display:flex;align-items:center;border-bottom:1px solid #232830"><button type="button" aria-label="Cancel" style="flex:none;width:44px;height:43px;margin:0;padding:0;border:0;background:transparent;color:#F2F5F8;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></button><span style="flex:1;min-width:0;padding-right:8px;font-size:18px;font-weight:700;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ title }}</span></div><div style="flex:none;height:94px;box-sizing:border-box;padding:12px 10px 0;font-size:14px;font-weight:500;line-height:19px;color:#F2F5F8">{{ msg }}</div><div style="flex:none;height:128px;box-sizing:border-box;padding:8px;display:flex;flex-direction:column;gap:8px"><button type="button" style="margin:0;padding:0;width:100%;height:52px;border-radius:10px;background:#E5484D;color:#0B0D10;border:0;font-family:'Barlow','Arial',sans-serif;font-size:16px;font-weight:700;letter-spacing:.06em;cursor:pointer;">{{ destr }}</button><button type="button" style="margin:0;padding:0;width:100%;height:52px;border-radius:10px;background:#1B2027;color:#F2F5F8;border:1px solid #3A424C;font-family:'Barlow','Arial',sans-serif;font-size:16px;font-weight:700;letter-spacing:.06em;cursor:pointer;box-shadow:0 0 0 2px #F2F5F8">{{ safe }}</button></div><div style="flex:none;height:32px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;background:#12161B;color:#C9D1DA;font-size:12px;font-weight:700;letter-spacing:.08em"><span style="display:flex;align-items:center;gap:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>BACK</span><span style="display:flex;align-items:center;gap:4px">{{ safeShort }}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg></span></div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"scenario": {"editor": "enum", "default": "discard", "options": ["discard", "forgetsensor", "forgetphone"]}, "$preview": {"width": 240, "height": 320}}'>
+class Component extends DCLogic {
+renderVals() {
+const key = this.props.scenario || 'discard';
+const table = {
+ "discard": {
+  "title": "Discard ride?",
+  "msg": "This permanently deletes the ride (1:12:47, 32.6 km). It has not been uploaded.",
+  "destr": "DISCARD RIDE",
+  "safe": "KEEP RIDE",
+  "safeShort": "KEEP"
+ },
+ "forgetsensor": {
+  "title": "Forget sensor?",
+  "msg": "PM500 ···7C2E will be removed from this unit. You can pair it again from Sensors.",
+  "destr": "FORGET SENSOR",
+  "safe": "KEEP SENSOR",
+  "safeShort": "KEEP"
+ },
+ "forgetphone": {
+  "title": "Forget phone?",
+  "msg": "The phone must be paired again before it can send workouts or routes, or collect rides.",
+  "destr": "FORGET PHONE",
+  "safe": "KEEP PHONE",
+  "safeShort": "KEEP"
+ }
+};
+return table[key] || table['discard'];
+}
+}
+</script>
+</body>
+</html>

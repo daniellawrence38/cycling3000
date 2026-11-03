@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Menu</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=Barlow:wght@500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:240px;height:320px;box-sizing:border-box;overflow:hidden;background:#0B0D10;color:#F2F5F8;font-family:'Barlow','Arial',sans-serif;display:flex;flex-direction:column">
+
+<div style="flex:none;height:22px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;background:#12161B;color:#C9D1DA">
+<div role="group" aria-label="Connected: GPS, power meter, heart rate, phone" style="display:flex;align-items:center;gap:9px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"></path><circle cx="12" cy="11" r="2"></circle></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L5 14h6l-1 8 8-12h-6z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.4-7 10-7 10z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2"></rect><path d="M11 18.5h2"></path></svg>
+</div>
+<div style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;line-height:1">
+<span>14:32</span>
+<span style="display:flex;align-items:center;gap:3px"><svg width="16" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"></rect><path d="M22 10v4"></path><rect x="4.5" y="9.5" width="9" height="5" fill="currentColor" stroke="none"></rect></svg><span>68%</span></span>
+</div>
+</div>
+
+<div style="flex:none;height:36px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;border-bottom:1px solid #232830">
+<span style="font-size:18px;font-weight:700;letter-spacing:.02em">Menu</span>
+</div>
+
+<div style="flex:none;position:relative;height:230px;overflow:hidden">
+<button type="button" style="display:flex;align-items:center;gap:8px;width:100%;height:46px;box-sizing:border-box;padding:0 12px 0 11px;margin:0;border:0;border-bottom:1px solid #232830;background:#1B2027;box-shadow:inset 3px 0 0 #F2F5F8;color:inherit;font:inherit;text-align:left;cursor:pointer">
+<span style="flex:1;font-size:16px;font-weight:600">Workouts</span>
+<span style="font-size:13px;font-weight:500;color:#9AA4B0">7 of 20</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9AA4B0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
+<button type="button" style="display:flex;align-items:center;gap:8px;width:100%;height:46px;box-sizing:border-box;padding:0 12px 0 11px;margin:0;border:0;border-bottom:1px solid #232830;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer">
+<span style="flex:1;font-size:16px;font-weight:600">Routes</span>
+<span style="font-size:13px;font-weight:500;color:#9AA4B0">3 saved</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9AA4B0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
+<button type="button" style="display:flex;align-items:center;gap:8px;width:100%;height:46px;box-sizing:border-box;padding:0 12px 0 11px;margin:0;border:0;border-bottom:1px solid #232830;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer">
+<span style="flex:1;font-size:16px;font-weight:600">Sensors</span>
+<span style="font-size:13px;font-weight:500;color:#9AA4B0">Power · HR</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9AA4B0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
+<button type="button" style="display:flex;align-items:center;gap:8px;width:100%;height:46px;box-sizing:border-box;padding:0 12px 0 11px;margin:0;border:0;border-bottom:1px solid #232830;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer">
+<span style="flex:1;font-size:16px;font-weight:600">Profile</span>
+<span style="font-size:13px;font-weight:500;color:#9AA4B0">FTP 260 W</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9AA4B0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
+<button type="button" style="display:flex;align-items:center;gap:8px;width:100%;height:46px;box-sizing:border-box;padding:0 12px 0 11px;margin:0;border:0;border-bottom:1px solid #232830;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer">
+<span style="flex:1;font-size:16px;font-weight:600">History</span>
+<span style="font-size:13px;font-weight:500;color:#9AA4B0">12 rides</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9AA4B0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
+<button type="button" style="display:flex;align-items:center;gap:8px;width:100%;height:46px;box-sizing:border-box;padding:0 12px 0 11px;margin:0;border:0;border-bottom:1px solid #232830;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer">
+<span style="flex:1;font-size:16px;font-weight:600">Phone</span>
+<span style="font-size:13px;font-weight:500;color:#9AA4B0">Connected</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9AA4B0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
+<button type="button" style="display:flex;align-items:center;gap:8px;width:100%;height:46px;box-sizing:border-box;padding:0 12px 0 11px;margin:0;border:0;border-bottom:1px solid #232830;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer">
+<span style="flex:1;font-size:16px;font-weight:600">Settings</span>
+<span style="font-size:13px;font-weight:500;color:#9AA4B0">Display · Units</span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9AA4B0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
+<div style="position:absolute;right:2px;top:2px;width:3px;height:164px;border-radius:2px;background:#5B6673"></div>
+</div>
+
+<div style="flex:none;height:32px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;background:#12161B;color:#C9D1DA;font-size:12px;font-weight:700;letter-spacing:.08em">
+<span style="display:flex;align-items:center;gap:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>BACK</span>
+<span style="display:flex;align-items:center;gap:4px">OPEN<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg></span>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":240,"height":320}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

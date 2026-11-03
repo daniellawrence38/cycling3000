@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Paused screen</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=Barlow:wght@500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:240px;height:320px;box-sizing:border-box;overflow:hidden;background:#0B0D10;color:#F2F5F8;font-family:'Barlow','Arial',sans-serif;display:flex;flex-direction:column;">
+
+<div style="flex:none;height:22px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;background:#12161B;color:#C9D1DA">
+<div role="group" aria-label="Connected: GPS, power meter, heart rate, phone" style="display:flex;align-items:center;gap:9px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"></path><circle cx="12" cy="11" r="2"></circle></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L5 14h6l-1 8 8-12h-6z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.4-7 10-7 10z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2"></rect><path d="M11 18.5h2"></path></svg>
+</div>
+<div style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;line-height:1">
+<span>14:32</span>
+<span style="display:flex;align-items:center;gap:3px"><svg width="16" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"></rect><path d="M22 10v4"></path><rect x="4.5" y="9.5" width="9" height="5" fill="currentColor" stroke="none"></rect></svg><span>68%</span></span>
+</div>
+</div><div style="flex:none;height:44px;box-sizing:border-box;padding:0 10px;display:flex;align-items:center;gap:8px;background:#F2C230;color:#0B0D10"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5v14M16 5v14"></path></svg><span style="flex:1;font-size:20px;font-weight:700;letter-spacing:.04em">{{ title }}</span><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:700;font-size:24px">{{ since }}</span></div><div style="flex:none;height:40px;box-sizing:border-box;padding:6px 10px 0;font-size:12px;font-weight:500;line-height:16px;color:#9AA4B0">{{ hint }}</div><div style="flex:none;height:100px;box-sizing:border-box;padding:6px 8px 0;border-bottom:1px solid #232830"><div style="height:14px;line-height:14px;font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0;">ELAPSED</div><div style="margin-top:2px"><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:700;font-size:68px;line-height:72px;font-variant-numeric:tabular-nums">1:12:47</span></div></div><div style="flex:none;height:66px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-bottom:1px solid #232830"><div style="box-sizing:border-box;padding:8px 8px 0;border-right:1px solid #232830;"><div style="height:14px;line-height:14px;font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0;">DISTANCE</div><div style="height:44px;display:flex;align-items:baseline;gap:3px"><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:600;font-size:36px;line-height:34px;font-variant-numeric:tabular-nums">32.6</span><span style="font-size:11px;font-weight:600;color:#9AA4B0">km</span></div></div><div style="box-sizing:border-box;padding:8px 8px 0;"><div style="height:14px;line-height:14px;font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0;">AVG POWER</div><div style="height:44px;display:flex;align-items:baseline;gap:3px"><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:600;font-size:36px;line-height:34px;font-variant-numeric:tabular-nums">221</span><span style="font-size:11px;font-weight:600;color:#9AA4B0">W</span></div></div></div><div style="flex:1"></div><div style="flex:none;height:32px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;background:#12161B;color:#C9D1DA;font-size:12px;font-weight:700;letter-spacing:.08em"><span style="display:flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>MENU</span><span style="display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:5px;background:#F2F5F8;color:#0B0D10">RESUME<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4l14 8-14 8z"></path></svg></span></div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"scenario": {"editor": "enum", "default": "manual", "options": ["manual", "auto"]}, "$preview": {"width": 240, "height": 320}}'>
+class Component extends DCLogic {
+renderVals() {
+const key = this.props.scenario || 'manual';
+const table = {
+ "manual": {
+  "title": "PAUSED",
+  "since": "0:42",
+  "hint": "Paused by you. Press RESUME to continue."
+ },
+ "auto": {
+  "title": "AUTO-PAUSED",
+  "since": "0:15",
+  "hint": "You stopped moving. Recording resumes when you ride."
+ }
+};
+return table[key] || table['manual'];
+}
+}
+</script>
+</body>
+</html>

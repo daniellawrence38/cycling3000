@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Navigation screen</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=Barlow:wght@500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:240px;height:320px;box-sizing:border-box;overflow:hidden;background:#0B0D10;color:#F2F5F8;font-family:'Barlow','Arial',sans-serif;display:flex;flex-direction:column">
+
+<div style="flex:none;height:22px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;background:#12161B;color:#C9D1DA">
+<div role="group" aria-label="Connected: GPS, power meter, heart rate, phone" style="display:flex;align-items:center;gap:9px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"></path><circle cx="12" cy="11" r="2"></circle></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L5 14h6l-1 8 8-12h-6z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.4-7 10-7 10z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2"></rect><path d="M11 18.5h2"></path></svg>
+</div>
+<div style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;line-height:1">
+<span>14:32</span>
+<span style="display:flex;align-items:center;gap:3px"><svg width="16" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"></rect><path d="M22 10v4"></path><rect x="4.5" y="9.5" width="9" height="5" fill="currentColor" stroke="none"></rect></svg><span>68%</span></span>
+</div>
+</div>
+
+<div style="flex:none;height:76px;box-sizing:border-box;padding:8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #232830">
+<div style="flex:none;width:58px;height:58px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:{{ tileBg }};color:{{ tileFg }}">
+<sc-if value="{{ isRoute }}" hint-placeholder-val="{{ true }}">
+<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21v-8a4 4 0 0 1 4-4h9"></path><path d="M15 5l4 4-4 4"></path></svg>
+</sc-if>
+<sc-if value="{{ isReroute }}" hint-placeholder-val="{{ false }}">
+<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"></path><path d="M20 4v5h-5"></path></svg>
+</sc-if>
+</div>
+<div style="flex:1;min-width:0">
+<div style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:700;font-size:{{ headSize }}px;line-height:44px;font-variant-numeric:tabular-nums;white-space:nowrap;color:{{ headColor }}">{{ headText }}</div>
+<div style="font-size:14px;font-weight:600;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#C9D1DA">{{ subText }}</div>
+</div>
+</div>
+
+<div style="flex:1;min-height:0;position:relative">
+<svg width="240" height="158" viewBox="0 0 240 158" role="img" aria-label="Map showing the route ahead and the next turn" style="display:block">
+<rect width="240" height="158" fill="#10151B"></rect>
+<g stroke="#2A323C" stroke-width="6" stroke-linecap="round" fill="none">
+<path d="M120 -4V162"></path>
+<path d="M-4 60H244"></path>
+<path d="M44 -4V162"></path>
+<path d="M196 -4V162"></path>
+<path d="M-4 20H244"></path>
+<path d="M-4 116H244"></path>
+</g>
+<path d="M52 100L104 30" fill="none" stroke="#4FD1C5" stroke-width="3" stroke-linecap="round" stroke-dasharray="6 5"></path>
+<path d="M120 162V66Q120 60 126 60H226" fill="none" stroke="#4C9AFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" style="stroke-dasharray:{{ routeDash }};opacity:{{ routeOpacity }}"></path>
+<polygon points="224,52 238,60 224,68" fill="#4C9AFF" style="opacity:{{ routeOpacity }}"></polygon>
+<polygon points="120,118 129,138 120,132 111,138" fill="#F2F5F8" stroke="#0B0D10" stroke-width="2" stroke-linejoin="round"></polygon>
+<path d="M8 150H37M8 146V154M37 146V154" fill="none" stroke="#9AA4B0" stroke-width="2"></path>
+<text x="8" y="141" font-family="Barlow, Arial, sans-serif" font-size="11" font-weight="600" fill="#9AA4B0">100 m</text>
+</svg>
+</div>
+
+<div style="flex:none;height:44px;box-sizing:border-box;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid #232830">
+<div style="box-sizing:border-box;padding:3px 8px 0;border-right:1px solid #232830">
+<div style="height:14px;line-height:14px;font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0">DIST LEFT</div>
+<div style="display:flex;align-items:baseline;gap:3px;height:26px"><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:600;font-size:28px;line-height:26px;font-variant-numeric:tabular-nums">18.4</span><span style="font-size:11px;font-weight:600;color:#9AA4B0">km</span></div>
+</div>
+<div style="box-sizing:border-box;padding:3px 8px 0;border-right:1px solid #232830">
+<div style="height:14px;line-height:14px;font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0">ETA</div>
+<div style="display:flex;align-items:baseline;height:26px"><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:600;font-size:28px;line-height:26px;font-variant-numeric:tabular-nums">15:24</span></div>
+</div>
+<div style="box-sizing:border-box;padding:3px 8px 0">
+<div style="height:14px;line-height:14px;font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0">SPEED</div>
+<div style="display:flex;align-items:baseline;gap:3px;height:26px"><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:600;font-size:28px;line-height:26px;font-variant-numeric:tabular-nums">24.6</span><span style="font-size:11px;font-weight:600;color:#9AA4B0">km/h</span></div>
+</div>
+</div>
+
+<div style="flex:none;height:20px;display:flex;align-items:center;justify-content:center;gap:6px">
+<span style="width:6px;height:6px;border-radius:3px;background:#5B6673"></span>
+<span style="width:6px;height:6px;border-radius:3px;background:#5B6673"></span>
+<span style="width:6px;height:6px;border-radius:3px;background:#5B6673"></span>
+<span style="width:18px;height:6px;border-radius:3px;background:#F2F5F8"></span>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"scenario":{"editor":"enum","default":"ontrack","options":["ontrack","turn","reroute"]},"$preview":{"width":240,"height":320}}'>
+class Component extends DCLogic {
+renderVals() {
+const key = this.props.scenario || 'ontrack';
+const table = {
+ontrack: { head: '250 m', size: 44, headColor: '#F2F5F8', sub: 'Turn right · Main St', tileBg: '#1B2027', tileFg: '#F2F5F8', dash: 'none', op: '1' },
+turn: { head: '50 m', size: 44, headColor: '#4C9AFF', sub: 'Turn right · Main St', tileBg: '#4C9AFF', tileFg: '#0B0D10', dash: 'none', op: '1' },
+reroute: { head: 'OFF COURSE', size: 30, headColor: '#F2C230', sub: '120 m to the route', tileBg: '#F2C230', tileFg: '#0B0D10', dash: '9 7', op: '0.55' }
+};
+const cur = table[key] || table.ontrack;
+return {
+headText: cur.head,
+headSize: cur.size,
+headColor: cur.headColor,
+subText: cur.sub,
+tileBg: cur.tileBg,
+tileFg: cur.tileFg,
+routeDash: cur.dash,
+routeOpacity: cur.op,
+isRoute: cur !== table.reroute,
+isReroute: cur === table.reroute
+};
+}
+}
+</script>
+</body>
+</html>

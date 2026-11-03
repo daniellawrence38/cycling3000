@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Profile FTP</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=Barlow:wght@500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:240px;height:320px;box-sizing:border-box;overflow:hidden;background:#0B0D10;color:#F2F5F8;font-family:'Barlow','Arial',sans-serif;display:flex;flex-direction:column">
+
+<div style="flex:none;height:22px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;background:#12161B;color:#C9D1DA">
+<div role="group" aria-label="Connected: GPS, power meter, heart rate, phone" style="display:flex;align-items:center;gap:9px">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"></path><circle cx="12" cy="11" r="2"></circle></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L5 14h6l-1 8 8-12h-6z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.6-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.4-7 10-7 10z"></path></svg>
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2"></rect><path d="M11 18.5h2"></path></svg>
+</div>
+<div style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;line-height:1">
+<span>14:32</span>
+<span style="display:flex;align-items:center;gap:3px"><svg width="16" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"></rect><path d="M22 10v4"></path><rect x="4.5" y="9.5" width="9" height="5" fill="currentColor" stroke="none"></rect></svg><span>68%</span></span>
+</div>
+</div>
+
+<div style="flex:none;height:44px;box-sizing:border-box;display:flex;align-items:center;border-bottom:1px solid #232830">
+<button type="button" aria-label="Back to menu" style="flex:none;width:44px;height:43px;margin:0;padding:0;border:0;background:transparent;color:#F2F5F8;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></button>
+<span style="flex:1;min-width:0;padding-right:8px;font-size:18px;font-weight:700;letter-spacing:.02em">Profile</span>
+</div>
+
+<div style="flex:none;height:104px;box-sizing:border-box;padding:8px 8px 2px;display:flex;flex-direction:column">
+<div style="display:flex;justify-content:space-between;align-items:center;height:16px;font-size:11px;font-weight:600;letter-spacing:.08em;color:#9AA4B0"><span>FTP</span><span style="box-sizing:border-box;height:16px;padding:0 6px;line-height:14px;border-radius:8px;font-size:10px;font-weight:700;letter-spacing:.06em;background:transparent;color:{{ chipFg }};border:1px {{ chipBorder }}">{{ chipText }}</span></div>
+<div style="height:64px;display:flex;align-items:baseline;justify-content:center;gap:6px"><span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-weight:700;font-size:64px;line-height:64px;font-variant-numeric:tabular-nums">{{ valueText }}</span><span style="font-size:20px;font-weight:600;color:#9AA4B0">W</span></div>
+<div style="height:14px;line-height:14px;text-align:center;font-size:12px;font-weight:500;color:#9AA4B0">{{ noteText }}</div>
+</div>
+
+<div style="flex:none;height:64px;box-sizing:border-box;padding:8px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
+<button type="button" aria-label="Decrease FTP by 5 watts" style="margin:0;padding:0;height:48px;border:1px solid #3A424C;border-radius:10px;background:#1B2027;color:#F2F5F8;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-size:24px;font-weight:700;cursor:pointer">&#8722;5</button>
+<button type="button" aria-label="Decrease FTP by 1 watt" style="margin:0;padding:0;height:48px;border:1px solid #3A424C;border-radius:10px;background:#1B2027;color:#F2F5F8;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-size:24px;font-weight:700;cursor:pointer">&#8722;1</button>
+<button type="button" aria-label="Increase FTP by 1 watt" style="margin:0;padding:0;height:48px;border:1px solid #3A424C;border-radius:10px;background:#1B2027;color:#F2F5F8;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-size:24px;font-weight:700;cursor:pointer">+1</button>
+<button type="button" aria-label="Increase FTP by 5 watts" style="margin:0;padding:0;height:48px;border:1px solid #3A424C;border-radius:10px;background:#1B2027;color:#F2F5F8;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;font-size:24px;font-weight:700;cursor:pointer">+5</button>
+</div>
+
+<div style="flex:1;min-height:0;box-sizing:border-box;padding:4px 8px 0;font-size:12px;font-weight:500;line-height:16px;color:#9AA4B0">Workouts and zones on this unit use this value. The phone app can set it too.</div>
+
+<div style="flex:none;height:32px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;justify-content:space-between;background:#12161B;color:#C9D1DA;font-size:12px;font-weight:700;letter-spacing:.08em">
+<span style="display:flex;align-items:center;gap:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>BACK</span>
+<span style="display:flex;align-items:center;gap:4px">{{ footerText }}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg></span>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"scenario":{"editor":"enum","default":"unchanged","options":["unchanged","changed"]},"$preview":{"width":240,"height":320}}'>
+class Component extends DCLogic {
+renderVals() {
+const key = this.props.scenario || 'unchanged';
+const table = {
+unchanged: {
+valueText: '260', chipText: 'CURRENT', chipFg: '#F2F5F8', chipBorder: 'solid #3A424C',
+noteText: 'No change', footer: 'DONE'
+},
+changed: {
+valueText: '265', chipText: 'CHANGED', chipFg: '#F2C230', chipBorder: 'dashed #F2C230',
+noteText: 'was 260 W · +5 W', footer: 'SAVE'
+}
+};
+const cur = table[key] || table.unchanged;
+return {
+valueText: cur.valueText,
+chipText: cur.chipText,
+chipFg: cur.chipFg,
+chipBorder: cur.chipBorder,
+noteText: cur.noteText,
+footerText: cur.footer
+};
+}
+}
+</script>
+</body>
+</html>
