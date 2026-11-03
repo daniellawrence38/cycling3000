@@ -15,6 +15,11 @@ No GPL or AGPL code in the core, firmware or app (START-HERE, brief 3).
 | SDL2 | 2.30 (system package) | zlib | developer machine | ccsim's window only |
 | Playwright, Chromium | as installed | Apache-2.0, BSD-3 | developer machine | Rendering the mockups for comparison (tools/design) and icons; not shipped |
 
+| Kotlin, kotlinx.serialization | 2.0.21, 1.7.3 | Apache-2.0 | Gradle (Maven Central) | android :core |
+| OkHttp, MockWebServer | 4.12.0 | Apache-2.0 | Gradle | HTTP clients (Intervals.icu, elevation); MockWebServer in tests only |
+| JUnit 5 | 5.11.3 | EPL-2.0 | Gradle | JVM tests only, not shipped |
+| Gradle wrapper | 8.14.3 | Apache-2.0 | `android/gradlew`, `android/gradle/wrapper/` | Build only |
+
 Mockup icons in `ui/icons/icons.json` are the SVG paths from Daniel's mockups.
 
 Pinned for later work packages, not yet fetched: ESP-IDF v5.5.6 (Apache-2.0, includes NimBLE, Apache-2.0).

@@ -110,6 +110,29 @@ Linux container: GCC 13.3, CMake 3.28, Python 3.13 (pytest, fitdecode from PyPI)
 
 **Stop.** WP4 stops here for Daniel's review of `docs/wp4/contact-sheet.png`. Golden images follow approval. Next in order: WP5 (Android core and tools) and WP6 (Android app), which the brief allows while waiting.
 
+## WP5 Android core and tools · 3 November 2026
+
+**What exists.** `android/` is a Gradle project (wrapper 8.14.3, Kotlin 2.0.21, JVM target 17, built here with JDK 21) with `:core` (pure Kotlin/JVM) and `:testing`. `:core` holds `workout` (typography normalisation, validation with V§4's codes and JSON-pointer paths, readable messages such as "Step 3: label must be 1 to 16 letters, digits or spaces", conversion, CW1 encode and decode, the unit's maths for the preview), `route` (GPX `<trk>`/`<rte>` import, 1 m de-duplication and Douglas-Peucker from 3 m up to at most 8000 points, haversine distances, profile spacing `max(25, ceil(dist/12000))`, gap filling then a 3-sample median and a 5-sample mean, `detect_climbs` ported exactly, geometric turns, CR1 encode and decode, and `buildRoute` for the whole pipeline), `link` (framing, reassembly, `LinkTransport`, and `LinkClient` with the connect sequence, 4000- or 512-byte chunks by MTU, PUT with OFFSET resume, ride fetch with size and CRC check, events by req_id 0), `dem` (`ElevationProvider`, `GaProvider`, `OpenTopoProvider`, `ChainProvider`, a cache keyed by 1e-4 degree cell) and `upload` (`IntervalsClient`). `:testing` holds `FakeUnit` (the unit's protocol in Kotlin, mirroring `link.c`), `SocketTransport` (simunit's TCP framing) and the shared `ProtocolSuite`. `tools/reference/export_fixtures.py` exports the reference objects behind the vectors to `android/core/src/test/resources/vectors.json`; `tools/dem_spike/dem_spike.py` is the elevation spike for Daniel to run.
+
+**How to run.** `make android` (builds simunit first, then runs both modules' tests). `make test` is unchanged and does not need Gradle.
+
+**Verified (JVM tests, 41 in all).**
+
+- V§1 anchors; V§2.1 and V§2.3: W1 and W2 from their JSON give byte-identical CW1 objects, IDs and CRCs, and decode back; every W1 step's watts at FTP 260 and 250; V§2.4 every row including 300 %; V§2.5 every ramp row and the floor-division table (and that Kotlin `/` gives the wrong column); V§3 every zone row and the target zones.
+- V§4: all 12 accept cases and all 39 reject cases with the exact code and path, taken from the reference's own case list.
+- V§5: every example message fragments and reassembles at 19 and 243 bytes; the 233-byte PUT_DATA's 13 packet headers and its first, second and last packets byte for byte; a 4000-byte chunk is 17 packets; the BAD_CRC CRC.
+- V§8: the synthetic profile gives exactly `start 490, length 1060, ascent 48, avg 45, max 60`, and the three no-climb profiles give none. V§9: the route object byte for byte (157 bytes, ID, CRC, distance 2257, ascent 17) and the varint and zigzag checks.
+- The six starter workouts encode to the same bytes as `ref.py` (the C fixtures). Typography is normalised and nothing else (an accented name is refused, not corrected).
+- Route pipeline on the gen_ride GPX: 49 points, 25 m profile, one climb (about 950 m to 1675 m and 30 m; the smoothing widens it), turns depart, left at 1000 m, right at 1600 m, arrive; the GPX's own elevations are used when the DEM returns nothing. Turns: a corner drawn with three points is one LEFT, a 20 degree bend is no turn, a hairpin is a U-turn (Q25).
+- Shared protocol suite, 7 tests run against both FakeUnit and simunit (the real C core over TCP), at MTU 23 (512-byte chunks) and 247 (4000-byte chunks): HELLO, FTP set and bounds, TIME_SET, workouts and a route sent, EXISTS, listed, deleted; PUT errors (NO_SESSION, TOO_BIG, BAD_ARG, BAD_CRC, OFFSET with resume, BAD_OBJECT); unknown opcodes; ride list, fetch with CRC check, mark, delete; BUSY while recording; the connect sequence. Both units give the same answers.
+- Intervals.icu client against MockWebServer: success (basic auth user `API_KEY`, multipart `file`), duplicate within 60 s not sent (61 s is sent), 401, 429, 5xx, no connection, and another 4xx failing with the server's message. Elevation providers against MockWebServer: GA `identify` request and `Pixel Value`, NoData, the cache; Open Topo Data batches of 100 with a one-second pause; the chain filling gaps and skipping a failing provider.
+
+**Not done, and why.** The elevation spike: this environment's network policy refused `services.ga.gov.au` and `api.opentopodata.org`, so `docs/DEM-FINDINGS.md` says so and nothing is invented; `tools/dem_spike/dem_spike.py` runs it on any PC with internet access. `fitcheck` and `gen_ride` were done in WP2 and WP3.
+
+**Deviations and choices.** Q25 (turn angles summed per vertex). The Intervals.icu duplicate check uses each activity's `start_date` from `GET /api/v1/athlete/0/activities?oldest=&newest=`; the field name follows the Intervals.icu API documentation and is Unverified until a live call. The Intervals.icu client lives in `:core` (it needs only OkHttp) so it can be tested on the JVM; the app wires it to WorkManager and Tink in WP6.
+
+**Unverified.** The GA and Open Topo Data response shapes and limits against the live services; the Intervals.icu responses against the live service; anything on the phone (WP6).
+
 ## Future enhancements (not scheduled)
 
 - **Shimano 12-speed Di2 gear display (105 R7100).** Requested by Daniel on 3 November 2026, deferred. No public specification exists for the Di2 gear data over BLE; the only open work decodes Shimano's private ANT profile, and the unit has no identified ANT+ radio. First step when picked up: a BLE capture with nRF Connect while shifting, to see whether the gear is readable. Then: gear in the ride data, FIT front and rear gear-change events, and a gear display (needs a mockup change; the Main grid is full).

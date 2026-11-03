@@ -53,8 +53,9 @@ shots: sim
 	-cd tools/design && NODE_PATH=`npm root -g` node render_boards.js --fonts $(CURDIR)/build/deps/node/node_modules/@fontsource --gen $(CURDIR)/ui/out/design/canvas/project --out $(CURDIR)/ui/out/mockup >/dev/null
 	$(PYTHON) tools/design/contact_sheet.py --lv ui/out/lvgl --ref ui/out/mockup --out ui/out/contact-sheet.png
 
-android:
-	@echo "make android: not built yet (WP5)"; exit 1
+# Android :core and :testing (JVM). The shared protocol suite also runs against simunit, so build it first.
+android: test-c-plain
+	cd android && ./gradlew --no-daemon -q :core:test :testing:test
 
 fw-build:
 	@echo "make fw-build: not built yet (WP7)"; exit 1

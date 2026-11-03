@@ -356,3 +356,55 @@ fun buildRoute(name: String, raw: List<Pt>, elevations: (List<Pt>) -> List<Doubl
     val safeName = name.filter { it.code in 0x20..0x7E }.take(40).ifBlank { "Route" }
     return BuiltRoute(encodeCr1(safeName, pts, step, dm, turns, climbs), pts, prof, step, climbs, turns, fromFile)
 }
+
+// ------------------------------------------------------------------ CR1 decoding (as the unit validates)
+data class RouteInfo(val name: String, val distM: Long, val ascentM: Int, val points: List<Pt>, val profileDm: List<Int>,
+                     val profStep: Int, val turns: List<Turn>, val climbs: List<Climb>)
+
+/** Decodes and validates a CR1 object like the unit (protocol 3.3): counts, every length consumed
+ * exactly, coordinates in range, the ID. Throws IllegalArgumentException on any failure. */
+fun decodeCr1(b: ByteArray): RouteInfo {
+    require(b.size in 28..131072) { "size" }
+    val r = cc700.util.ByteReader(b)
+    require(r.u8() == 'C'.code && r.u8() == 'R'.code) { "magic" }
+    require(r.u8() == 1) { "version" }
+    require(r.u8() == 0) { "flags" }
+    val id = r.bytes(8)
+    val dist = r.u32(); val ascent = r.u16(); val npts = r.u16(); val nturns = r.u16(); val nclimbs = r.u8()
+    val nprof = r.u16(); val step = r.u16(); val nl = r.u8()
+    require(npts in 2..8000 && nturns <= 500 && nclimbs <= 60 && nprof <= 12000) { "counts" }
+    require((nprof == 0) == (step == 0)) { "profile step" }
+    require(nl in 1..40) { "name" }
+    val name = String(r.bytes(nl), Charsets.US_ASCII)
+    require(name.all { it.code in 0x20..0x7E }) { "name" }
+    var lat = r.i32().toLong(); var lon = r.i32().toLong()
+    fun ok() = lat in -900000000L..900000000L && lon in -1800000000L..1800000000L
+    require(ok()) { "coord" }
+    val pts = ArrayList<Pt>(npts)
+    pts += Pt(lat.toInt(), lon.toInt())
+    fun varint(): Long {
+        var v = 0L; var shift = 0
+        while (true) {
+            require(shift < 63) { "varint" }
+            val c = r.u8()
+            v = v or ((c and 0x7F).toLong() shl shift)
+            if (c and 0x80 == 0) return v
+            shift += 7
+        }
+    }
+    repeat(npts - 1) {
+        lat += cc700.util.unzigzag(varint()); lon += cc700.util.unzigzag(varint())
+        require(ok()) { "coord" }
+        pts += Pt(lat.toInt(), lon.toInt())
+    }
+    val prof = (0 until nprof).map { r.i16() }
+    val turns = (0 until nturns).map {
+        val d = r.u32(); val ty = r.u8(); val ex = r.u8(); val st = String(r.bytes(r.u8()), Charsets.US_ASCII)
+        require(ty <= TurnType.DEPART) { "turn" }
+        Turn(d, ty, ex, st)
+    }
+    val climbs = (0 until nclimbs).map { Climb(r.u32(), r.u16(), r.u16(), r.i16(), r.i16()) }
+    require(r.remaining == 0) { "trailing" }
+    require(cc700.util.objectId(b).contentEquals(id)) { "id" }
+    return RouteInfo(name, dist, ascent, pts, prof, step, turns, climbs)
+}
