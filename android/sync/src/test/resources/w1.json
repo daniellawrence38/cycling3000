@@ -1,0 +1,45 @@
+{
+ "v": 1,
+ "name": "4 x 8 min threshold",
+ "steps": [
+  {
+   "label": "Warm up",
+   "secs": 600,
+   "ftp_pct": [
+    50,
+    70
+   ],
+   "ramp": true
+  },
+  {
+   "reps": 4,
+   "steps": [
+    {
+     "label": "Threshold",
+     "secs": 480,
+     "ftp_pct": [
+      95,
+      100
+     ]
+    },
+    {
+     "label": "Recover",
+     "secs": 240,
+     "ftp_pct": [
+      45,
+      55
+     ]
+    }
+   ]
+  },
+  {
+   "label": "Cool down",
+   "secs": 600,
+   "ftp_pct": [
+    55,
+    40
+   ],
+   "ramp": true
+  }
+ ]
+}

@@ -1,0 +1,34 @@
+{
+ "v": 1,
+ "name": "Cadence and tempo",
+ "steps": [
+  {
+   "label": "Spin up",
+   "secs": 60,
+   "ftp_pct": [
+    45,
+    55
+   ],
+   "rpm": 110
+  },
+  {
+   "reps": 2,
+   "steps": [
+    {
+     "label": "Tempo",
+     "secs": 300,
+     "ftp_pct": 80,
+     "rpm": 85
+    },
+    {
+     "label": "Recover",
+     "secs": 120,
+     "ftp_pct": [
+      45,
+      55
+     ]
+    }
+   ]
+  }
+ ]
+}

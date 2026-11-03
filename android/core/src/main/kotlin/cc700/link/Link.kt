@@ -114,6 +114,22 @@ class LinkClient(private val t: LinkTransport, private val clock: () -> Long = S
         }
     }
 
+    /** Waits up to [timeoutMs] for packets while no request is in flight and passes events to [onEvent].
+     * Returns the number of events seen. */
+    fun pollEvents(timeoutMs: Long): Int {
+        val deadline = clock() + timeoutMs
+        var n = 0
+        while (true) {
+            val left = deadline - clock()
+            if (left <= 0) return n
+            val pkt = t.receive(left) ?: continue
+            val m = rx.feed(pkt, clock()) ?: continue
+            if (m.size >= 2 && m[1].toInt() == 0 && (m[0].toInt() and 0xFF) >= 0xA0) {
+                onEvent(m[0].toInt() and 0xFF, m.copyOfRange(2, m.size)); n++
+            }
+        }
+    }
+
     private fun ok(r: Pair<Int, ByteArray>, what: String): ByteArray {
         if (r.first != Status.OK) throw LinkException("$what failed: status ${r.first}", r.first)
         return r.second

@@ -55,7 +55,7 @@ shots: sim
 
 # Android :core and :testing (JVM). The shared protocol suite also runs against simunit, so build it first.
 android: test-c-plain
-	cd android && ./gradlew --no-daemon -q :core:test :testing:test
+	cd android && ./gradlew --no-daemon -q :core:test :testing:test :sync:test
 
 fw-build:
 	@echo "make fw-build: not built yet (WP7)"; exit 1

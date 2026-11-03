@@ -39,3 +39,6 @@ ui/out/
 android/.gradle/
 android/build/
 android/*/build/
+android/.kotlin/
+android/local.properties
+android/app/build/
