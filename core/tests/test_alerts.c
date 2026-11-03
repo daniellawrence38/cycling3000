@@ -50,7 +50,7 @@ static void test_texts(void)
     TEST_ASSERT_EQUAL_INT(CC_AL_STYLE_YELLOW, b.style);
     TEST_ASSERT_EQUAL_UINT32(6000, b.duration_ms);
     cc_banner_lowbatt(&b, 15);
-    TEST_ASSERT_EQUAL_STRING("LOW BATTERY 15 %", b.title);
+    TEST_ASSERT_EQUAL_STRING("LOW BATTERY 15%", b.title);
     TEST_ASSERT_EQUAL_STRING("Recording continues", b.sub);
     TEST_ASSERT_EQUAL_INT(CC_AL_STYLE_ORANGE, b.style);
     TEST_ASSERT_EQUAL_UINT32(8000, b.duration_ms);
@@ -198,7 +198,7 @@ static void test_core_triggers(void)
     cc_on_battery(15, 0);
     tick_s(1, 1, 1);
     TEST_ASSERT_EQUAL_INT(CC_AL_LOWBATT, cc_view()->banner.id);
-    TEST_ASSERT_EQUAL_STRING("LOW BATTERY 15 %", cc_view()->banner.title);
+    TEST_ASSERT_EQUAL_STRING("LOW BATTERY 15%", cc_view()->banner.title);
     tick_s(8, 1, 1);
     TEST_ASSERT_EQUAL_INT(CC_AL_NONE, cc_view()->banner.id);
     cc_on_battery(14, 0);
@@ -206,7 +206,7 @@ static void test_core_triggers(void)
     TEST_ASSERT_EQUAL_INT(CC_AL_NONE, cc_view()->banner.id); /* once per threshold per ride */
     cc_on_battery(5, 0);
     tick_s(1, 1, 1);
-    TEST_ASSERT_EQUAL_STRING("LOW BATTERY 5 %", cc_view()->banner.title);
+    TEST_ASSERT_EQUAL_STRING("LOW BATTERY 5%", cc_view()->banner.title);
     tick_s(9, 1, 1);
     /* Storage: writes fail for 30 s while recording */
     memfs_fail_writes_from(fs, 1);

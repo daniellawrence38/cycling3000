@@ -52,6 +52,24 @@ Options: (a) none; (b) the GNSS altitude.
 Default used: (b) for the file only. Gradient, ascent and the Climb page stay invalid ("--") without a barometer, as brief 5.3 says.
 Answer:
 
+### Q20 · WP4 · open
+Question: Brief 6.2 asks for the glyph `→` in every font. The Barlow files available (Fontsource 5.3.0, all subsets) have no `→`, and no mockup uses it as text (arrows are drawn as icons).
+Options: (a) leave it out; (b) take it from another font.
+Default used: (a). If a screen ever needs it in text, it can be drawn as an icon.
+Answer:
+
+### Q21 · WP4 · open
+Question: Brief 6.3 picks the map scale so "the next turn and 1.5 times the distance to it fit" in the view width, with the rider at 60 % of the map height. Only about 95 px of the 158 px map is above the rider, so at the 400 m view that rule gives for a turn 250 m ahead (the mockup's case) the turn is off the top of the map.
+Options: (a) fit across the view width as written; (b) fit 1.5 times the distance in the space above the rider.
+Default used: (b): view width at least 1.5 × distance × 240 / 95, from {100 … 3200} m, never below 200 m. The turn is then always on the map, as the mockup shows.
+Answer:
+
+### Q22 · WP4 · open
+Question: The Navigation mockup draws the route 8 px wide on a `#10151B` map; brief 6.3 and spec 8.3 say 3 px on the plain background `#0B0D10` for phase 1.
+Options: follow the mockup; follow the spec.
+Default used: the spec (3 px, `#0B0D10`), since phase 1 is defined there; the mockup's roads are phase 2. Easy to change if Daniel prefers the wider line.
+Answer:
+
 ## Document errors
 
 ### E5 · brief 5.6 (finish sequence)

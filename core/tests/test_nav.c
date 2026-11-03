@@ -148,7 +148,7 @@ static void test_replay(void)
             TEST_ASSERT_TRUE(v.eta_valid);
             TEST_ASSERT_UINT32_WITHIN(1, 319, v.eta_s);
             TEST_ASSERT_EQUAL_UINT32(200, v.dist_to_turn_m);
-            TEST_ASSERT_EQUAL_UINT32(400, v.map_scale_m); /* 1.5 x 200 = 300 -> 400 */
+            TEST_ASSERT_EQUAL_UINT32(800, v.map_scale_m); /* 1.5 x 200 m above the rider: 758 m wide -> 800 */
             TEST_ASSERT_TRUE(v.climb_show);
             TEST_ASSERT_TRUE(v.approaching);
             TEST_ASSERT_EQUAL_UINT32(200, v.climb_to_start_m);

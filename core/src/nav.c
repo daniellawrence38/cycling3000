@@ -461,7 +461,9 @@ void cc_nav_view(const cc_nav_t *n, float baro_ascent, cc_nav_view_t *v)
     }
     /* Map scale (brief 6.3) */
     static const uint32_t scales[] = {100, 200, 400, 800, 1600, 3200};
-    float need = v->turn_idx >= 0 ? 1.5f * (float)v->dist_to_turn_m : 200.0f;
+    /* 1.5 x the distance to the next turn must fit in the space above the rider, who sits at 60 % of the
+     * 158 px map height (about 95 px of a 240 px view width), not just across the view (QUESTIONS Q21) */
+    float need = v->turn_idx >= 0 ? 1.5f * (float)v->dist_to_turn_m * 240.0f / 95.0f : 200.0f;
     if (need < 200.0f) need = 200.0f;
     v->map_scale_m = 3200;
     for (unsigned i = 0; i < sizeof scales / sizeof scales[0]; i++)

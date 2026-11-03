@@ -145,7 +145,7 @@ void cc_banner_gpslost(cc_banner_t *b)
 void cc_banner_lowbatt(cc_banner_t *b, int pct)
 {
     base(b, CC_AL_LOWBATT, CC_AL_STYLE_ORANGE, 8000);
-    snprintf(b->title, sizeof b->title, "LOW BATTERY %d %%", pct);
+    snprintf(b->title, sizeof b->title, "LOW BATTERY %d%%", pct);
     snprintf(b->sub, sizeof b->sub, "Recording continues");
 }
 

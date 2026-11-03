@@ -66,6 +66,10 @@ typedef struct {
     cc_workout_t detail_wo;      /* the workout being viewed */
     int detail_route;            /* index into routes; profile from detail_prof */
     int16_t detail_prof[96]; int detail_prof_n; uint32_t detail_prof_len_m;
+    /* climb page profile strip: elevations (m) across the climb and the rider's fraction along it */
+    float climb_prof[24]; int climb_prof_n; float climb_pos;
+    /* navigation map: route points in metres relative to the rider (x east, y north); ridden index */
+    float map_x[128], map_y[128]; int map_n, map_ridden; float course_deg;
     struct { uint32_t start_m, len_m; } detail_climbs[8]; int detail_n_climbs;
     ui_ride_item_t summary_ride; cc_fit_summary_t summary; int summary_uploaded; int summary_from_history;
     /* sensors */
@@ -108,6 +112,18 @@ lv_obj_t *ui_frame(lv_obj_t *p, int x, int y, int w, int h, uint32_t bg, int rad
 lv_obj_t *ui_text(lv_obj_t *p, int x, int y, int w, int lh, const lv_font_t *f, uint32_t color, lv_text_align_t al,
                   int letter_space, const char *s);
 int ui_text_w(const lv_font_t *f, int letter_space, const char *s);
+/* Baseline (y) of the last text placed by ui_text, for aligning a unit to a number. */
+extern int ui_last_baseline;
+/* Text whose baseline sits at base_y (CSS align-items: baseline). Returns the label. */
+lv_obj_t *ui_text_base(lv_obj_t *p, int x, int base_y, const lv_font_t *f, uint32_t color, lv_text_align_t al,
+                       int letter_space, const char *s);
+/* Text whose line box bottom is at bottom_y (CSS align-self: flex-end). */
+lv_obj_t *ui_text_bottom(lv_obj_t *p, int x, int bottom_y, const lv_font_t *f, uint32_t color, lv_text_align_t al,
+                         int letter_space, const char *s);
+/* Adds the header kebab (drawn by ui_header44) as the last item of the focus order. */
+void ui_kebab_late(lv_obj_t *root);
+/* A dashed circle (Empty states icon ring). */
+void ui_dashed_ring(lv_obj_t *p, int cx, int cy, int r, uint32_t c);
 lv_obj_t *ui_icon(lv_obj_t *p, const lv_image_dsc_t *ic, int x, int y, uint32_t color);
 void ui_hline(lv_obj_t *p, int x, int y, int w, uint32_t c);
 void ui_vline(lv_obj_t *p, int x, int y, int h, uint32_t c);
@@ -122,7 +138,11 @@ void ui_header36(lv_obj_t *root, int y, const char *title, const char *right);
 void ui_header44(lv_obj_t *root, int y, const char *title, const lv_font_t *f, int kebab);
 /* 46 px list row: name and sub; returns the row (focusable). right_x is where right-hand content ends. */
 lv_obj_t *ui_row46(lv_obj_t *p, int y, const char *name, const char *sub, int focused, uint32_t name_color);
+lv_obj_t *ui_row46_sub(lv_obj_t *p, int y, const char *name, const char *sub, int focused, uint32_t name_color,
+                       uint32_t sub_color);
 void ui_chev(lv_obj_t *row);
+/* Signal bars (20 x 16) with n of 4 lit. */
+void ui_bars(lv_obj_t *p, int x, int y, int n);
 typedef enum { FOOT_BACK, FOOT_MENU } ui_foot_left_t;
 typedef enum { FOOT_PLAIN, FOOT_PRIMARY, FOOT_NONE } ui_foot_right_t;
 void ui_footer(lv_obj_t *root, const char *left, ui_foot_left_t lk, const char *right, ui_foot_right_t rk);

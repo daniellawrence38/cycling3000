@@ -16,3 +16,7 @@ endif()
 enable_testing()
 add_subdirectory(core)
 add_subdirectory(simunit)
+# The UI needs LVGL (ui/deps.sh); built in the plain configuration only
+if(NOT CC_SANITIZE AND EXISTS ${CMAKE_SOURCE_DIR}/build/deps/lvgl/lvgl.h)
+  add_subdirectory(ui)
+endif()

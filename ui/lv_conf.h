@@ -1,5 +1,5 @@
 /* lv_conf.h for the CC700 simulator, generated from LVGL's lv_conf_template.h (v9.6.0) with these
- * changes: content enabled, 1 MB LVGL heap, snapshots on, logging on, SDL only when CC_LV_USE_SDL is
+ * changes: content enabled, compressed fonts (lv_font_conv default), 1 MB LVGL heap, snapshots on, logging on, SDL only when CC_LV_USE_SDL is
  * defined (ccsim's window). The display is RGB565 (set at runtime; the ST7789 is RGB565). The firmware
  * gets its own configuration in WP7. */
 #ifndef CC_LV_USE_SDL
@@ -1162,7 +1162,7 @@
 #define LV_FONT_FMT_TXT_LARGE 0
 
 /** Compressed fonts */
-#define LV_USE_FONT_COMPRESSED 0
+#define LV_USE_FONT_COMPRESSED 1
 
 /** Draw a placeholder rectangle instead of nothing when a glyph is missing
  *  from the font.
