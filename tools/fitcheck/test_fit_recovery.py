@@ -15,12 +15,25 @@ import fitcheck
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 BUILD = os.path.join(ROOT, 'build', 'host', 'core')
-SHIM = os.path.join(BUILD, 'libcc_testshim.so')
+
+
+def _artifact(*names):
+    """The first of these that CMake produced. Windows builds test_fit.exe and libcc_testshim.dll
+    where POSIX builds test_fit and libcc_testshim.so; falls back to the POSIX name so the skip
+    message still reads correctly when nothing is built."""
+    for n in names:
+        p = os.path.join(BUILD, n)
+        if os.path.exists(p):
+            return p
+    return os.path.join(BUILD, names[0])
+
+
+SHIM = _artifact('libcc_testshim.so', 'libcc_testshim.dll')
 T0 = 1793000000
 
 
 def _fit_files(tmp):
-    exe = os.path.join(BUILD, 'test_fit')
+    exe = _artifact('test_fit', 'test_fit.exe')
     if not os.path.exists(exe):
         pytest.skip('build/host not built; run make test-c-plain first')
     env = dict(os.environ, CC_FIT_OUT=str(tmp), CC_FIT_QUICK='1')

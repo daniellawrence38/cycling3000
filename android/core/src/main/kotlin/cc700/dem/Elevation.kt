@@ -42,8 +42,9 @@ fun cellKey(p: Pt): Long {
 private val json = Json { ignoreUnknownKeys = true }
 
 /** Geoscience Australia 5 m LiDAR DEM through ArcGIS `identify`, one request per point, at most 4 at a
- * time (brief 7.4). The request and the `Pixel Value` answer follow the ArcGIS REST documentation;
- * whether this service answers that way, and its coverage of Perth, are Unverified (DEM-FINDINGS.md). */
+ * time (brief 7.4). Verified against the live service on 3 November 2026 (DEM-FINDINGS.md): it answers
+ * with `Stretch.Pixel Value`, not the documented `Pixel Value`, and returns NoData over the Perth Hills,
+ * so hills rides fall through to Open Topo Data. Both attribute names are accepted (E8). */
 class GaProvider(
     private val http: OkHttpClient,
     private val cache: ElevationCache,
@@ -69,7 +70,10 @@ class GaProvider(
             val res = o["results"] as? JsonArray ?: return null
             for (item in res) {
                 val attrs = (item as? JsonObject)?.get("attributes") as? JsonObject ?: continue
-                val v = (attrs["Pixel Value"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: continue
+                // The live service names this "Stretch.Pixel Value" (the renderer prefixes it), not the
+                // plain "Pixel Value" the ArcGIS REST documentation shows. Accept either (E8).
+                val name = attrs.keys.firstOrNull { it == "Pixel Value" || it.endsWith(".Pixel Value") } ?: continue
+                val v = (attrs[name] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: continue
                 if (v < -1000 || v > 9000) continue /* NoData */
                 cache.put(key, v)
                 return v

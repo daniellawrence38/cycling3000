@@ -124,6 +124,18 @@ Options: (a) find the bootloader's version in the backup (BRINGUP.md step 3a, `b
 Default used: (a). Replacing the bootloader is outside this plan and would need its own recovery route; nothing in the plan writes the bootloader or the partition table.
 Answer:
 
+### Q32 · WP5 · open
+Question: The GA 5 m LiDAR DEM returns `NoData` over the Perth Hills (Kalamunda, Lesmurdie Falls, Mundaring Weir all empty; the coastal plain answers normally), measured by the spike on 3 November 2026. The hills are where the climbs are, so a hills ride's gradients come from the Open Topo Data fallback at 30 m sampling, not from GA at 5 m.
+Options: (a) keep the chain as it is (GA, then Open Topo Data, then the file) and accept 30 m in the hills; (b) make Open Topo Data the default source and drop GA; (c) find a DEM that covers the hills at a finer resolution.
+Default used: (a). The chain already does the right thing and nothing is lost by trying GA first: it costs one request per cell, which is cached. Whether 30 m sampling is good enough for the climb detection in brief 5.9 is Unverified; it needs a ride over a known climb to judge, which is Daniel's call after riding.
+Answer:
+
+### Q33 · WP5/WP6 · open
+Question: `simunit` does not build on Windows. It includes `<arpa/inet.h>` and `<sys/statvfs.h>`, which MinGW-w64 does not provide, so on a Windows PC the 3 Python simunit tests, the 9 JVM simunit tests and the whole WP6 manual flow (which needs `tools/android/demo_unit.sh`) cannot run. The C core itself builds and all 14 of its tests pass.
+Options: (a) run simunit under WSL; (b) port it with a small socket and free-space shim (Winsock, `GetDiskFreeSpaceEx`); (c) leave it POSIX-only and document that the simunit-backed tests need Linux, macOS or WSL.
+Default used: (c) for now, because nothing in the brief asks for a Windows build and the tests self-skip cleanly rather than failing. (a) is the cheap unlock on Daniel's PC: WSL is present but has no distribution installed.
+Answer:
+
 ## Document errors
 
 ### E5 · brief 5.6 (finish sequence)
@@ -138,3 +150,7 @@ Reading used: timer-stop event (if the timer is running), final lap, session, ac
 Problem: A response's opcode is the request's opcode with bit 7 set, and events use 0xA0 and above. RIDE_LIST (0x20) therefore answers with 0xA0, the same opcode as EVENT_STATE, and RIDE_OPEN (0x21) answers with 0xA1, the same as EVENT_RIDE_SAVED; RIDE_READ, RIDE_MARK and RIDE_DELETE answer with 0xA2 to 0xA4, the range reserved for future events. A receiver that classifies by opcode alone mistakes the ride responses for events (found by the end-to-end test against simunit).
 Reading used: the protocol already says events carry req_id 0 and that 0 is reserved for the phone, so req_id decides: a message with req_id 0 is an event, anything else is a response. The unit ignores a request with req_id 0 (no response; the phone's timeout covers it) so the rule always holds. The Python test client and the Kotlin client (WP5) classify this way. No opcode was changed, so no protocol version change is needed; a later protocol revision could move events to 0xE0 and above.
 
+
+### E8 · ArcGIS REST documentation (GA identify attribute name)
+Problem: The ArcGIS REST documentation for `identify` on an image service shows the pixel value under `attributes."Pixel Value"`, and both `GaProvider` and `tools/dem_spike/dem_spike.py` read exactly that name. The live `DEM_LiDAR_5m_2025` service returns `attributes."Stretch.Pixel Value"` instead: the renderer prefixes the field. `GaProvider` would therefore have found no value at any point and fallen silently through to Open Topo Data for every route, and the mock in `HttpTest.gaIdentify` encoded the same wrong name, so the unit tests confirmed the mistake rather than catching it. Found by running the WP5 spike against the live service on 3 November 2026 (DEM-FINDINGS.md).
+Reading used: accept either name: `Pixel Value`, or any key ending in `.Pixel Value`, so the renderer prefix does not matter and a service configured without one still works. `HttpTest.gaIdentifyLiveAttributeName` pins the live shape (a value and a `NoData`) alongside the original test, which is kept because the documented plain name remains valid. No request parameter changed.

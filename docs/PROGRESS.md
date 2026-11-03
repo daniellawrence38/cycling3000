@@ -149,13 +149,13 @@ Linux container: GCC 13.3, CMake 3.28, Python 3.13 (pytest, fitdecode from PyPI)
 - Import: every V§4 reject row gives its code and readable message through `importWorkout`, step numbering in messages, curly quotes and a non-breaking space normalised, identical workouts give the same ID.
 - `tools/android/mock_intervals.py` against curl with a simunit ride: upload saved, duplicate listing returned, the saved file passes `fitcheck`.
 
-**Not done, and why.** `:app` has not been compiled or run: this container has no Android SDK, and `dl.google.com` (the SDK and Google's Maven repository, which serves the Android Gradle plugin and every AndroidX library) is refused by its network policy. So the app on an emulator or phone, the instrumented tests, and the BLE transport are all Unverified. Expect a first build to need small fixes; the JVM modules it sits on are tested. The elevation spike is still not run (WP5).
+**Not done here, and why.** `:app` was not compiled or run in this container: it has no Android SDK, and `dl.google.com` (the SDK and Google's Maven repository, which serves the Android Gradle plugin and every AndroidX library) is refused by its network policy. **Since built and run on Daniel's PC — see "WP6 verified on hardware-free Windows" below.** The BLE transport remains Unverified (it needs a phone and the unit).
 
 **Deviations and choices.** Q26 (date and time for a "time unknown" ride), Q27 (the `:sync` module), Q28 (pairing simulated in the app's connector). Room allows main-thread reads (small tables; writes are on background threads). The app keeps fetched FIT files until they are uploaded so the upload does not need the unit. Forget unit drops the phone's bond only; the unit's own bond is removed on the unit, as the confirmation says.
 
 **For Daniel: run the WP6 flow on an emulator (one step at a time).**
 
-1. In Android Studio, open `android/`, let it create `local.properties`, build and install `app` on an emulator (API 29 or later).
+1. In Android Studio, open `android/`, let it create `local.properties`, build and install `app` on an emulator. **Use API 35** and create the AVD with **`hw.keyboard = yes`**. Both matter: on an API 37 image every instrumented test dies in Espresso with `NoSuchMethodException: android.hardware.input.InputManager.getInstance` (Espresso reflects on a method recent Android levels no longer expose), and with `hw.keyboard = no` the soft keyboard makes `ImportErrorsTest.everyInvalidRowShowsItsMessage` fail on its second case (`assertIsDisplayed` rejects the error row even though it renders on screen above the keyboard).
 2. On the PC: `make test-c-plain`, then `tools/android/demo_unit.sh` (serves on port 7700) and, in another terminal, `python3 tools/android/mock_intervals.py`.
 3. In the app: Settings, Connection, Simulated unit; host `10.0.2.2`, port `7700`; Intervals.icu server `http://10.0.2.2:8800`, Apply; save any text as the API key (the mock accepts anything).
 4. Unit, Add unit, select CC700-SIM, passkey 123456. Then Profile (FTP), Workouts (paste W1 from `android/sync/src/test/resources/w1.json`, Validate, Save, Send), Routes (Import GPX: copy `core/tests/fixtures/route.gpx` to the emulator), Rides (Sync now; set the date of the "Date unknown" ride).
@@ -220,6 +220,30 @@ Expect the first build on a PC with ESP-IDF v5.5.6 to need small fixes. The firm
 - `BRINGUP.md` adds offline tools (`backup_report.py`, `otadata.py`) so that each flash write in step 4 is one `write-flash` to a named address, with a file prepared and checked beforehand.
 
 **Unverified.** Everything in `fw/` on hardware; the stock bootloader's acceptance of an IDF v5.5.6 app; the PSRAM mode; the calibration constants against the SIG text, and whether the PM500 supports calibration at all.
+
+## First run on Daniel's PC (Windows) · 3 November 2026
+
+The first time any of this was built or run outside the cloud container. Windows 11, no hardware involved: the unit was never connected, opened or addressed. Everything below is a host or emulator result.
+
+**Toolchain installed, all under `D:\cc700-toolchain\`, nothing on PATH and nothing in the registry.** Temurin JDK 17.0.20.1 (the project needs 17; Android Studio's bundled JBR is 25, which Gradle 8.14.3 refuses). Android SDK with platform 35 and build-tools 35.0.0, `emulator` and the API-37 system image junctioned from the existing `%LOCALAPPDATA%` SDK rather than copied. CMake 4.4.5, Ninja 1.13.2, MinGW-w64 GCC 16.2.0 and Clang 23.1.3. A Python venv with pytest 9.2.0 and fitdecode (both already listed in `docs/THIRD_PARTY.md`). `android/local.properties` points at that SDK and stays gitignored. To undo all of it: delete the folder and `android/local.properties`.
+
+**Verified.**
+
+- **`make vectors`:** `tools/reference/vectors.py` reproduces `claude/cc700-test-vectors.md` byte for byte (`diff` clean, 20272 chars).
+- **C core, plain build (GCC 16.2.0, `-Wall -Wextra -Werror -Wshadow -Wstrict-prototypes`):** configures and builds with no warnings, **14 of 14 ctest tests pass** in 54.8 s — `test_alerts`, `test_anchors`, `test_calib`, `test_fit`, `test_fuzz_cw1`, `test_fw_parse`, `test_link`, `test_nav`, `test_ride`, `test_sensors`, `test_settings`, `test_starter_workouts`, `test_workout`, `test_zones`. This is the first time the C core has been compiled by anything other than the container's compiler, and a two-major-version-newer GCC at that; it needed no change.
+- **Python tools: 17 passed, 3 skipped.** Was 14 passed, 6 skipped until a portability fix: `tools/fitcheck/test_fit_recovery.py` looked for `build/host/core/test_fit` and `libcc_testshim.so`, which on Windows are `test_fit.exe` and `libcc_testshim.dll`, so three real tests skipped while claiming the build was missing. It now takes whichever name CMake produced. The 3 remaining skips are simunit (Q33).
+- **`:app` builds.** `:app:assembleDebug` and `:app:assembleDebugAndroidTest` both succeed — Kotlin, KSP/Room and Compose. WP6 said "expect a first build to need small fixes"; it needed **none**.
+- **Instrumented tests: 3 of 3 pass** (`ImportErrorsTest`) on an API 35 `google_apis` emulator — all 39 V§4 reject rows through the real Compose pane, normalisation accepted, nothing shortened. See the two AVD requirements in the WP6 checklist above; both cost a full diagnostic cycle to find.
+- **JVM modules unchanged at 51 passed, 9 skipped** (60 total). The 9 skips are simunit (Q33).
+- **The WP5 elevation spike, at last** (`docs/DEM-FINDINGS.md`). Both services reachable from Perth. It found E8 (the GA attribute is `Stretch.Pixel Value`, so `GaProvider` would have returned null for every point and fallen silently through to Open Topo Data) and Q32 (the 5 m LiDAR returns `NoData` over the whole Perth Hills, so hill climbs depend on the 30 m fallback). `GaProvider` now accepts either attribute name and `HttpTest.gaIdentifyLiveAttributeName` pins the live shape; `HttpTest` is 10 tests, all passing. The rate test confirms 4 concurrent requests at 8.0 per second is safe, so brief 7.4's limit needs no change.
+
+**Still Unverified, and what each needs.**
+
+- **ASan and UBSan did not run.** MinGW-w64 ships no sanitizer runtime (`libclang_rt.asan_dynamic.dll.a` is absent for both GCC and Clang), so `-DCC_SANITIZE=ON` configures but cannot link. This is a Windows toolchain limit, not a code problem; the 14 tests pass clean without it. Needs Linux, macOS or WSL.
+- **`simunit` does not build on Windows** (`<arpa/inet.h>`, `<sys/statvfs.h>`), so the 3 Python and 9 JVM simunit tests and the whole WP6 manual flow (steps 2 to 4) could not run. Q33. WSL is installed on the PC but has no distribution.
+- **The 2 UI C tests** were not built: `ui/` needs LVGL from `ui/deps.sh`, which also wants node and npm, neither installed. `make test` counts 16 C tests; 14 ran.
+- **The BLE transport, and everything in `fw/`.** Unchanged — they need a phone and the unit.
+- **The live Intervals.icu upload.** Unchanged; still Daniel's, with his own regenerated key.
 
 ## Future enhancements (not scheduled)
 

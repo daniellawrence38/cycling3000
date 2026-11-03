@@ -92,6 +92,15 @@ class HttpTest {
     // ------------------------------------------------------------------ elevation
     private val kp = Pt(-319640000, 1158300000)
 
+    /** The live service prefixes the attribute with its renderer: "Stretch.Pixel Value" (DEM-FINDINGS.md,
+     * E8). These are the shapes seen on 3 November 2026; a value, and NoData over the Perth Hills. */
+    @Test fun gaIdentifyLiveAttributeName() {
+        srv.enqueue(MockResponse().setBody("""{"results":[{"layerId":0,"layerName":"DEM_LiDAR_5m_2025","attributes":{"Stretch.Pixel Value":"60.6492"}}]}"""))
+        srv.enqueue(MockResponse().setBody("""{"results":[{"attributes":{"Stretch.Pixel Value":"NoData"}}]}"""))
+        val ga = GaProvider(http, MemoryCache(), srv.url("/MapServer"), concurrency = 1)
+        assertEquals(listOf(60.6492, null), ga.sample(listOf(kp, Pt(-319650000, 1158400000))))
+    }
+
     @Test fun gaIdentify() {
         srv.enqueue(MockResponse().setBody("""{"results":[{"layerId":0,"attributes":{"Pixel Value":"23.75"}}]}"""))
         srv.enqueue(MockResponse().setBody("""{"results":[{"attributes":{"Pixel Value":"NoData"}}]}"""))

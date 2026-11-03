@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 GA = 'https://services.ga.gov.au/gis/rest/services/DEM_LiDAR_5m_2025/MapServer'
 OT = 'https://api.opentopodata.org/v1/srtm30m'
+KEYS = set()  # attribute names the live GA service actually returned
 
 # (name, lat, lon): Kings Park (summit and the escarpment), Swan River foreshore, Perth Hills
 POINTS = [
@@ -45,11 +46,17 @@ def ga_identify(lat, lon):
         'returnGeometry': 'false', 'f': 'json'})
     j, ms = get(f'{GA}/identify?{q}')
     for r in j.get('results', []):
-        v = r.get('attributes', {}).get('Pixel Value')
+        # The live service names the attribute "Stretch.Pixel Value" (a renderer prefix), not the
+        # plain "Pixel Value" the ArcGIS REST documentation shows. Accept either; record what we saw.
+        attrs = r.get('attributes') or {}
+        key = next((k for k in attrs if k == 'Pixel Value' or k.endswith('.Pixel Value')), None)
+        if key is not None:
+            KEYS.add(key)
+        v = attrs.get(key) if key else None
         try:
             return float(v), ms, None
         except (TypeError, ValueError):
-            return None, ms, f'pixel value {v!r}'
+            return None, ms, f'pixel value {v!r} (keys {sorted(attrs)})'
     return None, ms, json.dumps(j)[:200]
 
 
@@ -77,14 +84,30 @@ def main():
         out.append(f'| {name} | {ga} | {ms:.0f} | {ot.get(i, "-")} |')
     # Request rate: 40 points along Mounts Bay Rd at 4 concurrent requests (the app's limit)
     line = [(-31.9620 + k * 0.0002, 115.8460 - k * 0.0004) for k in range(40)]
+    def one(p):
+        # A failed request is a result of the rate test, not a reason to lose every measurement above.
+        try:
+            return ga_identify(*p)
+        except Exception as e:  # noqa: BLE001
+            return None, 0.0, repr(e)
+
     t = time.time()
     with ThreadPoolExecutor(4) as ex:
-        res = list(ex.map(lambda p: ga_identify(*p), line))
+        res = list(ex.map(one, line))
     dt = time.time() - t
     ok = [r for r in res if r[0] is not None]
-    lat = [r[1] for r in res]
+    lat = [r[1] for r in res if r[1]]
+    errs = {}
+    for r in res:
+        if r[0] is None and r[2]:
+            errs[str(r[2])[:60]] = errs.get(str(r[2])[:60], 0) + 1
     out += ['', f'Rate test: 40 GA requests, 4 at a time: {dt:.1f} s total, {len(ok)} with a value, '
-            f'median {statistics.median(lat):.0f} ms, max {max(lat):.0f} ms, {40 / dt:.1f} requests per second.']
+            f'median {statistics.median(lat):.0f} ms, max {max(lat):.0f} ms, {40 / dt:.1f} requests per second.'
+            if lat else f'Rate test: 40 GA requests, 4 at a time: {dt:.1f} s total, no request returned a value.']
+    for e, n in sorted(errs.items(), key=lambda kv: -kv[1]):
+        out.append(f'- {n} of 40 failed: {e}')
+    if KEYS:
+        out += ['', f'GA pixel attribute name(s) actually returned: {", ".join(sorted(KEYS))}.']
     print('\n'.join(out))
 
 
