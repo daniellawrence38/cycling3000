@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark only (brief 7.2); Compose draws everything, this sets the window behind it. -->
+    <style name="Theme.CC700" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#0B0D10</item>
+        <item name="android:statusBarColor">#12161B</item>
+        <item name="android:navigationBarColor">#12161B</item>
+    </style>
+</resources>
