@@ -1,0 +1,9 @@
+CONFIG_IDF_TARGET="esp32s3"
+# RAM-only: no flash or PSRAM support compiled in at all, so the image cannot write flash.
+CONFIG_APP_BUILD_TYPE_RAM=y
+CONFIG_APP_BUILD_TYPE_PURE_RAM_APP=y
+CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+# Console on the built-in USB Serial/JTAG controller; nothing reconfigures the USB pins.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+CONFIG_ESP_TASK_WDT_EN=n

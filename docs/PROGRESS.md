@@ -163,6 +163,64 @@ Linux container: GCC 13.3, CMake 3.28, Python 3.13 (pytest, fitdecode from PyPI)
 
 **Checklist for the first live upload (Daniel, with his regenerated key).** Switch Connection back to Bluetooth and the server to the real one (Real server), save the key in Settings, pair the unit, record a short ride, Sync now, and check on intervals.icu that the activity appears once with the right start time; then Sync now again and check it is not uploaded twice. Report the response if anything fails; the duplicate check's `start_date` field is the part most likely to differ.
 
+## WP7 Firmware skeleton and bring-up plan · 3 November 2026 · stopped for Daniel's review
+
+**What exists.**
+- `fw/` is an ESP-IDF project for the ESP32-S3, pinned to v5.5.6 in `fw/IDF_VERSION`:
+  - `partitions.csv` is the stock layout, never to be flashed;
+  - `sdkconfig.defaults` holds the hardware facts from the handover, with the Unverified ones marked;
+  - `components/cc700` builds the shared `core/`, `ui/` screens, fonts and icons, with LVGL 9.6.0 from the component manager.
+- `fw/main` has:
+  - the core task (core, link server and LVGL in one task);
+  - `link_gatt.c`, the phone link on NimBLE: the protocol 2.1 service and characteristics, LE Secure Connections with MITM, DisplayOnly passkey, one bond, pairing only inside the 60 s window, advertising as `CC700-xxxx` with the UUID in the scan response, RX queued to the core task, TX notifications with retry when buffers are full;
+  - `sensors.c`, the sensor manager (BLE central: Cycling Power and Heart Rate discovery, notifications, the Feature read and the calibration write, everything queued to the core task);
+  - `hal_esp.c` (a real clock; every hardware driver is a stub that logs "not implemented" once);
+  - `fs_null.c` (storage that refuses everything until the separate storage is known);
+  - `ble_parse.c` (the measurement parsers).
+- `fw/probe` is the RAM-only, read-only GPIO probe for bring-up step 3.
+- `make fw-build` (`tools/fw_build.sh`) checks the IDF version, builds `app.bin` (application only) and the probe, fails on any compiler warning or if `app.bin` exceeds 8,192,000 bytes, and has no flash or monitor step.
+- `docs/BRINGUP.md` is the seven-step plan from brief section 9.
+- `tools/fw/backup_report.py` produces an offline, shareable report on the flash backup. `tools/fw/otadata.py` extracts, inspects and switches `otadata` offline, computed as ESP-IDF's `otatool.py` does.
+- The core gained `calib.c` (brief 5.11), the `cc_calibration_*` states the Power meter screen shows.
+
+**Checked against sources (no device involved).**
+- **Calibration (5.11).** The recalled values are right:
+  - Cycling Power Feature bit 9 is "Offset Compensation Supported";
+  - bit 8 is a different flag, the "Offset Compensation Indicator";
+  - the Control Point opcode for Start Offset Compensation is 0x0C, the Response Code opcode is 0x20, and Success is 0x01.
+
+  Source: BTstack's Cycling Power Service server (`src/ble/gatt-service/cycling_power_service_server.c` and `.h`, cloned from bluekitchen/btstack), whose enums list these in specification order. The Bluetooth SIG specification text itself (CPS 1.1, with Errata 23224) could not be opened from here, so this is a check against an independent implementation, not the specification document.
+- **RAM-only probe.** ESP-IDF v5.5.6 offers `CONFIG_APP_BUILD_TYPE_RAM` (marked experimental) and `CONFIG_APP_BUILD_TYPE_PURE_RAM_APP`. Its `tools/test_apps/system/ram_loadable_app` lists the ESP32-S3 as a supported target and runs CI on it, loading with `esptool --no-stub load_ram`. So the pinned IDF does support this build type on the ESP32-S3, and `fw/probe` uses it with no flash support compiled in.
+- **Partition table.** `fw/partitions.csv` passes ESP-IDF v5.5.6's `gen_esp32part.py` for a 16 MB flash and equals the handover's manifest entry for entry (pytest).
+- **Stock IDF version.** `423e6536` is not in any public ESP-IDF branch or tag (searched all 117,349 commits), so the stock firmware was built from a private or vendor commit (Q31).
+
+**Verified (host).**
+- `test_calib` (C): support needs both bit 9 and the Control Point, and bit 8 alone is not support; success only on 0x20, 0x0C, 0x01; failure on any other value, on a 10 s timeout, on a late answer, on meter loss mid-run and on a failed write; the offset is kept for logging.
+- `test_fw_parse` (C): the firmware's Cycling Power Measurement parser with balance, torque, wheel and crank fields and truncation; Heart Rate 8- and 16-bit; the Feature parser; the core running on `fs_null` with defaults.
+- `test_fw_partitions.py`: the layout; USB Serial/JTAG kept; no TinyUSB, `nvs_flash_init`, partition or OTA writes in `fw/`; the probe RAM-only.
+- `test_otadata.py`: CRC as the bootloader computes it; switching from erased, from `ota_0`, with higher sequence numbers and with invalid or aborted copies.
+- `test_backup_report.py`: the report on a synthetic image, which leaks no free text.
+
+`make test` passes: 16 C tests plain and 14 under ASan, plus 20 Python tests.
+
+**Not done, and why.** `make fw-build` has not run. ESP-IDF's source is reachable here over git, but its compilers come from `dl.espressif.com` and GitHub release downloads, and both are refused by this container's network policy. So these are all Unverified:
+- the IDF build itself;
+- the "no warnings" check;
+- `app.bin`'s size;
+- the Kconfig names for LVGL and NimBLE in `sdkconfig.defaults`.
+
+Expect the first build on a PC with ESP-IDF v5.5.6 to need small fixes. The firmware's IDF-free parts (`ble_parse.c`, `fs_null.c`) and the shared `core/` and `ui/` code are tested on the host.
+
+**Deviations and choices.**
+- Q29: stock data partitions are untouched, so bonds are kept in RAM for now.
+- Q30: octal PSRAM is assumed.
+- Q31: the bootloader's version comes from the backup before step 4.
+- The firmware draws only the Ready screen from the core's view. The screen manager stays in `ui/sim/app.c` until bring-up step 7, when buttons and touch exist.
+- The sensor manager writes the CCCD at value handle + 1, the common layout, instead of discovering descriptors; proper discovery is a step 6 item.
+- `BRINGUP.md` adds offline tools (`backup_report.py`, `otadata.py`) so that each flash write in step 4 is one `write-flash` to a named address, with a file prepared and checked beforehand.
+
+**Unverified.** Everything in `fw/` on hardware; the stock bootloader's acceptance of an IDF v5.5.6 app; the PSRAM mode; the calibration constants against the SIG text, and whether the PM500 supports calibration at all.
+
 ## Future enhancements (not scheduled)
 
 - **Shimano 12-speed Di2 gear display (105 R7100).** Requested by Daniel on 3 November 2026, deferred. No public specification exists for the Di2 gear data over BLE; the only open work decodes Shimano's private ANT profile, and the unit has no identified ANT+ radio. First step when picked up: a BLE capture with nRF Connect while shifting, to see whether the gear is readable. Then: gear in the ride data, FIT front and rear gear-change events, and a gear display (needs a mockup change; the Main grid is full).

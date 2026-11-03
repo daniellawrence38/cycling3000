@@ -106,6 +106,24 @@ Options: (a) add a passkey exchange to simunit's TCP framing; (b) simulate it in
 Default used: (b). The simulated unit's passkey is 123456; the app asks for it in its own dialog (over BLE, Android's pairing dialog asks instead), refuses a wrong one, and stores the unit only after a good one. Nothing on the unit or in the protocol changes.
 Answer:
 
+### Q29 · WP7 · open
+Question: An ESP-IDF app normally initialises the `nvs` partition and keeps PHY calibration data, BLE bonds and core dumps in flash data partitions. On this unit those partitions belong to the stock firmware (its settings and pairing may live in `nvs`), and step 4 of the bring-up must leave the stock firmware able to run unchanged.
+Options: (a) let the custom app use `nvs`, `phy_init` and `coredump`; (b) the custom app touches none of them: no `nvs_flash_init`, no PHY data storage, core dumps off, NimBLE bonds in RAM.
+Default used: (b). The cost is that the phone bond is forgotten at every reboot until bonds move to the separate storage (`CC700/config/`, the same two-slot scheme as settings) during bring-up step 6. Tests in `tools/tests/test_fw_partitions.py` check the configuration.
+Answer:
+
+### Q30 · WP7 · open
+Question: The handover gives 8 MB of in-package PSRAM ("AP_3v3") but not its interface. ESP32-S3 parts with 8 MB in-package PSRAM are octal; the wrong mode makes PSRAM fail to start.
+Options: (a) octal; (b) quad; (c) no PSRAM until confirmed.
+Default used: (a) with `CONFIG_SPIRAM_IGNORE_NOTFOUND=y`, so a wrong guess boots without PSRAM rather than crashing. Settled by the eFuse fields in BRINGUP.md step 3a.
+Answer:
+
+### Q31 · WP7 · open
+Question: The custom app in `ota_1` will be started by the stock bootloader, which stays in place. The stock app reports ESP-IDF `423e6536`, which is not in any public ESP-IDF branch or tag, so the bootloader's version is unknown, and an old bootloader may not start an IDF v5.5.6 app.
+Options: (a) find the bootloader's version in the backup (BRINGUP.md step 3a, `backup_report.py`) and confirm compatibility before step 4; (b) also replace the bootloader.
+Default used: (a). Replacing the bootloader is outside this plan and would need its own recovery route; nothing in the plan writes the bootloader or the partition table.
+Answer:
+
 ## Document errors
 
 ### E5 · brief 5.6 (finish sequence)

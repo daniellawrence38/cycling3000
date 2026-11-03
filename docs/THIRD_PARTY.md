@@ -23,3 +23,5 @@ No GPL or AGPL code in the core, firmware or app (START-HERE, brief 3).
 Mockup icons in `ui/icons/icons.json` are the SVG paths from Daniel's mockups.
 
 Pinned for later work packages, not yet fetched: ESP-IDF v5.5.6 (Apache-2.0, includes NimBLE, Apache-2.0).
+
+- **ESP-IDF v5.5.6** (Apache-2.0), with NimBLE (Apache-2.0): the firmware build in `fw/`, installed by the developer, not vendored. LVGL 9.6.0 for the firmware comes from the ESP component registry (`lvgl/lvgl`, MIT).

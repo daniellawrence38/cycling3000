@@ -1,6 +1,7 @@
 /* The core: ride state machine (brief 5.5), timers and distance (5.2), auto-pause, hold detection (6.4),
  * the per-second pipeline and the view snapshot. */
 #include "cc700/core.h"
+#include "cc700/calib.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -918,6 +919,7 @@ static void fill_view(uint32_t now_ms)
 void cc_tick(uint32_t now_ms)
 {
     hal_now_ms_hint = now_ms;
+    cc_calibration_tick(now_ms);
     uint32_t sec = now_ms / 1000u;
     while (S.last_sec < sec) { /* one pass per second boundary, even after a stall */
         S.last_sec++;

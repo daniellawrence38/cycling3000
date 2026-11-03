@@ -1,0 +1,53 @@
+# CC700 firmware defaults (brief WP7). Hardware facts from the handover; Unverified ones are marked.
+CONFIG_IDF_TARGET="esp32s3"
+
+# Flash: 16 MB; the stock bootloader reads it in DIO (boot log "mode:DIO"), so the app header says DIO.
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# USB stays on the chip's built-in USB Serial/JTAG controller (brief section 9). TinyUSB is not a
+# dependency of this project and must never be added.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# Leave the stock firmware's data partitions alone (Q29): no PHY calibration data in NVS or phy_init,
+# no core dumps to the coredump partition, no NimBLE bonds in NVS (the app never initialises NVS).
+CONFIG_ESP_PHY_CALIBRATION_AND_DATA_STORAGE=n
+CONFIG_ESP_PHY_INIT_DATA_IN_PARTITION=n
+CONFIG_ESP_COREDUMP_ENABLE_TO_NONE=y
+CONFIG_BT_NIMBLE_NVS_PERSIST=n
+
+# CPU and PSRAM: 8 MB in package, reported AP_3v3; octal is assumed for an 8 MB in-package part
+# (Unverified). If PSRAM does not initialise, boot continues without it.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_IGNORE_NOTFOUND=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# Bluetooth: NimBLE, phone peripheral plus two sensor central connections.
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_NIMBLE_ROLE_PERIPHERAL=y
+CONFIG_BT_NIMBLE_ROLE_CENTRAL=y
+CONFIG_BT_NIMBLE_ROLE_OBSERVER=y
+CONFIG_BT_NIMBLE_ROLE_BROADCASTER=y
+CONFIG_BT_NIMBLE_MAX_CONNECTIONS=3
+CONFIG_BT_NIMBLE_MAX_BONDS=4
+CONFIG_BT_NIMBLE_ATT_PREFERRED_MTU=247
+CONFIG_BT_NIMBLE_SECURITY_ENABLE=y
+CONFIG_BT_NIMBLE_SM_LEGACY=n
+CONFIG_BT_NIMBLE_SM_SC=y
+CONFIG_BT_NIMBLE_SVC_GAP_DEVICE_NAME="CC700"
+CONFIG_BT_NIMBLE_GAP_DEVICE_NAME_MAX_LEN=31
+
+# LVGL (managed component lvgl/lvgl, configured through Kconfig to match ui/lv_conf.h).
+CONFIG_LV_COLOR_DEPTH_16=y
+CONFIG_LV_USE_CLIB_MALLOC=y
+CONFIG_LV_USE_CLIB_STRING=y
+CONFIG_LV_USE_CLIB_SPRINTF=y
+CONFIG_LV_USE_FONT_COMPRESSED=y
+CONFIG_LV_DEF_REFR_PERIOD=33
+CONFIG_LV_USE_LOG=n

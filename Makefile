@@ -58,7 +58,7 @@ android: test-c-plain
 	cd android && ./gradlew --no-daemon -q :core:test :testing:test :sync:test
 
 fw-build:
-	@echo "make fw-build: not built yet (WP7)"; exit 1
+	sh tools/fw_build.sh
 
 clean:
 	rm -rf $(BUILD) tools/reference/cc700-test-vectors.md
