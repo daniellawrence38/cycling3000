@@ -1,6 +1,7 @@
 #include "cc700/alerts.h"
 
 #include <ctype.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -70,17 +71,19 @@ void cc_alerts_button(cc_alerts_t *a, uint32_t now_ms)
 /* ------------------------------------------------------------------ texts (spec 10.2) */
 void cc_fmt_mmss(char *out, int cap, uint32_t s)
 {
+    /* uint32_t is `unsigned int` on the host but `long unsigned int` on xtensa, so %u is wrong
+       there and -Werror=format rejects it. PRIu32 is right on both (ESP-IDF's own advice). */
     if (s >= 3600)
-        snprintf(out, (size_t)cap, "%u:%02u:%02u", s / 3600, (s / 60) % 60, s % 60);
+        snprintf(out, (size_t)cap, "%" PRIu32 ":%02" PRIu32 ":%02" PRIu32, s / 3600, (s / 60) % 60, s % 60);
     else
-        snprintf(out, (size_t)cap, "%u:%02u", s / 60, s % 60);
+        snprintf(out, (size_t)cap, "%" PRIu32 ":%02" PRIu32, s / 60, s % 60);
 }
 
 void cc_fmt_km1(char *out, int cap, uint32_t metres)
 {
     /* tenths, half up */
     uint32_t t = (uint32_t)cc_div_half_up(metres, 100);
-    snprintf(out, (size_t)cap, "%u.%u", t / 10, t % 10);
+    snprintf(out, (size_t)cap, "%" PRIu32 ".%" PRIu32, t / 10, t % 10);
 }
 
 static void upper(char *s)
@@ -108,7 +111,7 @@ void cc_banner_nextstep(cc_banner_t *b, const char *label, int32_t lo_w, int32_t
     upper(b->title);
     cc_fmt_mmss(t, sizeof t, secs);
     snprintf(b->sub, sizeof b->sub, "%d\xE2\x80\x93%d W for %s", (int)lo_w, (int)hi_w, t);
-    snprintf(b->right, sizeof b->right, "%u s", left_s);
+    snprintf(b->right, sizeof b->right, "%" PRIu32 " s", left_s);
 }
 
 void cc_banner_lap(cc_banner_t *b, int lap_no, uint32_t lap_s, uint32_t lap_dist_m, int miles)
@@ -155,9 +158,9 @@ void cc_banner_climbahead(cc_banner_t *b, uint32_t length_m, uint32_t ascent_m, 
     base(b, CC_AL_CLIMBAHEAD, CC_AL_STYLE_PANEL, 6000);
     snprintf(b->title, sizeof b->title, "CLIMB AHEAD");
     cc_fmt_km1(d, sizeof d, length_m);
-    snprintf(b->sub, sizeof b->sub, "%s km \xC2\xB7 %u m \xC2\xB7 %d.%d %%", d, ascent_m, (int)(avg_x10 / 10),
+    snprintf(b->sub, sizeof b->sub, "%s km \xC2\xB7 %" PRIu32 " m \xC2\xB7 %d.%d %%", d, ascent_m, (int)(avg_x10 / 10),
              (int)((avg_x10 < 0 ? -avg_x10 : avg_x10) % 10));
-    snprintf(b->right, sizeof b->right, "%u m", to_start_m);
+    snprintf(b->right, sizeof b->right, "%" PRIu32 " m", to_start_m);
 }
 
 void cc_banner_storage(cc_banner_t *b)

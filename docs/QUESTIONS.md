@@ -14,6 +14,14 @@ Answer:
 
 Document errors use `### E<n> · <document and section>` and `Reading used:` in place of `Default used:`.
 
+**Convention added 3 November 2026.** Daniel asked for the open questions to be researched overnight.
+Where evidence could actually settle a question — a specification, a source check, a measurement, or the
+flash backup read offline — the finding is written on the `Answer:` line, the heading is marked
+`answered`, and the evidence is named so it can be checked. Where the question is Daniel's preference,
+or needs a real ride, the question stays `open` and gains a `Research:` line with what was found and a
+recommendation; the `Answer:` line is left empty for him. Provisional decisions are not reopened
+(START-HERE rule 5): research that *supports* a default says so and changes nothing.
+
 ## Open questions
 
 ### Q14 · WP1 · open
@@ -52,11 +60,11 @@ Options: (a) none; (b) the GNSS altitude.
 Default used: (b) for the file only. Gradient, ascent and the Climb page stay invalid ("--") without a barometer, as brief 5.3 says.
 Answer:
 
-### Q20 · WP4 · open
+### Q20 · WP4 · answered
 Question: Brief 6.2 asks for the glyph `→` in every font. The Barlow files available (Fontsource 5.3.0, all subsets) have no `→`, and no mockup uses it as text (arrows are drawn as icons).
 Options: (a) leave it out; (b) take it from another font.
 Default used: (a). If a screen ever needs it in text, it can be drawn as an icon.
-Answer:
+Answer: **(a), and it was not a choice.** Verified directly against the fetched fonts by reading every `cmap` with fontTools: across the 54 normal-weight Barlow and Barlow Condensed files in `build/deps/node/node_modules/@fontsource/barlow*/files/` (subsets `latin`, `vietnamese`, `condensed`), `U+2192 RIGHTWARDS ARROW` appears in **0**. Every other glyph brief 6.2 asks for is there, in the 18 latin-subset files: `·` U+00B7, `–` U+2013, `−` U+2212, `…` U+2026, `°` U+00B0, `×` U+00D7 — 18/54 each. So the brief asks for one glyph the chosen typeface does not contain, and (b) would mean mixing a second typeface for a single arrow that no mockup uses as text. Leaving it out is right; drawing it as an icon stays the escape route if a screen ever needs one.
 
 ### Q21 · WP4 · open
 Question: Brief 6.3 picks the map scale so "the next turn and 1.5 times the distance to it fit" in the view width, with the rider at 60 % of the map height. Only about 95 px of the 158 px map is above the rider, so at the 400 m view that rule gives for a turn 250 m ahead (the mockup's case) the turn is off the top of the map.
@@ -112,16 +120,32 @@ Options: (a) let the custom app use `nvs`, `phy_init` and `coredump`; (b) the cu
 Default used: (b). The cost is that the phone bond is forgotten at every reboot until bonds move to the separate storage (`CC700/config/`, the same two-slot scheme as settings) during bring-up step 6. Tests in `tools/tests/test_fw_partitions.py` check the configuration.
 Answer:
 
-### Q30 · WP7 · open
+### Q30 · WP7 · answered
 Question: The handover gives 8 MB of in-package PSRAM ("AP_3v3") but not its interface. ESP32-S3 parts with 8 MB in-package PSRAM are octal; the wrong mode makes PSRAM fail to start.
 Options: (a) octal; (b) quad; (c) no PSRAM until confirmed.
 Default used: (a) with `CONFIG_SPIRAM_IGNORE_NOTFOUND=y`, so a wrong guess boots without PSRAM rather than crashing. Settled by the eFuse fields in BRINGUP.md step 3a.
-Answer:
+Answer: **(a) octal, and the default stands.** The eFuse summary already in the backup (`outputs/esp32s3-backup/efuse-summary.json`, read offline) gives `PSRAM_CAP = 8M`, `PSRAM_VENDOR = AP_3v3`, `PSRAM_TEMP = 85C`, and for the flash `FLASH_TYPE = 4 data lines`. Espressif's in-package PSRAM options for the ESP32-S3 are 2 MB quad (the R2/RH2 part) and 8 MB octal (ESP32-S3R8, 3.3 V; the 1.8 V version is R8V). There is no 8 MB quad in-package variant, so 8 MB fixes the bus as octal, and `AP_3v3` additionally identifies this as the 3.3 V **R8** rather than R8V — which matters because VDD_SPI is tied to 3.3 V here (`VDD_SPI_FORCE`, `VDD_SPI_XPD` and `VDD_SPI_TIEH = VDD_SPI connects to VDD3P3_RTC_IO` are all set).
+One false trail worth recording so it is not re-walked: `AP_3v3` alone does **not** imply quad. AP Memory sells a 3 V octal part (APS6408L-3OBM) and a 1.8 V quad one, so the vendor/voltage field fixes the voltage and nothing else. The capacity is what settles it.
+All `SPI_PAD_CONFIG_*` eFuses (including `D4`–`D7` and `DQS`) read `0x00`, i.e. default pins, which is normal for in-package memory and does not discriminate either way.
+Still Unverified until bring-up: that PSRAM actually starts. `CONFIG_SPIRAM_IGNORE_NOTFOUND=y` keeps a wrong guess harmless, so nothing in `fw/` needs to change.
 
-### Q31 · WP7 · open
+### Q31 · WP7 · answered
 Question: The custom app in `ota_1` will be started by the stock bootloader, which stays in place. The stock app reports ESP-IDF `423e6536`, which is not in any public ESP-IDF branch or tag, so the bootloader's version is unknown, and an old bootloader may not start an IDF v5.5.6 app.
 Options: (a) find the bootloader's version in the backup (BRINGUP.md step 3a, `backup_report.py`) and confirm compatibility before step 4; (b) also replace the bootloader.
 Default used: (a). Replacing the bootloader is outside this plan and would need its own recovery route; nothing in the plan writes the bootloader or the partition table.
+Answer: **(a), carried out, and the bootloader's version is no longer unknown.** Done offline against the backup; no device involved.
+1. **The bootloader was built from the same commit as the app.** The string `423e6536` is present in the bootloader region (`0x0`–`0x8000`) of the backup, alongside `bootloader_esp32s3.c`. So bootloader and stock app came from one vendor tree, and the version WP7 searched for was in the file all along.
+2. **It is a v4.4-to-v5.1 ESP-IDF.** It has no `esp_bootloader_desc_t` (that structure is IDF 5.2 and later, which is why `backup_report.py` printed `bootloader_desc_idf: None`), but its source layout — `bootloader_support/bootloader_flash/src/bootloader_flash.c`, `esp_hw_support/port/esp32s3/rtc_clk.c` — and the assert text `"LDO dbias need to modified"` are all still present in v5.5.6, so it is not an ancient tree.
+3. **The direction is the supported one.** Espressif's bootloader documentation states the bootloader supports booting apps built from *newer* ESP-IDF versions; only the reverse (an app older than the bootloader) is unsupported. A v4.4–v5.1 bootloader starting a v5.5.6 app is therefore expected to work.
+4. **The one documented pre-v5.1 caveat does not apply.** Bootloaders older than v5.1 do not support `CONFIG_ESP_SYSTEM_ESP32_SRAM1_REGION_AS_IRAM`; `fw/sdkconfig.defaults` does not set it, and it is an ESP32 option in any case. Checked.
+Also confirmed from the same read, all as BRINGUP.md assumes: `ota_1` is completely erased (all `0xFF`), the partition table matches `fw/partitions.csv` exactly, `otadata` copy 0 is seq `0x00000001` state `0x00000002` with copy 1 erased, and the bootloader's flash mode is DIO (which `fw/sdkconfig.defaults` already matches).
+Not settled: what `423e6536` *is*. It is still in no public ESP-IDF branch or tag, so it remains a vendor commit; the bound above comes from structure, not from the hash. See `docs/STOCK-FIRMWARE-FINDINGS.md`.
+
+### Q34 · WP7 / future · open
+Question: The stock firmware implements a full ANT+ stack — seven profiles under `Modules/Middlewares/MidAntDeviceManage/` (speed and cadence, heart rate, FE-C trainer, radar, tail light, shifting and **Shimano Di2**) — and an nRF co-processor is present on a UART (`mSysTimeStampFromNrf`, two configured UARTs, a `MidComm` layer with a baud-rate switch). The Di2 module already reads manufacturer and model, gear index, front and rear tooth counts, battery status and shift mode. Two written assumptions are therefore wrong: START-HERE and the handover list "the radio for ANT+" as unknown, and the Di2 enhancement in `docs/PROGRESS.md` says the unit has no identified ANT+ radio and proposes a BLE capture as the first step. Found by reading the flash backup offline (`docs/STOCK-FIRMWARE-FINDINGS.md`); no device was touched.
+Options: (a) leave ANT+ out of v1 as START-HERE rule 4 says, and correct the two documents so the facts are right; (b) also bring ANT+ into scope for a later version, with Di2 gear display as the first use; (c) investigate the nRF link during bring-up (what protocol `MidComm` speaks over the UART) and decide afterwards.
+Default used: (a) for now. Rule 4 puts ANT+ out of scope for v1 and rule 5 says not to reopen settled scope, so nothing in `fw/` or the app changes tonight. The documents are corrected because they state something untrue, which rule 6 does not allow to stand silently.
+Research: the custom firmware cannot use any of this yet — `fw/hal_esp.c` has stub drivers only and the nRF's own firmware is not in this backup, so the UART protocol is unknown. The cheapest real step is (c), and it costs nothing extra: bring-up step 3 already probes GPIO, and the two UART pin pairs are the obvious thing to look at while there. Recorded as `IDEAS.md` I5.
 Answer:
 
 ### Q32 · WP5 · open

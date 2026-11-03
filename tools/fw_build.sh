@@ -3,6 +3,11 @@
 # the pinned version, the size limit and that the build printed no warnings. Never flashes, never opens
 # a serial port: there is no flash, monitor or port argument anywhere in this script.
 set -e
+# Both builds below pipe into tee, so the pipeline's status is tee's, not idf.py's: without pipefail
+# a failed build is masked and the script runs on to report a missing binary instead of the real
+# error. `set -o pipefail` is not in POSIX sh, so ask for it only where the shell has it (dash and
+# bash both do; the fallback keeps the script working anywhere else).
+(set -o pipefail 2>/dev/null) && set -o pipefail
 cd "$(dirname "$0")/.."
 WANT=$(cat fw/IDF_VERSION)
 if ! command -v idf.py >/dev/null 2>&1; then

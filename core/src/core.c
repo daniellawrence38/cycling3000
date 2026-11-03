@@ -3,6 +3,7 @@
 #include "cc700/core.h"
 #include "cc700/calib.h"
 
+#include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -713,7 +714,7 @@ static void second(uint32_t now_ms)
         const cc_wo_view_t *w = &S.eng.view;
         if (w->nextstep_banner) {
             char right[12];
-            snprintf(right, sizeof right, "%u s", w->remaining_s);
+            snprintf(right, sizeof right, "%" PRIu32 " s", w->remaining_s);
             if (!S.nextstep_active) {
                 cc_banner_t b;
                 cc_banner_nextstep(&b, w->next_label, w->next_lo_w, w->next_hi_w, w->next_secs, w->remaining_s,
