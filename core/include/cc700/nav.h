@@ -96,6 +96,7 @@ typedef struct {
     int loaded, have_pos, off_route;
     float route_pos_m, dist_to_route_m;
     int turn_idx;              /* -1 none */
+    uint8_t turn_type;         /* CC_TURN_* of the next turn */
     uint32_t dist_to_turn_m;
     char instr[64];
     uint32_t dist_left_m;

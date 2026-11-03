@@ -1,0 +1,1 @@
+# Layout lint exceptions (brief 6.5): "Board:scenario rule text-or-* # reason". None needed so far.

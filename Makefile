@@ -10,7 +10,7 @@ PYTHON  ?= python3
 JOBS    ?= $(shell nproc 2>/dev/null || echo 4)
 BUILD   := build
 
-.PHONY: all test test-c test-c-plain test-c-asan test-py vectors sim shots android fw-build clean
+.PHONY: all deps test test-c test-c-plain test-c-asan test-py vectors sim shots android fw-build clean
 
 all: test
 
@@ -18,7 +18,10 @@ test: vectors test-c test-py
 
 test-c: test-c-plain test-c-asan
 
-test-c-plain:
+deps:
+	ui/deps.sh
+
+test-c-plain: deps
 	cmake -S . -B $(BUILD)/host -DCMAKE_BUILD_TYPE=Debug -DCC_SANITIZE=OFF >/dev/null
 	cmake --build $(BUILD)/host -j $(JOBS)
 	ctest --test-dir $(BUILD)/host --output-on-failure -j $(JOBS)
@@ -36,11 +39,19 @@ vectors:
 	diff -u claude/cc700-test-vectors.md tools/reference/cc700-test-vectors.md
 	@echo "vectors: identical to claude/cc700-test-vectors.md"
 
-sim:
-	@echo "make sim: not built yet (WP4)"; exit 1
+sim: deps
+	cmake -S . -B $(BUILD)/host -DCMAKE_BUILD_TYPE=Debug -DCC_SANITIZE=OFF >/dev/null
+	cmake --build $(BUILD)/host -j $(JOBS) --target ccsim
+	@echo "run: $(BUILD)/host/ui/ccsim   (P power, A bottom left, L bottom right; see ui/README.md)"
 
-shots:
-	@echo "make shots: not built yet (WP4)"; exit 1
+# Every scenario of every board from the simulator, the mockups rendered for comparison (needs Node and
+# Playwright), and ui/out/contact-sheet.png with each pair side by side. Each step overwrites its output.
+shots: sim
+	mkdir -p ui/out
+	$(BUILD)/host/ui/ccsim --shots ui/out/lvgl
+	cd tools/design && CC700_DESIGN_ROOT=$(CURDIR)/ui/out/design $(PYTHON) gen.py >/dev/null
+	-cd tools/design && NODE_PATH=`npm root -g` node render_boards.js --fonts $(CURDIR)/build/deps/node/node_modules/@fontsource --gen $(CURDIR)/ui/out/design/canvas/project --out $(CURDIR)/ui/out/mockup >/dev/null
+	$(PYTHON) tools/design/contact_sheet.py --lv ui/out/lvgl --ref ui/out/mockup --out ui/out/contact-sheet.png
 
 android:
 	@echo "make android: not built yet (WP5)"; exit 1

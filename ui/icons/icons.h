@@ -38,5 +38,9 @@ extern const lv_image_dsc_t ic_route_30;
 extern const lv_image_dsc_t ic_pin_30;
 extern const lv_image_dsc_t ic_kebab_20;
 extern const lv_image_dsc_t ic_scan_16;
+extern const lv_image_dsc_t ic_turn_l_40;
+extern const lv_image_dsc_t ic_straight_40;
+extern const lv_image_dsc_t ic_uturn_40;
+extern const lv_image_dsc_t ic_flag_end_40;
 
 #endif

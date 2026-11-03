@@ -111,7 +111,7 @@ static void nav_base(ui_model_t *m, uint32_t to_turn)
 {
     ui_model_demo(m);
     cc_nav_view_t *n = &m->v.nav;
-    n->loaded = 1; n->have_pos = 1; n->turn_idx = 1; n->dist_to_turn_m = to_turn;
+    n->loaded = 1; n->have_pos = 1; n->turn_idx = 1; n->turn_type = CC_TURN_RIGHT; n->dist_to_turn_m = to_turn;
     set_str(n->instr, sizeof n->instr, "Turn right \xC2\xB7 Main St");
     n->dist_left_m = 18400; n->eta_valid = 1; n->eta_s = 52 * 60;
     float need = 1.5f * (float)to_turn * 240.0f / 95.0f;

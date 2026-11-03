@@ -368,7 +368,18 @@ void scr_nav(lv_obj_t *r, const ui_model_t *m)
     uint32_t tile = n->off_route ? C_YELLOW : near ? C_ROUTE : C_PANEL;
     uint32_t tfg = n->off_route || near ? C_BG : C_TEXT;
     ui_rect(r, 8, 31, 58, 58, tile, 10);
-    ui_icon(r, n->off_route ? &ic_reroute_40 : &ic_turn_r_40, 17, 40, tfg);
+    const lv_image_dsc_t *ti = &ic_straight_40;
+    if (n->off_route) ti = &ic_reroute_40;
+    else if (n->turn_idx >= 0) {
+        switch (n->turn_type) {
+        case CC_TURN_SLIGHT_LEFT: case CC_TURN_LEFT: case CC_TURN_SHARP_LEFT: ti = &ic_turn_l_40; break;
+        case CC_TURN_SLIGHT_RIGHT: case CC_TURN_RIGHT: case CC_TURN_SHARP_RIGHT: case CC_TURN_ROUNDABOUT: ti = &ic_turn_r_40; break;
+        case CC_TURN_UTURN: ti = &ic_uturn_40; break;
+        case CC_TURN_ARRIVE: ti = &ic_flag_end_40; break;
+        default: break;
+        }
+    }
+    ui_icon(r, ti, 17, 40, tfg);
     if (n->off_route) {
         ui_text(r, 76, 30, 0, 44, &font_c700_30, C_YELLOW, LV_TEXT_ALIGN_LEFT, 0, "OFF COURSE");
         char d[24];

@@ -860,6 +860,11 @@ static void fill_view(uint32_t now_ms)
     v->power_state = sens_state(1, &S.sens.power, now_ms);
     v->hr_state = sens_state(2, &S.sens.hr, now_ms);
     v->gps_fix = S.no_fix_s == 0;
+    if (S.fix.valid) {
+        v->lat_e7 = S.fix.lat_e7;
+        v->lon_e7 = S.fix.lon_e7;
+        v->course_deg = S.fix.course_deg;
+    }
     v->gps_lost = S.gps_lost;
     v->phone_connected = S.phone;
     v->battery_pct = S.battery;

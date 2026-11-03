@@ -36,3 +36,8 @@ target_compile_options(lodepng PRIVATE -w)
 add_executable(ccsim sim/ccsim.c sim/app.c sim/lint.c ${CMAKE_SOURCE_DIR}/simunit/dirfs.c ${CMAKE_SOURCE_DIR}/simunit/player.c)
 target_include_directories(ccsim PRIVATE sim ${CMAKE_SOURCE_DIR}/simunit)
 target_link_libraries(ccsim cc700ui lodepng)
+target_compile_options(ccsim PRIVATE -Wno-format-truncation)
+
+# WP4 acceptance: layout lint over every scenario, and the scripted ride walk
+add_test(NAME ui_lint COMMAND ccsim --lint --exceptions ${CMAKE_SOURCE_DIR}/ui/lint-exceptions.txt WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+add_test(NAME ui_walk COMMAND ccsim --walk ${CMAKE_BINARY_DIR}/ui-walk WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})

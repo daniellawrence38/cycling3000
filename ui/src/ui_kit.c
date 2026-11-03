@@ -154,12 +154,11 @@ void ui_header36(lv_obj_t *r, int y, const char *title, const char *right)
 
 void ui_header44(lv_obj_t *r, int y, const char *title, const lv_font_t *f, int kebab)
 {
-    lv_obj_t *b = ui_hit(r, 0, y, 44, 43);
+    lv_obj_t *b = ui_hit(r, 0, y, 44, 44); /* 44 px touch target; the divider is drawn over its last row */
     ui_icon(b, &ic_chev_l_20, 12, 12, C_TEXT);
     lv_obj_t *t = ui_text(r, 44, y, kebab ? 152 : 188, 43, f ? f : &font_b700_18, C_TEXT, LV_TEXT_ALIGN_LEFT, 0, title);
     lv_label_set_long_mode(t, LV_LABEL_LONG_MODE_DOTS);
     lv_obj_set_height(t, lv_font_get_line_height(f ? f : &font_b700_18));
-    ui_hline(r, 0, y + 43, 240, C_DIV);
     if (kebab) {
         /* the kebab is the last item in the focus order (spec 6), so it is added after the screen's
          * other items by ui_kebab_late; here we only draw it */
@@ -168,10 +167,11 @@ void ui_header44(lv_obj_t *r, int y, const char *title, const lv_font_t *f, int 
         lv_obj_set_scrollable(k, false);
         lv_obj_set_clickable(k, true);
         lv_obj_set_pos(k, 196, y);
-        lv_obj_set_size(k, 44, 43);
+        lv_obj_set_size(k, 44, 44);
         lv_obj_set_user_data(k, (void *)KEBAB_TAG);
         ui_icon(k, &ic_kebab_20, 12, 12, C_TEXT);
     }
+    ui_hline(r, 0, y + 43, 240, C_DIV);
 }
 
 /* ------------------------------------------------------------------ list rows */
@@ -255,7 +255,8 @@ lv_obj_t *ui_btn(lv_obj_t *p, int x, int y, int w, int h, const char *text, ui_b
         lv_obj_set_style_outline_color(b, lv_color_hex(C_TEXT), 0);
         lv_obj_set_style_outline_opa(b, LV_OPA_COVER, 0);
     }
-    ui_text(b, 0, 0, w, h, f ? f : &font_b700_16, fg, LV_TEXT_ALIGN_CENTER, 1, text);
+    int bw = k == BTN_OUTLINE ? 1 : 0; /* children sit inside the border */
+    ui_text(b, 0, 0, w - 2 * bw, h - 2 * bw, f ? f : &font_b700_16, fg, LV_TEXT_ALIGN_CENTER, 1, text);
     return b;
 }
 

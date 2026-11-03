@@ -67,6 +67,8 @@ typedef struct {
     /* status */
     cc_sens_state_t power_state, hr_state;
     int gps_fix, gps_lost;
+    int32_t lat_e7, lon_e7;           /* last usable fix (valid while gps_fix) */
+    float course_deg;
     int phone_connected;
     int battery_pct, charging;
     int utc_known;

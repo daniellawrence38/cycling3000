@@ -70,6 +70,18 @@ Options: follow the mockup; follow the spec.
 Default used: the spec (3 px, `#0B0D10`), since phase 1 is defined there; the mockup's roads are phase 2. Easy to change if Daniel prefers the wider line.
 Answer:
 
+### Q23 · WP4 · open
+Question: Profile (screen 12) has four steppers and "Applies on SAVE", with SAVE on the right button. With the three buttons alone, how is a stepper pressed?
+Options: (a) the power button moves focus through the four steppers and then SAVE; the right button activates the focused item; (b) the right button always saves and steppers are touch-only (breaks "every control reachable by buttons").
+Default used: (a). Focus starts on −5; with focus on SAVE the footer's SAVE is what the right button does. Holding a focused stepper's button repeats at 5 per second after 0.5 s, as spec 6 describes for touch.
+Answer:
+
+### Q24 · WP4 · open
+Question: The Sensors mockup shows "Add sensor" with both a power meter and a heart-rate strap paired; spec 6 says it is hidden once both are paired. Also the status bar mockups show all four icons, while spec 5 shows an icon only for each connected sensor or service.
+Options: follow the mockups; follow the spec.
+Default used: the spec, for both (behaviour is the spec's). The screenshots therefore differ from the mockups there.
+Answer:
+
 ## Document errors
 
 ### E5 · brief 5.6 (finish sequence)

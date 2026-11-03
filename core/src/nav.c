@@ -436,6 +436,7 @@ void cc_nav_view(const cc_nav_t *n, float baro_ascent, cc_nav_view_t *v)
         }
     if (v->turn_idx >= 0) {
         const cc_turn_t *t = &r->turns[v->turn_idx];
+        v->turn_type = t->type;
         float d = (float)t->dist_m - pos;
         v->dist_to_turn_m = d > 0 ? (uint32_t)lroundf(d) : 0;
         if (t->type == CC_TURN_ROUNDABOUT)
