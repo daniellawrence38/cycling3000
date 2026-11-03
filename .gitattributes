@@ -1,0 +1,28 @@
+# This repository is developed on Linux and every text file is stored with LF.
+#
+# Without this file, Git for Windows' default (core.autocrlf=true) rewrites the
+# working tree to CRLF on checkout. That is invisible while you stay on Windows,
+# because Python's text mode writes CRLF too, so `make vectors` still compares
+# equal. It breaks the moment the same checkout is built under WSL or Linux:
+# vectors.py then writes LF while claude/cc700-test-vectors.md on disk has CRLF,
+# every one of the 472 lines differs, and `make test` fails on its first step.
+# Shell scripts checked out with CRLF also fail with "bad interpreter".
+#
+# Normalise to LF in the repository and in the working tree on every platform.
+* text=auto eol=lf
+
+# Windows batch files are the exception: cmd.exe can mis-parse a .bat checked out
+# with LF. gradlew.bat is already stored with CRLF, so leave it untouched rather
+# than renormalising it; -text means Git never converts it in either direction.
+*.bat -text
+*.cmd -text
+
+# Files Git must never line-ending-convert or diff as text.
+*.png binary
+*.jpg binary
+*.bin binary
+*.fit binary
+*.zip binary
+*.apk binary
+*.ttf binary
+*.woff2 binary
