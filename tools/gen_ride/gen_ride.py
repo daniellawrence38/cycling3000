@@ -149,6 +149,31 @@ def route_ride():
     return rows
 
 
+def ride30():
+    """A 30-minute outdoor ride for simunit (WP3): 1800 rows. Laps around a 2 km square near Kings Park at
+    7 to 9 m/s with power 150 to 330 W, heart rate 120 to 165, cadence 80 to 95; a 60 s stop at a red
+    light from 900 s (auto-pause); 20 s without a GNSS fix from 1300 s; the power meter silent for 8 s
+    from 1500 s. The barometer follows a gentle 10 m rise and fall per lap."""
+    rnd = random.Random(30)
+    rows, d = [], 0.0
+    for t in range(1800):
+        stopped = 900 <= t < 960
+        v = 0.0 if stopped else 7.0 + 2.0 * (0.5 + 0.5 * math.sin(t / 50.0))
+        d += v
+        s = d % 2000.0
+        side, u = int(s // 500), s % 500
+        x, y = [(u, 0), (500, u), (500 - u, 500), (0, 500 - u)][side]
+        alt = 20.0 + 5.0 * (1 - math.cos(2 * math.pi * (d % 2000.0) / 2000.0))
+        power = -1 if 1500 <= t < 1508 else (0 if stopped else int(240 + 90 * math.sin(t / 37.0) + rnd.randint(-10, 10)))
+        cad = 0 if stopped else 80 + (t // 60) % 16
+        hr = int(140 + 25 * math.sin(t / 200.0))
+        r = list(row(t, x, y, v, alt, power=power, cad=cad, hr=hr))
+        if 1300 <= t < 1320:
+            r[1] = 0  # no fix
+        rows.append(tuple(r))
+    return rows
+
+
 def gpx(pts):
     s = ['<?xml version="1.0" encoding="UTF-8"?>',
          '<gpx version="1.1" creator="cc700 gen_ride" xmlns="http://www.topografix.com/GPX/1/1">',
@@ -168,6 +193,7 @@ def main():
     open(os.path.join(OUT, 'route.cr1'), 'wb').write(obj)
     open(os.path.join(OUT, 'route.gpx'), 'w').write(gpx(pts))
     write_csv('route_ride.csv', route_ride())
+    write_csv('ride30.csv', ride30())
     print('fixtures written; route', len(obj), 'bytes,', dist, 'm,', len(pts), 'points')
 
 

@@ -9,6 +9,7 @@
 #include "cc700/alerts.h"
 #include "cc700/altitude.h"
 #include "cc700/fit.h"
+#include "cc700/link.h"
 #include "cc700/nav.h"
 #include "cc700/sensors.h"
 #include "cc700/settings.h"
@@ -94,6 +95,8 @@ typedef struct {
     cc_settings_t settings;
     uint32_t ride_id;
     int ride_count;
+    uint32_t saved_seq;               /* increments each time a ride is saved (EVENT_RIDE_SAVED) */
+    uint32_t saved_ride_id;
 } cc_view_t;
 
 int cc_init(hal_fs_t *fs, uint32_t now_ms);
@@ -122,6 +125,9 @@ int cc_cmd_load_workout(const uint8_t id[8]);
 int cc_cmd_load_route(const uint8_t id[8]);
 void cc_cmd_unload_workout(void);
 void cc_cmd_unload_route(void);
+
+/* Fills the link server's host callbacks with the core's. */
+void cc_link_host_bind(cc_link_host_t *h);
 
 /* Gestures for the UI, oldest first. Returns 0 when none. */
 int cc_poll_gesture(cc_gesture_t *g);

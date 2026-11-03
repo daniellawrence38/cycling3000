@@ -33,6 +33,7 @@ typedef struct {
     int64_t fail_from;    /* 0 none */
     int64_t write_calls;
     int64_t written;
+    int64_t free_override;
 } memfs_t;
 
 static memfs_t *M(hal_fs_t *fs) { return (memfs_t *)fs->ctx; }
@@ -264,9 +265,10 @@ static int fs_list(hal_fs_t *fs, const char *dir, int (*cb)(void *, const hal_di
 
 static int64_t fs_free(hal_fs_t *fs)
 {
-    (void)fs;
-    return 1LL << 32;
+    return M(fs)->free_override >= 0 ? M(fs)->free_override : 1LL << 32;
 }
+
+void memfs_set_free(hal_fs_t *fs, int64_t bytes) { M(fs)->free_override = bytes; }
 
 hal_fs_t *memfs_new(void)
 {
@@ -274,6 +276,7 @@ hal_fs_t *memfs_new(void)
     m->fs = (hal_fs_t){fs_open, fs_read, fs_write, fs_seek, fs_size, fs_fsync, fs_close,
                        fs_rename, fs_remove, fs_mkdir, fs_list, fs_free, m};
     m->cut_budget = -1;
+    m->free_override = -1;
     return &m->fs;
 }
 
@@ -290,6 +293,7 @@ void memfs_reset(hal_fs_t *fs)
     m->fail_from = 0;
     m->write_calls = 0;
     m->written = 0;
+    m->free_override = -1;
 }
 
 void memfs_free(hal_fs_t *fs)

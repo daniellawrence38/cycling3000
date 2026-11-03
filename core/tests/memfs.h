@@ -25,4 +25,5 @@ const uint8_t *memfs_data(hal_fs_t *fs, const char *path, uint32_t *len);
 int memfs_put(hal_fs_t *fs, const char *path, const void *data, uint32_t len); /* create, synced */
 int64_t memfs_bytes_written(hal_fs_t *fs);
 int memfs_count(hal_fs_t *fs, const char *dir_prefix);
+void memfs_set_free(hal_fs_t *fs, int64_t bytes);          /* what free_bytes reports; -1 = 4 GB */
 #endif

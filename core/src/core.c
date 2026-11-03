@@ -55,6 +55,7 @@ typedef struct {
     int lowbatt15, lowbatt5;
     cc_alerts_t al;
     cc_ride_meta_t summary;
+    uint32_t saved_seq;
     int power_off;
     /* buttons */
     struct { int down; uint32_t down_ms; int fired; } btn[CC_BTN_N];
@@ -70,6 +71,7 @@ typedef struct {
 } core_t;
 
 static core_t S;
+static uint32_t hal_now_ms_hint; /* the latest now_ms the core has seen */
 
 /* ------------------------------------------------------------------ helpers */
 static uint32_t utc_now(uint32_t now_ms) { return S.utc_val + (now_ms - S.utc_at_ms) / 1000u; }
@@ -418,6 +420,8 @@ static void do_finish(uint32_t now_ms, int show_summary)
         /* The .part stays and is recovered at the next boot; show what we have. */
         S.summary.ride_id = S.ride_id;
         cc_fit_summary(&S.fit, &S.summary.sum);
+    } else {
+        S.saved_seq++;
     }
     after_ride();
     S.state = show_summary ? CC_RS_SUMMARY : CC_RS_READY;
@@ -902,10 +906,13 @@ static void fill_view(uint32_t now_ms)
     v->ftp = S.set.ftp;
     v->settings = S.set;
     v->ride_id = S.ride_id;
+    v->saved_seq = S.saved_seq;
+    v->saved_ride_id = S.summary.ride_id;
 }
 
 void cc_tick(uint32_t now_ms)
 {
+    hal_now_ms_hint = now_ms;
     uint32_t sec = now_ms / 1000u;
     while (S.last_sec < sec) { /* one pass per second boundary, even after a stall */
         S.last_sec++;
@@ -917,3 +924,39 @@ void cc_tick(uint32_t now_ms)
 }
 
 const cc_view_t *cc_view(void) { return &S.v; }
+
+/* ------------------------------------------------------------------ link host */
+static int lh_state(void *c) { (void)c; return cc_ride_active(); }
+static int lh_batt(void *c) { (void)c; return S.battery; }
+static uint16_t lh_ftp(void *c) { (void)c; return S.set.ftp; }
+static int lh_set_ftp(void *c, uint16_t f)
+{
+    (void)c;
+    int rc = cc_cmd_set_ftp(f);
+    return rc == 0 ? 0 : rc == -1 ? -1 : -2;
+}
+static void lh_time(void *c, uint32_t u, int16_t tz)
+{
+    (void)c;
+    cc_set_utc(hal_now_ms_hint, u);
+    cc_set_tz(tz);
+}
+static void lh_deleted(void *c, int kind, const uint8_t id[8])
+{
+    (void)c;
+    if (kind == 1 && S.wo_loaded && memcmp(S.set.workout_id, id, 8) == 0)
+        cc_cmd_unload_workout();
+    if (kind == 2 && S.rt_loaded && memcmp(S.set.route_id, id, 8) == 0)
+        cc_cmd_unload_route();
+}
+
+void cc_link_host_bind(cc_link_host_t *h)
+{
+    h->ride_state = lh_state;
+    h->battery_pct = lh_batt;
+    h->get_ftp = lh_ftp;
+    h->set_ftp = lh_set_ftp;
+    h->set_time = lh_time;
+    h->object_deleted = lh_deleted;
+    h->ctx = NULL;
+}
