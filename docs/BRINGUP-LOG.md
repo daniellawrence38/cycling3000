@@ -595,3 +595,24 @@ That is worth one flash.
 
 `app.bin` is 1,213,952 bytes of 8,192,000 (14 %), 28 sources compiling clean for xtensa with no
 warnings.
+
+### Confirmed on hardware, 4 November 2026 — touch works first try
+
+Daniel flashed the driver and reports the bring-up dot follows his finger across the panel. One test
+confirms the whole chain at once:
+
+- the I2C bus is where the vendor's `InitI2CBus` said — **SDA 21, SCL 12**, port 0, 400 kHz;
+- the controller is a **CST3240 answering at 0x5A**;
+- register **0xD000** with a **seven-byte** read is the right report;
+- the coordinate arithmetic read out of `0x42032d93` is right;
+- and the vendor's odd doubled-register writes are acceptable to the panel, so copying them rather
+  than tidying them was the right call.
+
+**No axis transform is needed.** The dot lands under the finger, so the controller's own configuration
+already matches our LVGL geometry. `TOUCH_SWAP_XY`, `TOUCH_INVERT_X` and `TOUCH_INVERT_Y` all stay 0.
+
+This is the second subsystem brought up entirely from static analysis of the vendor binary with no
+probing, and unlike the display it needed no correction on the hardware. Worth noting why: the display
+was judged from photographs of anti-aliased text, where two stacked faults masked each other, while
+touch was judged by sending a known input and watching where it landed. Choose the test that produces
+an unambiguous answer and the first attempt tends to be the last.

@@ -76,9 +76,10 @@
  *
  * 400 kHz is the vendor's own scl_speed_hz (0x00061a80 in its i2c_device_config_t), not a guess.
  *
- * STATUS: Unverified on hardware. The register sequence and the coordinate arithmetic are read from
- * the vendor's driver, which is far stronger than a guess, but nothing here has yet decoded a real
- * finger press (START-HERE rule 3). */
+ * VERIFIED ON HARDWARE, 4 November 2026: with this driver flashed, the bring-up dot follows a finger
+ * across the panel. That confirms in one test the whole chain -- the I2C bus on SDA 21 / SCL 12, the
+ * CST3240 answering at 0x5A, the 0xD000 register read, the seven-byte layout, the coordinate
+ * arithmetic, and the vendor's odd double-register writes being acceptable to the panel. */
 #define TOUCH_I2C_ADDR 0x5A
 #define TOUCH_I2C_HZ 400000
 #define TOUCH_I2C_TIMEOUT_MS 50 /* the vendor waits forever; hal_touch_esp.c says why we do not */
@@ -92,9 +93,9 @@
  * exactly. Set this to 0 to send the shorter, published CST3240 sequence instead. */
 #define TOUCH_VENDOR_QUIRK_WRITES 1
 
-/* No transform: the vendor stores the decoded x and y straight into LVGL's point, so any rotation or
- * mirroring is already in the controller's own configuration. The defines are here because the first
- * real press is what will say whether that holds for our LVGL geometry too. */
+/* No transform, and that is now confirmed: the dot lands under the finger, so the controller's own
+ * configuration already matches our LVGL geometry and neither axis needs swapping or inverting. The
+ * defines stay because they cost nothing and a replacement panel may differ. */
 #define TOUCH_SWAP_XY 0
 #define TOUCH_INVERT_X 0
 #define TOUCH_INVERT_Y 0
