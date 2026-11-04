@@ -37,12 +37,12 @@
 #define LCD_BL_FREQ_HZ 20000           /* 0x4e20 */
 #define LCD_BL_DUTY_BITS 10            /* LEDC low-speed timer 0, channel 0 */
 
-/* Colour inversion. VERIFIED ON HARDWARE, 4 November 2026: with this false the dark UI came up pale
- * and hard to read; with it true the screen is correct. ESP-IDF's stock ST7789 driver defaults to
- * inversion off, and the stock firmware uses its own fork of that driver, which is where the
- * difference comes from. The element order is left RGB because the stock firmware passes 0 for it. */
-/* Back to false: the pale screen was a byte-order fault, not inversion (see LCD_SWAP_COLOR_BYTES). */
-#define LCD_INVERT_COLOR false
+/* VERIFIED ON HARDWARE, 4 November 2026, by the colour-bar test: with the byte order fixed and
+ * inversion off, every one of the eight bars came back as its exact complement -- red as cyan, white
+ * as black, and so on. That is a pure inversion with no channel-order error, so this panel needs
+ * INVON. Two faults were stacked: the missing byte swap kept white looking white (0xFFFF is
+ * byte-symmetric) and hid the inversion underneath it. */
+#define LCD_INVERT_COLOR true
 #define LCD_SWAP_COLOR_BYTES 1
 #define LCD_TEST_PATTERN 1   /* colour bars for four seconds at boot; set to 0 once the panel is right */
 
