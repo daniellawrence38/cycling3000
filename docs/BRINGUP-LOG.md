@@ -162,3 +162,24 @@ unit's current firmware.
 
 Settled by reading three small regions off the unit, read-only (see next).
 
+### The backup still describes the unit — checked on the device, read-only
+
+Three regions read off the unit with `read-flash` (writes nothing; esptool resets into download mode
+by itself) and compared with the 2 November image:
+
+| Check | Result |
+| --- | --- |
+| `ota_0` first 256 bytes vs backup | **byte-for-byte identical** |
+| `ota_0` app descriptor | `CC700Pro_V1.710-2-g44e3c9e-dirty`, `Project`, 14:08:30 Nov 20 2025, IDF `423e6536` — same in both |
+| `ota_1` first 4096 bytes on the unit | **all `0xFF`** — still completely erased |
+| `otadata` 8 KB vs backup | **identical**: copy 0 seq `0x00000001` state `0x00000002` (valid), copy 1 erased |
+
+So **no OTA update has been taken**, and the `1.7.11` on the factory screen is the benign
+explanation after all: a version constant bumped in the two commits past tag `V1.710`, not a newer
+firmware. An update would have had to write an image header at the start of `ota_1` and repoint
+`otadata`; neither has a bit out of place.
+
+Every precondition step 4 depends on — `ota_1` erased, `otadata` naming `ota_0`, the partition table
+and bootloader untouched, the backup matching — now holds **as measured on the unit**, not only as
+recorded in a file from two days earlier.
+
