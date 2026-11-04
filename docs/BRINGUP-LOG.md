@@ -461,3 +461,46 @@ running on battery.
 Still untouched and still true: `ota_0` holds the stock firmware, and writing `otadata-now.bin` back
 to `0xd000` returns the unit to it.
 
+
+## The display is finished, and the I2C bus is found
+
+**Display: done.** The colour bars came back in the correct order — red, green, blue, white, black,
+yellow, cyan, magenta — once both the byte swap and the inversion were in. Daniel confirms the UI
+reads correctly on the unit. The test pattern is left in the source but switched off
+(`LCD_TEST_PATTERN 0`); it is worth keeping for the next person who doubts a panel, because it
+settled in one photograph what two rounds of reasoning from screenshots could not.
+
+**A lesson worth keeping.** Two faults were stacked, and each hid the evidence for the other: the
+missing byte swap kept white looking white (0xFFFF is byte-symmetric) which made the inversion look
+like a contrast problem. Daniel called inversion correctly from the first screen and I talked him out
+of it on a plausible-sounding argument. Sending known values and reading back what appears beat
+arguing about a photograph.
+
+### I2C: SDA 21, SCL 12
+
+From the vendor's `InitI2CBus` at `0x42032918`, read the same way as the display:
+
+| Field | Value |
+| --- | --- |
+| `i2c_port` | 0 |
+| `sda_io_num` | **21** |
+| `scl_io_num` | **12** |
+| `clk_source` | 11 |
+| `glitch_ignore_cnt` | 7 |
+| `flags.enable_internal_pullup` | 1 |
+
+ESP-IDF v5.5.6's `i2c_master_bus_config_t` has exactly these fields in exactly this order, and the
+RAM probe corroborates the pins independently: it recorded **GPIO 21 and GPIO 12 both idling high**,
+which is what pulled-up I2C lines do.
+
+**What is on the bus is not guessed.** The vendor registers three devices through `I2CManagerAddDev`,
+but that function takes the address in a register, so unlike the display's pins the addresses are not
+readable from the code. `fw/main/hal_i2c_esp.c` therefore creates the bus and **scans 0x08–0x77 at
+boot, logging every address that answers**. One flash and one monitor session will say exactly what is
+there, instead of a driver written against a guess. (The touch init does pass `90` = `0x5A` to
+something, which matches a Hynitron CST3240 and the factory screen's `TOUCHVer 3240`, but that stays a
+candidate until the scan agrees.)
+
+A failure to bring the bus up is logged, not fatal: it costs touch and the on-board sensors and
+nothing else.
+

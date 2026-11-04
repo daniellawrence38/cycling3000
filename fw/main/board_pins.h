@@ -44,7 +44,10 @@
  * byte-symmetric) and hid the inversion underneath it. */
 #define LCD_INVERT_COLOR true
 #define LCD_SWAP_COLOR_BYTES 1
-#define LCD_TEST_PATTERN 1   /* colour bars for four seconds at boot; set to 0 once the panel is right */
+/* Colour bars at boot. Served their purpose: they proved the byte order and the inversion when
+ * reasoning from photographs of anti-aliased text could not. Left in, off, because the next person
+ * to doubt a panel will want them. */
+#define LCD_TEST_PATTERN 0
 
 /* The stock firmware sets these two to outputs and drives them high immediately before creating the
  * i80 bus. They belong to none of its three config structs, and esp_lcd's reset_gpio_num is -1, so
@@ -53,7 +56,19 @@
 #define PIN_LCD_AUX_A 43
 #define PIN_LCD_AUX_B 44
 
-/* UARTs. UART0 is most likely the GNSS (the image carries Airoha $PAIR command strings) and the
+/* I2C. Read from the vendor's InitI2CBus: i2c_master_bus_config_t with port 0, sda 21, scl 12,
+ * clk_source 11, glitch_ignore_cnt 7 and internal pull-ups enabled. The RAM probe corroborates it
+ * independently -- it recorded GPIO 21 and GPIO 12 both idling high, which is what pulled-up I2C
+ * lines do. Touch sits on this bus, and so do at least two more devices (the vendor registers three
+ * through I2CManagerAddDev). What they are is answered by the boot-time scan, not by guessing. */
+#define PIN_I2C_SDA 21
+#define PIN_I2C_SCL 12
+#define I2C_PORT_NUM 0
+#define I2C_GLITCH_IGNORE 7
+#define I2C_SCAN_AT_BOOT 1 /* log every address that answers; set to 0 once the devices are known */
+
+/* UARTs.
+ UART0 is most likely the GNSS (the image carries Airoha $PAIR command strings) and the
  * second is the nRF co-processor that carries ANT+ (its RX line showed a heartbeat every ~13 s
  * during the RAM probe). Which is which is Unverified. */
 #define PIN_UART0_TX 1

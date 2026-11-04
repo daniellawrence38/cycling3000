@@ -23,6 +23,7 @@
 #include "hal_ble.h"
 #include "hal_clock.h"
 #include "hal_display.h"
+#include "hal_i2c.h"
 #include "hal_input.h"
 #include "lvgl.h"
 #include "ui.h"
@@ -59,6 +60,10 @@ static void ui_start(void)
 {
     if (hal_display_init() != 0)
         ESP_LOGE(TAG, "display did not start: the UI runs but nothing is drawn");
+    /* Touch and the on-board sensors live on this bus. A failure here costs those and nothing
+       else, so it is logged rather than fatal. */
+    if (hal_i2c_init() != 0)
+        ESP_LOGE(TAG, "I2C did not start: no touch and no on-board sensors");
     lv_init();
     lv_tick_set_cb(tick_cb);
     lv_display_t *d = lv_display_create(HAL_DISPLAY_W, HAL_DISPLAY_H);
