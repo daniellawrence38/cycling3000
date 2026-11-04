@@ -67,6 +67,39 @@
 #define I2C_GLITCH_IGNORE 7
 #define I2C_SCAN_AT_BOOT 1 /* log every address that answers; set to 0 once the devices are known */
 
+/* Touch: a Hynitron CST3240 at I2C address 0x5A, read out of the stock firmware.
+ *
+ * The vendor's `TouchInit` probes address 90 (0x5A) and installs its 3240 read function if that
+ * answers; the alternative it supports is a 6336 (the factory test screen prints either
+ * " 6336: 0x%02x" or " 3240: 0x%x%x%x%x"). This unit's factory screen answered on the 3240 path with
+ * 0x1004, so this panel is the CST3240 -- now corroborated by the vendor code probing exactly 0x5A.
+ *
+ * 400 kHz is the vendor's own scl_speed_hz (0x00061a80 in its i2c_device_config_t), not a guess.
+ *
+ * STATUS: Unverified on hardware. The register sequence and the coordinate arithmetic are read from
+ * the vendor's driver, which is far stronger than a guess, but nothing here has yet decoded a real
+ * finger press (START-HERE rule 3). */
+#define TOUCH_I2C_ADDR 0x5A
+#define TOUCH_I2C_HZ 400000
+#define TOUCH_I2C_TIMEOUT_MS 50 /* the vendor waits forever; hal_touch_esp.c says why we do not */
+#define TOUCH_DATA_LEN 7        /* bytes the vendor reads from register 0xD000 */
+#define TOUCH_STATUS_DOWN 0x06  /* value of (buf[0] & 0x0F) when a finger is down */
+
+/* The vendor's write helper takes a register buffer and a data buffer and concatenates them, and
+ * every call passes the 16-bit register twice, once little-endian and once big-endian. The bytes that
+ * actually reach the panel are therefore four or five long rather than two or three. That looks like a
+ * slip in the vendor's wrapper, but it is what this panel is known to work with, so it is reproduced
+ * exactly. Set this to 0 to send the shorter, published CST3240 sequence instead. */
+#define TOUCH_VENDOR_QUIRK_WRITES 1
+
+/* No transform: the vendor stores the decoded x and y straight into LVGL's point, so any rotation or
+ * mirroring is already in the controller's own configuration. The defines are here because the first
+ * real press is what will say whether that holds for our LVGL geometry too. */
+#define TOUCH_SWAP_XY 0
+#define TOUCH_INVERT_X 0
+#define TOUCH_INVERT_Y 0
+#define TOUCH_LOG_PRESSES 1 /* log the first presses, raw and mapped, so the axes can be checked */
+
 /* UARTs.
  UART0 is most likely the GNSS (the image carries Airoha $PAIR command strings) and the
  * second is the nRF co-processor that carries ANT+ (its RX line showed a heartbeat every ~13 s

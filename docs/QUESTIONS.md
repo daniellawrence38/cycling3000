@@ -245,6 +245,47 @@ Why it matters beyond tidiness: a flat-looking profile is not a cosmetic error. 
 Not covered by a screenshot: no simulator scenario has a route without elevation, so the "no elevation" row has not been through `make shots` or the lint. It is not a clipping risk — "38.4 km · no elevation" is shorter than the existing worst case, "81.2 km · 1,150 m · 7 climbs" — and adding a scenario was left alone because it would change the contact sheet that is waiting for your review. Say the word and it becomes a fourth route in the Routes scenario.
 Answer:
 
+### Q36 · bring-up · open
+Question: The spec, the brief and `hal/` all assume the barometer, the light sensor and the battery
+gauge are devices this firmware talks to. Static analysis of the stock firmware says they are not.
+Every I2C transfer in the whole vendor application goes through two wrappers at `0x42032b78` and
+`0x42032bcc`, those wrappers are the only code in the image that references
+`i2c_master_transmit_receive` and `i2c_master_transmit`, and all sixteen of their call sites are
+inside the touch driver. **The touch controller is the only thing the ESP32 reaches over I2C.**
+The on-board sensors instead sit behind the nRF co-processor the firmware calls the "SPU", reached
+over UART1 (GPIO 42 TX / 41 RX) with a framed protocol of the vendor's own
+(`MidCommBaudrateSwitch`, `UartDataSaveToRingBuffer`, `%s:Uart Read Data Result is MAGENE_ERROR!`,
+`%s:SPUID=%d Not Match DevType=%d!`, `TimePara->mSysTimeStampFromNrf`). That also accounts for the
+accelerometer and gyroscope the factory test screen shows, and for the ~13 s heartbeat the RAM probe
+saw on GPIO 41.
+Options: (a) write `hal_baro`, `hal_power` and the light sensor against I2C anyway and find out on
+hardware; (b) decode the nRF frame protocol and implement the sensors on top of it; (c) leave the
+sensors stubbed and ship v1 without barometric altitude, auto-backlight or a battery percentage.
+Default used: (b), but not yet started. The I2C scan already in `hal_i2c_esp.c` stays, because it
+makes this a falsifiable prediction rather than an assertion: if the only address that answers is
+`0x5A`, the reading above is right; if a barometer answers as well, it is wrong and (a) is back.
+(a) was rejected as exactly the kind of guess START-HERE rule 3 forbids, and (c) only after (b) has
+been tried, because `total_ascent` without a barometer is the Q19 problem again in a different place.
+Why it matters: this is not one driver, it is the shape of the next work package. It also means the
+nRF link is on the critical path for ANT+ *and* for altitude, battery and the light sensor at once,
+so it is worth doing properly rather than four times.
+Answer:
+
+### Q37 · bring-up · open
+Question: `fw/main/hal_touch_esp.c` reproduces the vendor's CST3240 sequence byte for byte, but
+differs from it in two places. The vendor passes `-1` as the I2C timeout, i.e. wait forever; and it
+sends its "data consumed" write and decodes the report whether or not the read succeeded.
+Options: (a) copy the vendor exactly, including the infinite timeout; (b) bound the timeout and
+refuse to decode a buffer that was never filled.
+Default used: (b). Touch is polled from the one task that also runs LVGL, the core and the link, so a
+wedged I2C bus would stop the whole device rather than cost a frame; `TOUCH_I2C_TIMEOUT_MS` is 50 ms.
+A failed read returns -1 and leaves the last position alone. The acknowledging write is still sent
+unconditionally, as the vendor does, because a write to a chip that is not answering is harmless.
+Why it matters: an infinite timeout inside a UI poll is the sort of thing that works on the bench for
+months and then hangs a rider's computer on a cold morning. The deviation is small, deliberate and
+recorded so that if touch misbehaves this is the first thing to look at.
+Answer:
+
 ## Document errors
 
 ### E5 · brief 5.6 (finish sequence)

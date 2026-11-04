@@ -504,3 +504,94 @@ candidate until the scan agrees.)
 A failure to bring the bus up is logged, not fatal: it costs touch and the on-board sensors and
 nothing else.
 
+
+## Step 3c (offline) · The touch panel is fully decoded, and the sensors turn out not to be on I2C
+
+All static analysis of `ota_0` in the backup. **The unit was not touched.**
+
+### The touch controller: a CST3240 at 0x5A, and its exact protocol
+
+The vendor's touch driver occupies `0x42032820`–`0x42032e76`. Read the same way as the display — find
+a string, find the `l32r` that loads it, read the surrounding code — it gives up everything:
+
+| What | Where | What it says |
+| --- | --- | --- |
+| `TouchInit` | `0x42032213` | `movi a10, 90` then a probe call: it tries **I2C address 0x5A** |
+| probe / version | `0x42032c74` | select register **0xD045**, read **4** bytes → the `" 3240: 0x%x%x%x%x"` line |
+| LVGL read callback | `0x42032cc4` | select register **0xD000**, read **7** bytes → one touch point |
+| the 6336 alternative | `0x42032de4` | 8-bit registers `0xA8`, `0xA6`, `0xAF` — a CST816-family part |
+| write helper | `0x42032bcc` | `i2c_master_transmit(buf1 ‖ buf2)` |
+| transfer helper | `0x42032b78` | `i2c_master_transmit_receive(...)` |
+| device registration | `0x420329ac` | `i2c_device_config_t`, 7-bit address, **`scl_speed_hz` = 400000** |
+
+So the chip identity is settled twice over: the factory screen on this unit printed `TOUCHVer 3240:
+0x1004`, and the vendor code reaches that path only by probing 0x5A, which is the Hynitron CST3240's
+address. The bus speed is the vendor's own 400 kHz, read out of its device config — not the usual
+guess.
+
+**The coordinate arithmetic**, lifted from `0x42032d93`–`0x42032db4`:
+
+```
+down = (buf[0] & 0x0F) == 0x06
+x    = (buf[1] << 4) | (buf[3] >> 4)
+y    = (buf[2] << 4) | (buf[3] & 0x0F)
+```
+
+and the vendor writes `x` and `y` straight into LVGL's point with **no rotation, mirroring or
+scaling**, so whatever orientation the panel has is already configured inside the controller. It also
+caches the last point and reports it again on release, which is what a pointer device must do — LVGL
+decides which widget was clicked from the coordinate that arrives with the release, so returning 0,0
+there would send every tap to the top-left corner. `hal_touch_read` does the same.
+
+**One oddity is copied rather than corrected.** The vendor's write helper takes a register buffer and
+a data buffer and concatenates them, and every call passes the same 16-bit register twice — once
+little-endian, once big-endian. The bytes that actually reach the panel are therefore
+`00 D0 D0 00` to select the data register and `D0 00 D0 00 AB` to acknowledge a report, rather than
+the two and three bytes the published CST3240 sequence uses. That looks like a slip in the vendor's
+wrapper, but it is what this panel is known to work with, so `TOUCH_VENDOR_QUIRK_WRITES` reproduces
+it exactly and setting it to 0 sends the shorter form instead. Imitation beats taste when the panel
+is the judge.
+
+**No interrupt line and no reset pulse.** The stock `touch_driver_read` is simply an LVGL read
+callback, and the touch init touches no GPIO at all; whatever resets the panel is already done by the
+LCD sequence (GPIO 43/44, still unexplained). So there is nothing more to find: polling is correct.
+
+### The sensors are behind the nRF, not on I2C — which changes the next work package
+
+Worth stating plainly because it contradicts what `hal/` assumes. **Every** I2C transfer in the
+vendor application goes through those two wrappers; the wrappers are the **only** code in the whole
+image that references `i2c_master_transmit_receive` or `i2c_master_transmit`; and **all sixteen** of
+their call sites are inside the touch driver. The touch controller is the only thing the ESP32 reaches
+over I2C.
+
+The barometer, light sensor, battery gauge and the IMU the factory screen shows instead sit behind the
+nRF co-processor — the firmware's "SPU" — over UART1 (GPIO 42 TX, GPIO 41 RX, 8N1, no flow control),
+with a framed protocol of the vendor's own: `MidCommBaudrateSwitch`, `UartDataSaveToRingBuffer`,
+`%s:Uart Read Data Result is MAGENE_ERROR!`, `%s:SPUID=%d Not Match DevType=%d!`,
+`TimePara->mSysTimeStampFromNrf`. That also explains the ~13 s heartbeat the RAM probe saw on GPIO 41,
+and it means one protocol decode unlocks ANT+, altitude, battery and the light sensor together.
+
+The baud rate is **not** settled: `uart_param_config` takes it as a parameter and no constant in the
+MidComm area is one (the 1000000 hits nearby are decimal-parsing multipliers, `addi a8, a8, -48`).
+115200 is the obvious first try and the frame sync will say immediately whether it is right.
+
+Logged as **Q36**, with the two deliberate differences from the vendor's touch driver as **Q37**.
+
+**The I2C scan stays in.** It now makes a falsifiable prediction rather than an assertion: if 0x5A is
+the only address that answers, the paragraph above is right; if a barometer answers too, it is wrong.
+That is worth one flash.
+
+### What was written
+
+- **`hal/hal_touch.h`** — one controller, one finger: `hal_touch_init`, `hal_touch_read`,
+  `hal_touch_present`, `hal_touch_version`.
+- **`fw/main/hal_touch_esp.c`** — the CST3240, with the provenance of every byte in the header
+  comment and the two deviations named.
+- **`fw/main/main.c`** — registers an LVGL pointer device, and, while bringing up, a 16-pixel cyan dot
+  on LVGL's top layer that follows the finger. The Ready screen has nothing tappable, so without it
+  the only evidence of touch is the serial log; a dot under the finger also shows at a glance whether
+  the axes are the right way round, which a column of numbers does not. It is behind
+  `TOUCH_LOG_PRESSES` and lives on the top layer so the once-a-second screen rebuild cannot delete it.
+
+`app.bin` is 1,213,952 bytes of 8,192,000 (14 %), 28 sources compiling clean for xtensa with no
+warnings.
