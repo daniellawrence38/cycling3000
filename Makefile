@@ -50,8 +50,11 @@ sim: deps
 shots: sim
 	mkdir -p ui/out
 	$(BUILD)/host/ui/ccsim --shots ui/out/lvgl
-	cd tools/design && CC700_DESIGN_ROOT=$(CURDIR)/ui/out/design $(PYTHON) gen.py >/dev/null
-	-cd tools/design && NODE_PATH=`npm root -g` node render_boards.js --fonts $(CURDIR)/build/deps/node/node_modules/@fontsource --gen $(CURDIR)/ui/out/design/canvas/project --out $(CURDIR)/ui/out/mockup >/dev/null
+# Every $(CURDIR) below is quoted: the checkout can sit in a path with a space in it (it does on
+# Daniel's PC, "Bike Project"), and an unquoted one makes the shell split the path and report a
+# "not found" for its second word.
+	cd tools/design && CC700_DESIGN_ROOT="$(CURDIR)/ui/out/design" $(PYTHON) gen.py >/dev/null
+	-cd tools/design && NODE_PATH="`npm root -g`" node render_boards.js --fonts "$(CURDIR)/build/deps/node/node_modules/@fontsource" --gen "$(CURDIR)/ui/out/design/canvas/project" --out "$(CURDIR)/ui/out/mockup" >/dev/null
 	$(PYTHON) tools/design/contact_sheet.py --lv ui/out/lvgl --ref ui/out/mockup --out ui/out/contact-sheet.png
 
 # Android :core and :testing (JVM). The shared protocol suite also runs against simunit, so build it

@@ -414,6 +414,35 @@ halves, including that a genuinely flat route — elevation known and constant �
 with an ascent of 0. Logged as **Q35**, open, because the default changes what two screens say and no
 mockup covers the state.
 
+### `make shots` was broken on this PC, and the contact sheet you want is the one already committed
+
+A correction to something I nearly claimed. The WP4 contact sheet **already exists and always did**:
+`docs/wp4/contact-sheet.png`, committed on 3 November, is the proper two-column sheet — each pair is
+the mockup on the left and the LVGL simulator on the right, 48 scenarios, 2988 × 2798. That is the
+artefact waiting for your approval, and nothing tonight improves on it.
+
+What tonight actually found is that **`make shots` cannot regenerate it on this PC**, for two reasons
+that would stop anyone else too:
+
+- **A space in the path broke the recipe.** `CC700_DESIGN_ROOT=$(CURDIR)/ui/out/design` was unquoted,
+  so with the checkout at `C:\Users\danie\Desktop\Bike Project` the shell split the path and reported
+  `/bin/sh: 1: Project/ui/out/design: not found`. Every `$(CURDIR)` in the recipe is now quoted. This
+  would have bitten any checkout whose path has a space in it, which is most of them on Windows.
+- **Pillow was an undeclared dependency.** `tools/design/contact_sheet.py` imports PIL, but
+  `docs/THIRD_PARTY.md` did not list Pillow, so a machine set up by following the documented steps
+  could not run a committed tool. Installed into the project venv and now declared (MIT-CMU, so the
+  no-GPL rule in START-HERE still holds).
+
+With those fixed, `make shots` runs here and writes `ui/out/contact-sheet.png` — but **single-column,
+LVGL only**, because `render_boards.js` needs Playwright and a Chromium that this machine does not
+have, so there is no mockup to put beside each screenshot. Review `docs/wp4/contact-sheet.png`, not
+that one. To make the regenerated sheet equal to the committed one:
+`npm i -g playwright && npx playwright install --with-deps chromium` in WSL, then `make shots`.
+That is a few hundred megabytes of apt packages on your machine, which is why it was left for you.
+
+The 48 LVGL screenshots themselves did regenerate cleanly from tonight's code, which is a useful check
+in its own right: the UI changes for Q35 did not disturb any existing screen.
+
 ## Future enhancements (not scheduled)
 
 - **Shimano 12-speed Di2 gear display (105 R7100).** Requested by Daniel on 3 November 2026, deferred.

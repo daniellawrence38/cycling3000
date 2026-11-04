@@ -7,6 +7,7 @@ No GPL or AGPL code in the core, firmware or app (START-HERE, brief 3).
 | Unity | v2.6.1 (commit cbcd08f) | MIT | `core/tests/unity/` (vendored, `LICENSE.txt` alongside) | Host C unit tests only; not linked into firmware |
 | pytest | latest from PyPI at install time | MIT | developer machine | Python tool tests |
 | fitdecode | latest from PyPI at install time | MIT | developer machine | Independent FIT decoding in `tools/fitcheck` (WP2, WP3) |
+| Pillow | latest from PyPI at install time | MIT-CMU (HPND) | developer machine | `tools/design/contact_sheet.py` builds the WP4 contact sheet; not shipped |
 
 | LVGL | v9.6.0 | MIT | fetched by `ui/deps.sh` into `build/deps/lvgl` | UI library (simulator now, firmware in WP7) |
 | Barlow, Barlow Condensed | Fontsource 5.3.0 (WOFF) | SIL OFL 1.1 | fetched by `ui/deps.sh`; generated bitmaps in `ui/fonts/gen/` | All text; the generated fonts are a derived work under the OFL |
