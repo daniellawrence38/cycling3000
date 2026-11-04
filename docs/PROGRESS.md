@@ -468,3 +468,28 @@ the nRF co-processor on UART1 with a framed protocol of the vendor's own — whi
 deferred Di2 gear display needs. So `hal_baro` and `hal_power` are not I2C drivers waiting to be
 written; they are one protocol decode, and that is the next piece of work. The boot-time I2C scan
 stays in so the claim is testable on the next flash rather than merely asserted.
+
+## Bring-up step 4 · 4 November 2026 · the nRF link decoded, listener ready to flash
+
+Touch is **confirmed on hardware**: the bring-up dot follows a finger, which in one test validates the
+I2C bus on SDA 21 / SCL 12, the CST3240 at 0x5A, the 0xD000 seven-byte report, the coordinate
+arithmetic and the vendor's odd doubled-register writes. No axis transform is needed.
+
+The nRF link is decoded from the stock firmware and written up in **`docs/NRF-PROTOCOL.md`**: `0xA5`
+sync, length byte equal to payload + 4, `0x6F`, a direction byte (`0xF1` outbound), kind 1–5, message
+id, payload, and a little-endian **CRC-16/XMODEM** over everything before it. The encoder at
+`0x4205062c` and the decoder at `0x42050766` agree independently, which is the strongest internal
+check available without hardware. The dispatcher acts on ids 0, 1, 11, 16, 17, 34, 35, 40, 120–123 and
+128; id 16 is the power and slave-mode channel, and the fact that the ESP32 asks the nRF *why it
+powered on* is the strongest evidence yet that the buttons are the nRF's to report.
+
+`fw/main/hal_nrf_esp.c` is a **receive-only** listener that finds its own baud rate by accepting the
+first standard rate that yields a CRC-valid frame, then keeps per-id statistics and prints payloads as
+`u16le` and `u32le` so one capture identifies the sensors by how their numbers behave. Waiting on
+hardware (task #19 and #20).
+
+**Regression check, with all the firmware work in place:** `make vectors` reproduces
+`claude/cc700-test-vectors.md` byte for byte, 14 of 14 C tests pass under both plain and ASan+UBSan
+builds, and 21 of 21 Python tool tests pass. Note for a fresh WSL shell: `make test-py` needs a
+Python with pytest, so `make test PYTHON=/root/venv/bin/python`; the Makefile already honours the
+override and needed no change.
