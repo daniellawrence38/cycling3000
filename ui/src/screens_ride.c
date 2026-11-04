@@ -1,4 +1,5 @@
 /* Ride pages (boards 1 to 4), Paused (17), Ride alerts (20, the overlays) and Empty states (21). */
+#include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -271,13 +272,13 @@ void scr_climb(lv_obj_t *r, const ui_model_t *m)
         ui_text(r, 8, 266, 0, 34, &font_c600_32, C_TEXT, LV_TEXT_ALIGN_LEFT, 0, t);
         int b = ui_last_baseline;
         ui_text_base(r, 8 + ui_text_w(&font_c600_32, 0, t) + 4, b, &font_b600_13, C_MUTED, LV_TEXT_ALIGN_LEFT, 0, mi ? "mi" : "km");
-        snprintf(t, sizeof t, "%u", n->climb_ascent_left_m);
+        snprintf(t, sizeof t, "%" PRIu32, n->climb_ascent_left_m);
         ui_text_base(r, 128, b, &font_c600_32, C_TEXT, LV_TEXT_ALIGN_LEFT, 0, t);
         ui_text_base(r, 128 + ui_text_w(&font_c600_32, 0, t) + 4, b, &font_b600_13, C_MUTED, LV_TEXT_ALIGN_LEFT, 0, "m");
     } else {
         /* no route, off route or no climbs left: live ascent only (spec 5) */
         ui_caps(r, 8, 182, 0, LV_TEXT_ALIGN_LEFT, "ASCENT");
-        snprintf(t, sizeof t, v->alt_ok ? "%u" : "--", v->ascent_m);
+        snprintf(t, sizeof t, v->alt_ok ? "%" PRIu32 : "--", v->ascent_m);
         ui_text(r, 8, 196, 0, 44, &font_c600_46, C_TEXT, LV_TEXT_ALIGN_LEFT, 0, t);
         int b = ui_last_baseline;
         ui_text_base(r, 8 + ui_text_w(&font_c600_46, 0, t) + 4, b, &font_b600_16, C_MUTED, LV_TEXT_ALIGN_LEFT, 0, "m");
@@ -360,8 +361,8 @@ void scr_nav(lv_obj_t *r, const ui_model_t *m)
     lv_obj_set_style_clip_corner(map, 1, 0);
     map_ctx.m = m;
     lv_obj_add_event_cb(map, map_draw, LV_EVENT_DRAW_MAIN_END, NULL);
-    snprintf(t, sizeof t, "%u m", n->map_scale_m ? n->map_scale_m / 4 : 100);
-    if (n->map_scale_m / 4 >= 1000) snprintf(t, sizeof t, "%u.%u km", n->map_scale_m / 4000, (n->map_scale_m / 400) % 10);
+    snprintf(t, sizeof t, "%" PRIu32 " m", n->map_scale_m ? n->map_scale_m / 4 : 100);
+    if (n->map_scale_m / 4 >= 1000) snprintf(t, sizeof t, "%" PRIu32 ".%" PRIu32 " km", n->map_scale_m / 4000, (n->map_scale_m / 400) % 10);
     ui_text(r, 8, 98 + 131, 0, 14, &font_b600_11, C_MUTED, LV_TEXT_ALIGN_LEFT, 0, t);
     /* turn banner */
     int near = !n->off_route && n->turn_idx >= 0 && n->dist_to_turn_m <= 100;
@@ -464,7 +465,7 @@ void ui_overlays(lv_obj_t *r, const ui_model_t *m)
         ui_rect(r, 0, 284, 240, 36, C_BAR, 0);
         ui_hline(r, 0, 284, 240, C_BORDER);
         char t[20];
-        snprintf(t, sizeof t, "%u.%u / 1 s", v->hold.elapsed_ms / 1000, (v->hold.elapsed_ms / 100) % 10);
+        snprintf(t, sizeof t, "%" PRIu32 ".%" PRIu32 " / 1 s", v->hold.elapsed_ms / 1000, (v->hold.elapsed_ms / 100) % 10);
         ui_text(r, 10, 290, 0, 14, &font_b700_12, C_TEXT, LV_TEXT_ALIGN_LEFT, 1,
                 v->hold.side == CC_BTN_R ? "HOLD TO PAUSE" : "HOLD FOR PREVIOUS PAGE");
         ui_text(r, 230, 290, 0, 14, &font_b700_12, C_MUTED, LV_TEXT_ALIGN_RIGHT, 1, t);

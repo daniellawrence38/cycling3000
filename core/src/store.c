@@ -1,5 +1,6 @@
 #include "cc700/store.h"
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +12,7 @@
 
 void cc_ride_path(char *out, int cap, uint32_t ride_id, const char *ext)
 {
-    snprintf(out, (size_t)cap, "rides/%u%s", ride_id, ext);
+    snprintf(out, (size_t)cap, "rides/%" PRIu32 "%s", ride_id, ext);
 }
 
 void cc_object_path(char *out, int cap, const uint8_t id[8], int kind)

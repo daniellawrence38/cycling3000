@@ -6,6 +6,7 @@
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "cc700/provisional.h"
@@ -35,7 +36,6 @@ typedef struct {
     int wo_loaded;
     cc_wo_engine_t eng;
     int nextstep_active;
-    cc_route_t route;
     int rt_loaded;
     cc_nav_t nav;
     /* ride */
@@ -144,16 +144,37 @@ static void storage_check(uint32_t now_ms)
 }
 
 /* ------------------------------------------------------------------ objects */
-static uint8_t objbuf[CC_RT_MAX_BYTES];
+/* The decoded route (204 KB) and the object read buffer (128 KB) are far too large for the
+   ESP32-S3's 512 KB of internal SRAM once LVGL, NimBLE and the task stacks are in it: a build with
+   them in .bss overflows dram0_0_seg by 518 KB. The brief puts the decoded route in PSRAM (brief
+   5.7), and ESP-IDF's heap does exactly that for any allocation larger than
+   CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL (16 KB), so one calloc each is all it takes and the host
+   build is unchanged. Allocated on first use and never freed, so no ride can fail part way through
+   on a short heap; if the allocation fails the object simply does not load, which is an error path
+   the UI already has. That also keeps Q30's safety net intact: PSRAM is configured octal on an
+   Unverified guess with CONFIG_SPIRAM_IGNORE_NOTFOUND=y, so if the guess is wrong the unit boots
+   with no PSRAM, and here that costs routes and workouts rather than the whole firmware, which is
+   what placing .bss in external RAM (EXT_RAM_BSS_ATTR) would have cost. */
+static cc_route_t *g_route;
+static uint8_t *g_objbuf;
+
+static int big_mem(void)
+{
+    if (!g_objbuf) g_objbuf = calloc(1, CC_RT_MAX_BYTES);
+    if (!g_route) g_route = calloc(1, sizeof *g_route);
+    return g_objbuf && g_route;
+}
 
 static int32_t read_object(const uint8_t id[8], int kind)
 {
     char p[64];
     cc_object_path(p, sizeof p, id, kind);
+    if (!big_mem())
+        return -1;
     hal_file_t f = S.fs->open(S.fs, p, HAL_FS_READ);
     if (f < 0)
         return -1;
-    int32_t n = S.fs->read(S.fs, f, objbuf, sizeof objbuf);
+    int32_t n = S.fs->read(S.fs, f, g_objbuf, CC_RT_MAX_BYTES);
     S.fs->close(S.fs, f);
     return n;
 }
@@ -168,7 +189,7 @@ static int id_zero(const uint8_t id[8])
 static int load_workout(const uint8_t id[8])
 {
     int32_t n = read_object(id, 1);
-    if (n <= 0 || cc_cw1_decode(objbuf, (size_t)n, &S.wo) != CC_CW1_OK)
+    if (n <= 0 || cc_cw1_decode(g_objbuf, (size_t)n, &S.wo) != CC_CW1_OK)
         return -1;
     S.wo_loaded = 1;
     cc_wo_engine_load(&S.eng, &S.wo, S.set.ftp);
@@ -178,10 +199,10 @@ static int load_workout(const uint8_t id[8])
 static int load_route(const uint8_t id[8])
 {
     int32_t n = read_object(id, 2);
-    if (n <= 0 || cc_cr1_decode(objbuf, (size_t)n, &S.route) != CC_CR1_OK)
+    if (n <= 0 || cc_cr1_decode(g_objbuf, (size_t)n, g_route) != CC_CR1_OK)
         return -1;
     S.rt_loaded = 1;
-    cc_nav_load(&S.nav, &S.route);
+    cc_nav_load(&S.nav, g_route);
     return 0;
 }
 
@@ -363,7 +384,7 @@ int cc_cmd_start(uint32_t now_ms)
         cc_wo_engine_second(&S.eng, 0, ok, v);
     }
     if (S.rt_loaded)
-        cc_nav_load(&S.nav, &S.route);
+        cc_nav_load(&S.nav, g_route);
     S.state = CC_RS_RECORDING;
     return 0;
 }
@@ -407,7 +428,7 @@ static void after_ride(void)
     if (S.wo_loaded)
         cc_wo_engine_load(&S.eng, &S.wo, S.set.ftp);
     if (S.rt_loaded)
-        cc_nav_load(&S.nav, &S.route);
+        cc_nav_load(&S.nav, g_route);
     cc_alerts_init(&S.al);
 }
 
@@ -731,7 +752,7 @@ static void second(uint32_t now_ms)
         unsigned ev = cc_nav_second(&S.nav, fix_ok, S.fix.lat_e7, S.fix.lon_e7, spd_ok ? spd : 0,
                                     S.alt.have ? S.alt.ascent : -1.0f);
         if ((ev & CC_NAV_EV_CLIMB_AHEAD) && recording) {
-            const cc_climb_t *c = &S.route.climbs[S.nav.climb_idx];
+            const cc_climb_t *c = &g_route->climbs[S.nav.climb_idx];
             cc_nav_view_t nv;
             cc_nav_view(&S.nav, S.alt.ascent, &nv);
             cc_banner_t b;
@@ -885,10 +906,10 @@ static void fill_view(uint32_t now_ms)
     }
     v->route_loaded = S.rt_loaded;
     if (S.rt_loaded) {
-        snprintf(v->route_name, sizeof v->route_name, "%s", S.route.name);
-        v->route_dist_m = S.route.dist_m;
-        v->route_ascent_m = S.route.ascent_m;
-        v->route_climbs = S.route.nclimbs;
+        snprintf(v->route_name, sizeof v->route_name, "%s", g_route->name);
+        v->route_dist_m = g_route->dist_m;
+        v->route_ascent_m = g_route->ascent_m;
+        v->route_climbs = g_route->nclimbs;
     }
     cc_nav_view(&S.nav, S.alt.have ? S.alt.ascent : -1.0f, &v->nav);
     v->ring_n = 0;

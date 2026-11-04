@@ -1,6 +1,7 @@
 #include "cc700/link.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "cc700/nav.h"
@@ -230,13 +231,30 @@ static int olist_cb(void *ctx, const hal_dirent_t *e)
     return 0;
 }
 
-static uint8_t objbuf[CC_RT_OBJ_MAX];
-static cc_route_t route_check;
-static cc_workout_t wo_check;
+/* The transfer check buffer (128 KB) and the route it decodes into (204 KB) cannot live in the
+   ESP32-S3's internal SRAM; see the same note in core.c. One calloc each on the first transfer puts
+   them in PSRAM on the unit (ESP-IDF sends any allocation over 16 KB there) and changes nothing on
+   the host. A failure to get them is reported as CC_ST_IO_ERROR: the object is not accepted, and
+   nothing has been renamed into place, so the phone can send it again. */
+static uint8_t *objbuf;
+static cc_route_t *route_check;
+static cc_workout_t *wo_check;
+
+static int check_mem(void)
+{
+    if (!objbuf) objbuf = calloc(1, CC_RT_OBJ_MAX);
+    if (!route_check) route_check = calloc(1, sizeof *route_check);
+    if (!wo_check) wo_check = calloc(1, sizeof *wo_check);
+    return objbuf && route_check && wo_check;
+}
 
 static int put_end(cc_link_t *l)
 {
     hal_fs_t *fs = l->fs;
+    if (!check_mem()) {
+        close_put(l, 1);
+        return CC_ST_IO_ERROR;
+    }
     if (l->put_next != l->put_size) {
         close_put(l, 1);
         return CC_ST_BAD_ARG;
@@ -255,8 +273,8 @@ static int put_end(cc_link_t *l)
         close_put(l, 1);
         return CC_ST_BAD_CRC;
     }
-    int ok = l->put_kind == 1 ? cc_cw1_decode(objbuf, (size_t)n, &wo_check) == CC_CW1_OK
-                              : cc_cr1_decode(objbuf, (size_t)n, &route_check) == CC_CR1_OK;
+    int ok = l->put_kind == 1 ? cc_cw1_decode(objbuf, (size_t)n, wo_check) == CC_CW1_OK
+                              : cc_cr1_decode(objbuf, (size_t)n, route_check) == CC_CR1_OK;
     if (!ok || memcmp(objbuf + 4, l->put_id, 8) != 0) {
         close_put(l, 1);
         return CC_ST_BAD_OBJECT;

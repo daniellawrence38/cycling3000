@@ -1,5 +1,6 @@
 /* ui_kit.c: the mockups' building blocks in LVGL, laid out with absolute coordinates taken from the
  * board HTML (tools/design/gen.py and tools/design/boards). */
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -337,25 +338,25 @@ void ui_dots(lv_obj_t *r, int n, int active)
 /* ------------------------------------------------------------------ formatting */
 void ui_fmt_hms(char *o, int cap, uint32_t s) { cc_fmt_mmss(o, cap, s); }
 
-void ui_fmt_hm(char *o, int cap, uint32_t s) { snprintf(o, (size_t)cap, "%u:%02u", s / 3600, (s / 60) % 60); }
+void ui_fmt_hm(char *o, int cap, uint32_t s) { snprintf(o, (size_t)cap, "%" PRIu32 ":%02" PRIu32, s / 3600, (s / 60) % 60); }
 
 void ui_fmt_dist(char *o, int cap, uint32_t m, int miles)
 {
     if (miles) m = (uint32_t)(((uint64_t)m * 1000 + 804) / 1609);
     uint32_t t = (m + 50) / 100;
-    snprintf(o, (size_t)cap, "%u.%u", t / 10, t % 10);
+    snprintf(o, (size_t)cap, "%" PRIu32 ".%" PRIu32, t / 10, t % 10);
 }
 
 void ui_fmt_speed(char *o, int cap, uint32_t mms, int miles)
 {
     uint32_t x10 = miles ? (uint32_t)(((uint64_t)mms * 36 * 1000 + 804500) / 1609000) : (mms * 36 + 500) / 1000;
-    snprintf(o, (size_t)cap, "%u.%u", x10 / 10, x10 % 10);
+    snprintf(o, (size_t)cap, "%" PRIu32 ".%" PRIu32, x10 / 10, x10 % 10);
 }
 
 void ui_fmt_thousands(char *o, int cap, uint32_t v)
 {
-    if (v >= 1000) snprintf(o, (size_t)cap, "%u,%03u", v / 1000, v % 1000);
-    else snprintf(o, (size_t)cap, "%u", v);
+    if (v >= 1000) snprintf(o, (size_t)cap, "%" PRIu32 ",%03" PRIu32, v / 1000, v % 1000);
+    else snprintf(o, (size_t)cap, "%" PRIu32, v);
 }
 
 static void civil(uint32_t local, int *y, int *mo, int *d, int *wd)
@@ -382,7 +383,7 @@ void ui_fmt_date(char *o, int cap, uint32_t local, int wd_on)
 
 void ui_fmt_clock(char *o, int cap, uint32_t local)
 {
-    snprintf(o, (size_t)cap, "%u:%02u", (local / 3600) % 24, (local / 60) % 60);
+    snprintf(o, (size_t)cap, "%" PRIu32 ":%02" PRIu32, (local / 3600) % 24, (local / 60) % 60);
 }
 
 lv_obj_t *ui_text_base(lv_obj_t *p, int x, int base_y, const lv_font_t *f, uint32_t color, lv_text_align_t al, int ls,

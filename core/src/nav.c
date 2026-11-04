@@ -1,5 +1,6 @@
 #include "cc700/nav.h"
 
+#include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -231,11 +232,11 @@ void cc_fmt_turn_dist(char *out, int cap, uint32_t m)
 {
     if (m >= 1000) {
         uint32_t t = (uint32_t)cc_div_half_up(m, 100);
-        snprintf(out, (size_t)cap, "%u.%u km", t / 10, t % 10);
+        snprintf(out, (size_t)cap, "%" PRIu32 ".%" PRIu32 " km", t / 10, t % 10);
     } else if (m >= 100) {
-        snprintf(out, (size_t)cap, "%u m", (uint32_t)cc_div_half_up(m, 10) * 10);
+        snprintf(out, (size_t)cap, "%" PRIu32 " m", (uint32_t)cc_div_half_up(m, 10) * 10);
     } else {
-        snprintf(out, (size_t)cap, "%u m", (uint32_t)cc_div_half_up(m, 5) * 5);
+        snprintf(out, (size_t)cap, "%" PRIu32 " m", (uint32_t)cc_div_half_up(m, 5) * 5);
     }
 }
 
@@ -488,6 +489,6 @@ void cc_nav_view(const cc_nav_t *n, float baro_ascent, cc_nav_view_t *v)
         v->climb_ascent_left_m = (uint32_t)lroundf(al);
         v->climb_to_start_m = (float)c->start_m > pos ? (uint32_t)lroundf((float)c->start_m - pos) : 0;
         uint32_t t = (uint32_t)cc_div_half_up(c->length_m, 100);
-        snprintf(v->climb_summary, sizeof v->climb_summary, "%u.%u km \xC2\xB7 %u m climb", t / 10, t % 10, c->ascent_m);
+        snprintf(v->climb_summary, sizeof v->climb_summary, "%" PRIu32 ".%" PRIu32 " km \xC2\xB7 %u m climb", t / 10, t % 10, c->ascent_m);
     }
 }

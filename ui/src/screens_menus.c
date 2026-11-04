@@ -1,4 +1,5 @@
 /* Menu, list and detail screens: boards 5 to 16, 18, 19 and 22 to 24. */
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -471,7 +472,7 @@ void scr_history(lv_obj_t *r, const ui_model_t *m)
         ui_fmt_dist(d, sizeof d, rd->dist_m, mi);
         snprintf(t, sizeof t, "%s \xC2\xB7 %s %s", dt, d, mi ? "mi" : "km");
         char sub[40];
-        snprintf(hms, sizeof hms, "%u:%02u:%02u", rd->timer_s / 3600, (rd->timer_s / 60) % 60, rd->timer_s % 60);
+        snprintf(hms, sizeof hms, "%" PRIu32 ":%02" PRIu32 ":%02" PRIu32, rd->timer_s / 3600, (rd->timer_s / 60) % 60, rd->timer_s % 60);
         if (rd->has_power) snprintf(sub, sizeof sub, "%s \xC2\xB7 avg %d W", hms, rd->avg_power);
         else snprintf(sub, sizeof sub, "%s", hms);
         lv_obj_t *row = ui_row46(r, LIST_Y + (i - s) * 46, t, sub, i == m->focus, C_TEXT);
@@ -617,7 +618,7 @@ void scr_phone(lv_obj_t *r, const ui_model_t *m)
         hint = "Open the CC700 app on your phone to send workouts and routes.";
     } else if (m->phone == UI_PHONE_PAIRING) {
         ui_text(r, 0, 120, 240, 14, &font_b600_11, C_MUTED, LV_TEXT_ALIGN_CENTER, 1, "PAIRING CODE");
-        snprintf(t, sizeof t, "%03u %03u", m->passkey / 1000, m->passkey % 1000);
+        snprintf(t, sizeof t, "%03" PRIu32 " %03" PRIu32, m->passkey / 1000, m->passkey % 1000);
         ui_text(r, 0, 138, 240, 62, &font_c700_60, C_TEXT, LV_TEXT_ALIGN_CENTER, 0, t);
         hint = "Enter this code in the CC700 app on your phone. Pairing stops after 60 seconds.";
     } else {

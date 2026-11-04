@@ -203,7 +203,7 @@ Linux container: GCC 13.3, CMake 3.28, Python 3.13 (pytest, fitdecode from PyPI)
 
 `make test` passes: 16 C tests plain and 14 under ASan, plus 20 Python tests.
 
-**Not done, and why.** `make fw-build` has not run. ESP-IDF's source is reachable here over git, but its compilers come from `dl.espressif.com` and GitHub release downloads, and both are refused by this container's network policy. So these are all Unverified:
+**Not done, and why.** `make fw-build` has not run. ESP-IDF's source is reachable here over git, but its compilers come from `dl.espressif.com` and GitHub release downloads, and both are refused by this container's network policy. So these were all Unverified at the time. **All four have since been verified on Daniel's PC — see "The firmware builds" below.**
 - the IDF build itself;
 - the "no warnings" check;
 - `app.bin`'s size;
@@ -244,6 +244,77 @@ The first time any of this was built or run outside the cloud container. Windows
 - **The 2 UI C tests** were not built: `ui/` needs LVGL from `ui/deps.sh`, which also wants node and npm, neither installed. `make test` counts 16 C tests; 14 ran.
 - **The BLE transport, and everything in `fw/`.** Unchanged — they need a phone and the unit.
 - **The live Intervals.icu upload.** Unchanged; still Daniel's, with his own regenerated key.
+
+## The firmware builds · 4 November 2026
+
+`make fw-build` had never run anywhere. It now passes on Daniel's PC, under WSL 2 (Ubuntu) with
+ESP-IDF v5.5.6 installed at `/opt/esp/esp-idf`. **Nothing was flashed and no serial port was opened**
+(START-HERE rule 1): the target is `idf.py app`, which builds the application only.
+
+**Result.** `app.bin` is **1,146,640 bytes of the 8,192,000-byte `ota_1` limit (13 %)**, and the probe
+RAM image is 106,768 bytes. No compiler warning anywhere, which is what brief WP7 asks for. The
+memory report:
+
+| Memory | Used | of | Note |
+| --- | --- | --- | --- |
+| DIRAM | 188,863 (55 %) | 341,760 | `.bss` 101,144, `.text` 70,651, `.data` 17,068; 152,897 free |
+| IRAM | 16,384 (100 %) | 16,384 | `.text` 15,356 plus the 1,028-byte vector table |
+| Flash code | 681,232 | | `.text` |
+| Flash data | 361,152 | | `.rodata` 360,896 (the fonts) |
+
+So all four items the WP7 section listed as Unverified for want of a toolchain are now verified: the
+IDF build, the no-warnings check, `app.bin`'s size, and the Kconfig names. On the last of those, the
+37 names in `fw/sdkconfig.defaults` are all real and all take effect — worth stating plainly because
+ESP-IDF ignores an unknown `CONFIG_` name in a defaults file **silently**, so a typo there would have
+looked exactly like success.
+
+**Two real bug classes had to be fixed first, and neither is visible on a host.**
+
+1. **`%u` for `uint32_t`: 29 call sites in 7 files.** `uint32_t` is `unsigned int` on x86-64 but
+   `long unsigned int` on xtensa, so every `printf("%u", some_uint32)` compiles clean in all 16 host C
+   tests and then fails the firmware's `-Werror=format` gate. They were in `core/src/alerts.c`,
+   `core.c`, `nav.c` and `store.c` and in `ui/src/ui_kit.c`, `screens_ride.c` and `screens_menus.c` —
+   that is most of the formatting code in the project. All now use `PRIu32` from `<inttypes.h>`.
+   Eleven sites were fixed in the first pass, from the build log; `make fw-check` then found the other
+   18 (30 compiler errors, since the warning counts each argument) in one go.
+   A `uint16_t` or `uint8_t` argument is *not* affected (it promotes to `int`, which GCC accepts for
+   `%u`), so only the 32-bit cases changed.
+2. **An include guard that was also a constant.** `hal/hal_display.h` opened with `#ifndef
+   HAL_DISPLAY_H` / `#define HAL_DISPLAY_H` and then defined `HAL_DISPLAY_H 320` as the panel height.
+   The guard worked by accident, but redefining it is an error under `-Werror`. The guard is now
+   `CC700_HAL_DISPLAY_H`; `HAL_DISPLAY_W` and `HAL_DISPLAY_H` are unchanged, so `main.c` is unchanged.
+
+**Then the link failed, and that was a design fault, not a typo.** `.dram0.bss` overflowed
+`dram0_0_seg` by **529,944 bytes**. The cause: `core/src/core.c` held a whole decoded route
+(`cc_route_t`, 208,800 bytes — 8,000 points × five 4-byte arrays, plus a 12,000-sample profile and
+500 turns) and a 131,072-byte object read buffer as static `.bss`, and `core/src/link.c` held another
+of each for checking a received object. About 740 KB of static buffers for a chip with 512 KB of
+internal SRAM, of which 341,760 bytes are addressable as DIRAM.
+
+Brief 5.7 already says to decode CR1 "into arrays in **PSRAM**", so this was the code not matching the
+design rather than a new decision. All four are now a one-time `calloc`, which on the unit lands in
+PSRAM because ESP-IDF's heap sends any allocation larger than `CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL`
+(16 KB) there, and which is an ordinary heap allocation on the host. That is also why `EXT_RAM_BSS_ATTR`
+was *not* used: Q30 configures octal PSRAM on an Unverified guess with `CONFIG_SPIRAM_IGNORE_NOTFOUND=y`
+so that a wrong guess still boots. With `.bss` in external RAM a wrong guess would take the whole
+firmware down; with the allocations, it costs routes and workouts and nothing else, through the
+object-load failure path the UI already has. The whole host suite is unchanged by the refactor:
+16 of 16 C tests plain, 14 of 14 under ASan and UBSan, 20 of 20 Python, and the three JVM modules green.
+
+**`make fw-check` is new** (`tools/fw_check.py`, `IDEAS.md` I7). It re-compiles only the project's own
+24 sources with the xtensa compiler and `-fsyntax-only`, reusing the exact flags the real build
+recorded in `build/fw/compile_commands.json`. It reports every target-dependent warning in the whole
+project in about ten seconds. This matters more than it sounds: a full `fw-build` takes roughly forty
+minutes and stops at the first failing file, so the `%u` class above surfaced a few files at a time and
+cost three rebuild cycles before the fast check was written and found the remaining 30 at once.
+It needs a configured `build/fw` and never links, so it cannot catch a section overflow (`IDEAS.md` I11).
+
+**Still Unverified after this.** Everything about running the firmware: the stock bootloader accepting
+an IDF v5.5.6 app, the PSRAM mode (Q30), the display, touch, GNSS, barometer, battery and the separate
+storage, the real BLE behaviour, and whether 152,897 free DIRAM bytes are enough once the task stacks,
+LVGL buffers and NimBLE's runtime allocations are all live. A build that links says nothing about any
+of that. The bring-up plan in `docs/BRINGUP.md` is still waiting for Daniel's review, and no step of it
+has been attempted.
 
 ## Future enhancements (not scheduled)
 

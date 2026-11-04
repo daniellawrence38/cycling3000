@@ -1,7 +1,9 @@
 /* hal_display.h: LVGL flush callback and geometry. ST7789 per the firmware strings; the bus and pins
  * are Unverified. */
-#ifndef HAL_DISPLAY_H
-#define HAL_DISPLAY_H
+#ifndef CC700_HAL_DISPLAY_H
+/* Not HAL_DISPLAY_H: that is the panel height below, and a guard of the same name is redefined on the
+   first include, which -Werror rejects (the guard still worked, but only by accident). */
+#define CC700_HAL_DISPLAY_H
 #include <stdint.h>
 
 #define HAL_DISPLAY_W 240

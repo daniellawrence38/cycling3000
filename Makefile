@@ -5,12 +5,13 @@
 #   make shots     render every board scenario and the contact sheet (WP4)
 #   make android   Gradle build and unit tests (WP5, WP6)
 #   make fw-build  ESP-IDF build of fw/ (WP7). Never flashes anything.
+#   make fw-check  recompile only our own sources for xtensa, syntax only: seconds, not minutes
 
 PYTHON  ?= python3
 JOBS    ?= $(shell nproc 2>/dev/null || echo 4)
 BUILD   := build
 
-.PHONY: all deps test test-c test-c-plain test-c-asan test-py vectors sim shots android fw-build clean
+.PHONY: all deps test test-c test-c-plain test-c-asan test-py vectors sim shots android fw-build fw-check clean
 
 all: test
 
@@ -56,6 +57,11 @@ shots: sim
 # Android :core and :testing (JVM). The shared protocol suite also runs against simunit, so build it first.
 android: test-c-plain
 	cd android && ./gradlew --no-daemon -q :core:test :testing:test :sync:test
+
+# Every target-dependent warning in core/, ui/, hal/ and fw/ in one pass, reusing the flags the real
+# build recorded (IDEAS.md I7). Needs build/fw configured once; never links and never touches hardware.
+fw-check:
+	$(PYTHON) tools/fw_check.py
 
 fw-build:
 	sh tools/fw_build.sh

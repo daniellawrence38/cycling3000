@@ -74,3 +74,33 @@ are in the stock firmware. v1 rules Wi-Fi and base maps out of scope (rule 4) an
 with that. Worth recording only because "the map storage format" is listed as unknown in rule 3, and
 the stock firmware plainly has one: if maps are ever wanted, there is a format on the SD card to read
 rather than invent.
+
+### I9 · One shared object buffer instead of two
+`core.c` and `link.c` each hold their own 128 KB object buffer: one to read a workout or route out of
+the file system to open it, the other to read a just-received object back to check its CRC and decode
+it. They are never both in use at the same moment in any flow today, so one shared buffer would save
+128 KB. It is not done because the two run on different tasks on the unit (BLE for the transfer, the
+ride/UI path for the load) and sharing them needs a lock and a clear owner; 128 KB of 8 MB PSRAM is
+not worth that risk yet. Worth revisiting if PSRAM ever gets tight. The same argument applies to the
+two decoded-route allocations (204 KB each): `link.c` decodes only to validate and throws the result
+away.
+
+### I10 · LVGL's examples and demos are compiled into the firmware build
+The build compiles `lv_example_*.c` from the managed LVGL component — about 60 files, several holding
+large static canvas buffers (`lv_example_canvas_windstorm_text.c` alone has a 240 KB `.bss` array).
+Nothing references them, so the linker's dead-code elimination drops them from the image, but they
+still cost build time on every clean build and they make a `.bss` listing hard to read: the biggest
+static objects in the whole archive are examples that are not in the firmware. `CONFIG_LV_BUILD_EXAMPLES=n`
+(and the `CONFIG_LV_USE_DEMO_*` switches) in `fw/sdkconfig.defaults` would leave them out. Not done
+tonight only because changing `sdkconfig.defaults` forces a full reconfigure and rebuild, and the DRAM
+fix needed the quick path first.
+
+### I11 · Keep `make fw-check` honest as the build grows
+`make fw-check` (added tonight, I7's answer) re-compiles the project's own sources with the xtensa
+compiler using the flags `build/fw/compile_commands.json` recorded, so it catches the whole class of
+target-dependent warnings in seconds rather than one file per forty-minute build. Two limits worth
+knowing: it is only as current as the last `idf.py reconfigure` (a brand-new source file is invisible
+to it until the build directory is reconfigured), and it checks warnings only, never linking, so it
+cannot see a section overflow like the one that followed. Making `fw-build` run `fw-check` first, and
+having `fw-check` warn when a source file in `core/`, `ui/` or `fw/main/` is absent from the compile
+database, would close both gaps cheaply.
