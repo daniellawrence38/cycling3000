@@ -317,3 +317,34 @@ Unverified". The bus is now known and it is **not SPI** — an i80 parallel bus 
 different driver, `esp_lcd_new_i80_bus` rather than an SPI panel IO. Writing that driver no longer
 needs the unit at all.
 
+
+### The two UARTs — and what the probe was actually seeing
+
+Same method, from `uart_set_pin(UartNum, UART0TXDPIN, UART0RXDPIN, -1, -1)`. The function at
+`0x420452a0` takes a selector and branches:
+
+| Vendor name | ESP port | TX | RX |
+| --- | --- | --- | --- |
+| UART0 | 0 | **GPIO 1** | **GPIO 0** |
+| UART1 | 2 | **GPIO 42** | **GPIO 41** |
+
+`rts` and `cts` are `-1` on both, so neither uses hardware flow control.
+
+**This explains both of the probe's mysteries, and neither was a button.**
+
+- **GPIO 41 is a UART RX.** The bursts every ~13 s with nothing being pressed are **incoming bytes**,
+  not contact bounce — the nRF co-processor's heartbeat over `MidComm`, sampled coarsely by a polling
+  loop. Retracting the "button on GPIO 41" finding was right, and now there is a mechanism for it.
+- **GPIO 0 is a UART RX too.** The three solid seconds of edges from 5.6 s to 8.5 s are incoming
+  serial data, then silence. The obvious source is the GNSS streaming NMEA until its power rail drops
+  — our RAM probe asserts nothing, so whatever normally keeps the receiver powered was never set.
+
+**A hypothesis for the unit that would not turn on.** GPIO 0 is both the UART0 RX line *and* the
+ESP32's boot strapping pin. If the device on that line were transmitting across a reset, it would
+hold GPIO 0 low at exactly the wrong moment and the ROM would enter download mode: dark screen, no
+firmware, "won't turn on" — and recoverable by precisely what recovered it, an esptool reset. This is
+a hypothesis, not a conclusion, but it fits every observation and it means the incident was likely
+benign rather than a power fault.
+
+It also explains why no button is on GPIO 0: the pin is taken.
+
