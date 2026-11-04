@@ -220,3 +220,52 @@ run is designed to separate them:
   interrupt line. Touch needs its rail and I2C configuration first, which this probe deliberately
   does not do (it never drives a pin).
 
+
+## Step 3b · Second run · the unit stopped responding, and two findings were wrong
+
+**What happened.** The second probe run completed its full 120 s, but Daniel pressed nothing during
+it ("I didn't get to test anything") and afterwards **the unit would not turn on** — dark screen, no
+response to the power button. `miniterm` ended with a `SerialTimeoutException` as the probe's USB
+went away.
+
+**Recovery, and what it proves.** `esptool chip-id` connected normally and its closing hard reset
+brought the unit back to the stock firmware. Nothing had to be reflashed. This is the first time the
+USB-Serial/JTAG recovery route has been needed rather than merely tested, and **it worked**: the
+route step 2 could not establish with a button turns out to be good enough to recover a unit that
+will not boot on its own.
+
+**Nothing was ever written to flash.** The whole session is `chip-id`, three `read-flash` reads and
+two `load-ram`. `load-ram` writes to RAM, which any power loss clears. `ota_0`, `otadata` and the
+partition table are as verified against the backup earlier the same day.
+
+**Likely cause, not confirmed:** for about two minutes the unit ran a 104 KB probe instead of its own
+firmware. The probe never drives a pin and cannot damage anything, but neither does it do any of the
+housekeeping the stock firmware does — including whatever keeps the power-management IC awake. A
+PMIC that latches off without a periodic kick from the host would produce exactly this symptom. Worth
+designing around before any further RAM app is run for minutes at a time.
+
+### Correction: GPIO 41 is not a button, and GPIO 0 is driven
+
+The first run's single burst on GPIO 41 was recorded here as "a button, active low". **That was
+wrong.** In the second run GPIO 41 produced bursts at 21.5, 34.5, 47.5, 58.8, 71.8, 84.8, 97.7 and
+110 s — **about 13 seconds apart, while nothing was being pressed.** Nothing a thumb does is that
+regular. It is periodic traffic on a signal line, sampled coarsely by the probe's polling; the most
+likely source is the UART to the nRF co-processor sending a heartbeat, which fits the `MidComm`
+layer and `mSysTimeStampFromNrf` already found in the firmware.
+
+**GPIO 0 is actively driven by something.** It produced roughly three solid seconds of edges from
+5.6 s to 8.5 s and then went quiet. That is not a strapping resistor sitting idle. What drives it is
+unknown.
+
+**So no button has been identified.** Two possibilities worth separating next: the presses simply
+fell outside the window, or **the buttons are wired to the nRF rather than to the ESP32** and arrive
+over that UART — which would also explain why a button combination reaches a firmware factory menu
+but nothing reaches the ROM.
+
+### What this says about the probe's design
+
+A 120 s window with no feedback is poor: there is no way to tell a button edge from line traffic
+while it runs, and no summary at the end. Before another live run it should: settle in 2 s, run for
+about 45 s, print a per-pin edge count every 10 s, and mark pins whose edges are periodic so traffic
+is visually separated from presses.
+
