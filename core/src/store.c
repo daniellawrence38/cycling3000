@@ -37,7 +37,7 @@ static void meta_encode(const cc_ride_meta_t *m, uint8_t *b)
     cc_put_u32(b + 28, s->distance_m);
     cc_put_u16(b + 32, s->avg_power);
     cc_put_u16(b + 34, s->max_power);
-    b[36] = (uint8_t)((s->has_power ? 1 : 0) | (s->has_hr ? 2 : 0) | (s->has_cad ? 4 : 0));
+    b[36] = (uint8_t)((s->has_power ? 1 : 0) | (s->has_hr ? 2 : 0) | (s->has_cad ? 4 : 0) | (s->has_ascent ? 8 : 0));
     b[37] = s->avg_hr;
     b[38] = s->max_hr;
     b[39] = s->avg_cad;
@@ -67,6 +67,9 @@ static int meta_decode(const uint8_t *b, uint32_t len, cc_ride_meta_t *m)
     s->has_power = b[36] & 1;
     s->has_hr = (b[36] >> 1) & 1;
     s->has_cad = (b[36] >> 2) & 1;
+    /* Bit 3 was unused before the ascent claim (Q19): an older .meta reads as "no ascent", which is
+       the safe answer, and the format version stays 1. */
+    s->has_ascent = (b[36] >> 3) & 1;
     s->avg_hr = b[37];
     s->max_hr = b[38];
     s->avg_cad = b[39];

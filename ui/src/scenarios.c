@@ -245,7 +245,7 @@ static void summary(ui_model_t *m, int up)
     m->summary.timer_s = 6492; m->summary.distance_m = 42300;
     m->summary.has_power = 1; m->summary.avg_power = 214;
     m->summary.has_hr = 1; m->summary.avg_hr = 148;
-    m->summary.ascent_m = 312; m->summary.avg_speed_mms = 6528;
+    m->summary.ascent_m = 312; m->summary.has_ascent = 1; m->summary.avg_speed_mms = 6528;
     m->summary_uploaded = up;
 }
 static void f_sum_wait(ui_model_t *m) { summary(m, 0); }

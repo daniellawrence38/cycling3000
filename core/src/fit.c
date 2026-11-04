@@ -112,6 +112,8 @@ static void acc_record(cc_fit_acc_t *a, const cc_fit_record_t *r)
     if (r->has_speed && r->speed_mms > a->speed_max_mms)
         a->speed_max_mms = r->speed_mms;
     if (r->has_alt) {
+        if (r->alt_baro)
+            a->ascent_claim = 1;
         if (!a->alt_have) {
             a->alt_have = 1;
             a->alt_ref_cm = r->alt_cm;
@@ -291,7 +293,7 @@ static void lap_message(msg_t *m, const cc_fit_acc_t *a, uint16_t index, uint32_
     m8(m, a->cad_n ? mean_u(a->cad_sum, a->cad_n) : 0xFF);
     m16(m, a->power_n ? mean_u(a->power_sum, a->power_n) : 0xFFFF);
     m16(m, a->power_n ? a->power_max : 0xFFFF);
-    m16(m, a->alt_have ? (uint32_t)cc_div_half_up(a->ascent_cm, 100) : 0xFFFF);
+    m16(m, a->ascent_claim ? (uint32_t)cc_div_half_up(a->ascent_cm, 100) : 0xFFFF);
     m8(m, (uint32_t)trigger);
     m8(m, 2); /* sport: cycling */
 }
@@ -334,7 +336,8 @@ void cc_fit_summary(const cc_fit_t *w, cc_fit_summary_t *s)
     s->max_hr = a->hr_max;
     s->has_cad = a->cad_n > 0;
     s->avg_cad = (uint8_t)mean_u(a->cad_sum, a->cad_n);
-    s->ascent_m = (uint16_t)cc_div_half_up(a->ascent_cm, 100);
+    s->has_ascent = a->ascent_claim;
+    s->ascent_m = a->ascent_claim ? (uint16_t)cc_div_half_up(a->ascent_cm, 100) : 0;
     s->avg_speed_mms = s->timer_s ? (uint32_t)cc_div_half_up((int64_t)a->dist_cm * 10, s->timer_s) : 0;
     s->records = a->records;
     s->laps = w->laps;
@@ -351,6 +354,7 @@ int cc_fit_close_messages(cc_fit_t *w, uint32_t end_ts, int32_t ascent_override_
     if (ascent_override_m >= 0) {
         w->session.ascent_cm = (uint32_t)ascent_override_m * 100u;
         w->session.alt_have = 1;
+        w->session.ascent_claim = 1; /* the ride engine only has an ascent when it has a barometer */
     }
     w->session.last_ts = end_ts;
     const cc_fit_acc_t *a = &w->session;
@@ -374,7 +378,7 @@ int cc_fit_close_messages(cc_fit_t *w, uint32_t end_ts, int32_t ascent_override_
     m8(&m, a->cad_n ? mean_u(a->cad_sum, a->cad_n) : 0xFF);
     m16(&m, a->power_n ? mean_u(a->power_sum, a->power_n) : 0xFFFF);
     m16(&m, a->power_n ? a->power_max : 0xFFFF);
-    m16(&m, a->alt_have ? (uint32_t)cc_div_half_up(a->ascent_cm, 100) : 0xFFFF);
+    m16(&m, a->ascent_claim ? (uint32_t)cc_div_half_up(a->ascent_cm, 100) : 0xFFFF);
     m16(&m, 0);        /* first_lap_index */
     m16(&m, w->laps);  /* num_laps */
     m8(&m, 0);         /* trigger: activity_end */

@@ -22,19 +22,34 @@ or needs a real ride, the question stays `open` and gains a `Research:` line wit
 recommendation; the `Answer:` line is left empty for him. Provisional decisions are not reopened
 (START-HERE rule 5): research that *supports* a default says so and changes nothing.
 
+
+**Status, 4 November 2026.** Answered: Q14, Q15, Q16, Q17, Q19, Q20, Q25, Q26, Q27, Q28, Q29, Q30,
+Q31 and Q33 — fourteen of the twenty-one. The seven still open all need Daniel or a real ride, and
+none of them blocks anything: **Q18** (what "LAP n" counts), **Q21**, **Q22**, **Q23** and **Q24**
+(preference and mockup-versus-spec calls on the UI, each with a `Research:` line setting out the trade
+and what it costs to change later), **Q32** (whether 30 m elevation sampling is good enough for climb
+detection, which needs a ride over a known climb), and **Q34** (whether ANT+ comes into scope for a
+later version). Q19 and Q29 are worth reading even though they are answered: Q19 found a fault, and
+Q29 is now proved from the linked firmware rather than from the source.
+
 ## Open questions
 
-### Q14 · WP1 · open
+### Q14 · WP1 · answered
 Question: Protocol 3.2 lists what the unit validates in a CW1 object, but not the header `flags` byte (documented as 0), the reserved step flag bits (documented as 0), or the characters of the name and labels. Should the unit reject an object that breaks these?
 Options: (a) accept anything the listed checks allow; (b) also reject non-zero header flags, reserved step flag bits, and name or label bytes outside printable ASCII 0x20 to 0x7E.
 Default used: (b). It is the safer reading: a future format that sets a flag the unit does not understand is refused (protocol 8 says unknown versions are refused for the same reason), and the UI never has to draw a control character. The phone never produces such objects, so nothing valid is lost. All are reported as BAD_OBJECT.
-Answer:
+Answer: **(b) stands, implemented and fuzzed.** `core/src/workout.c` rejects a non-zero header `flags` byte (`CC_CW1_FLAGS`, line 41), a non-zero reserved bit in a step's flags (line 72, the same code), and any byte outside printable ASCII 0x20 to 0x7E in the name or a step label (`printable()`, lines 49 to 53 and 86, reported as `CC_CW1_NAME`). All reach the phone as `BAD_OBJECT`, as protocol 3.2 requires.
+Two reasons to keep it, beyond the safety argument already recorded. First, it is the same rule protocol 8 applies to versions: refuse what you do not understand, rather than ignore it. A future CW1 that sets a flag to mean "the last step repeats" would, under (a), be accepted and then run wrongly — silently, which is the failure mode this project keeps finding (E8, E9). Second, it is free: the phone is the only producer, and `importWorkout` never emits such an object, so nothing valid is refused.
+The risk of (b) — that a future *reader* of an old object becomes stricter than the writer that made it — does not arise, because nothing stored on the unit was written by anything but this code.
+`test_fuzz_cw1` exercises the decoder against mutated objects and finds no accept that should have been a reject, and no crash.
 
-### Q15 · WP1 · open
+### Q15 · WP1 · answered
 Question: When the 3 s power becomes invalid during a step (meter lost), what happens to the status pill's state machine?
 Options: (a) reset it; (b) hold its state and dwell count, show no state, and resume feeding when power is valid again.
 Default used: (b). The spec says only that the pill shows nothing while the 3 s power is invalid; holding the state means a short dropout does not restart the 2 s dwell or the 5 s settle period.
-Answer:
+Answer: **(b) stands, and the code does exactly it.** In `core/src/workout.c`, the per-second step update sets `v->pill = CC_PILL_HIDDEN` and `v->pill_delta = 0` unconditionally, and then calls `cc_pill_feed` **only if `p3_valid`**. So while the 3 s power is invalid the state machine is not fed, not reset, and not read: its state and dwell count sit untouched, and the screen shows nothing, which is all the spec asks for. `cc_pill_reset` happens once per step, guarded by `e->pill_started`, so a dropout cannot restart the 2 s dwell or the 5 s settle window either.
+Why (b) rather than (a): a power meter dropout of a second or two is routine (a dead spot in the cadence, a radio collision), and under (a) every one of them would cost the rider a fresh 2 s dwell before the pill could say "TOO LOW" again — the pill would be least useful exactly when the data is patchy. Holding state means a dropout costs only the seconds it lasts. The cost of (b) is that the pill can reappear instantly on a stale state after a long dropout; that is bounded by the state only ever being one of four values computed from the same thresholds, so the worst case is a correct-looking pill one second early.
+`test_pill_v71` covers the invalid-power cases, including the pill staying hidden.
 
 ### Q16 · WP2 · answered
 Question: Are FIT `record` messages written while the ride is paused?
@@ -45,11 +60,13 @@ The risk worth naming is **a stop with no matching start**. A reported GPSMAP 67
 Checked in this codebase and it is: `core/src/core.c` writes `cc_fit_event_timer(..., 1)` on start (line 353) and on resume (line 398), and `..., 0)` on pause (line 387); `cc_fit_finish` (`core/src/fit.c:348`) writes a closing stop *only if the timer is running*, so it never emits a second, dangling one. `core/tests/test_fit.c` drives a pause at 600 s and a resume at 660 s and checks the session's timer total excludes the gap. A power cut while paused leaves a file ending in a stop, which is a truthful end rather than a truncation.
 Not checked against the live service: how Intervals.icu specifically derives moving time. It is unaffected by the choice above and stays part of Daniel's first live upload.
 
-### Q17 · WP2 · open
+### Q17 · WP2 · answered
 Question: While storage fails, brief 5.6 asks for recording "in RAM as far as a 5-minute ring allows". A ring keeps the newest records, but dropping the oldest unsaved bytes out of the middle of a FIT stream is awkward.
 Options: (a) a true ring that drops the oldest unsaved records; (b) a 24 KB buffer (about 10 minutes of records at 25 bytes each) that keeps the oldest unsaved records and drops new ones once full; events and laps have a reserved 2 KB.
 Default used: (b), simpler and never corrupts the stream; the buffer holds more than 5 minutes. The test fills it with 2,000 records during an outage, checks at least 300 are kept and that the file finalises with a valid CRC once storage returns.
-Answer:
+Answer: **(b) stands.** `CC_FIT_BUF` is 24,576 bytes with `CC_FIT_RESERVE` 2,048 of it kept for events and laps (`core/include/cc700/fit.h`); records stop being buffered at `CC_FIT_BUF - CC_FIT_RESERVE` and increment `dropped_records`, while an event or a lap may still use the reserve (`core/src/fit.c:160`). `test_storage_error_keeps_records_in_ram` fails 2,000 record writes, checks that some were dropped, that at least 300 — five minutes — were kept, and that the file still finalises with a valid CRC when storage returns.
+Why keeping the oldest is right, which is the part the brief's wording leaves open. A FIT file is a stream of definition-dependent messages, so dropping bytes out of the middle of what has already been buffered is not a matter of moving a tail pointer: it would require re-serialising from a record boundary, and a reader that hits a partial message stops there. Keeping the oldest and refusing new ones needs no such surgery and leaves a file that is valid all the way to its end. The data cost is small and the right way round: a storage outage near the end of a ride loses the newest minutes, but the ride up to the outage is intact and uploadable, whereas a ring would sacrifice the start of the ride to keep the part most likely to be ridden home on a dead unit anyway.
+The gap this leaves in the file is harmless to readers: every record carries its own timestamp, so an outage reads as a period with no samples, exactly like the pause gap that Q16 already relies on.
 
 ### Q18 · WP2 · open
 Question: The workout banner and the Lap banner say "LAP n". Should n count only manual laps, or every FIT lap including the automatic laps at workout step changes?
@@ -58,11 +75,28 @@ Default used: (b), so the number on the banner matches the lap number in Interva
 Research: this one is genuinely yours — it is a preference about what the number on the banner is *for*, and both readings are defensible. The trade is: (b) keeps the banner honest against what you will later see in Intervals.icu, at the cost of the number jumping mid-workout as automatic step laps are counted; (a) keeps "LAP 3" meaning "the third time I pressed lap", which is what the number means to a rider pressing the button, at the cost of disagreeing with the upload. The deciding evidence is a ride with a workout loaded, watching whether the jumping number is confusing in practice. Nothing in the code depends on which you pick — it is one counter — so changing it later is cheap.
 Answer:
 
-### Q19 · WP2 · open
+### Q19 · WP2 · answered
 Question: Without a barometer, what altitude goes in the FIT file?
 Options: (a) none; (b) the GNSS altitude.
 Default used: (b) for the file only. Gradient, ascent and the Climb page stay invalid ("--") without a barometer, as brief 5.3 says.
-Answer:
+Answer: **(b) stands for the record stream, and it exposed a real fault in the totals, now fixed.**
+
+Research first, on what the receiving platforms actually do with the altitude in a file. **Strava** decides by whether the device has a barometer: for a device without one it discards the file's elevation and substitutes its own from the GPS track and its terrain data, and for a barometric device it keeps the file's. **Intervals.icu** has an "elevation correction" setting: with it on, it looks up an elevation for each GPS point from map services and computes ascent from those; with it off, it uses the altitude and the ascent total that are in the file, with its own algorithm. So on both services an altitude stream from GNSS is at worst ignored and at best correctable — which is the argument for (b), and (b) stands. A file with no altitude at all is strictly worse: an Intervals.icu user with correction off then sees a flat ride, with nothing to correct from.
+
+Provenance: those two behaviours come from Strava and Intervals.icu support threads and from the Intervals.icu developer's own replies, not from API documentation, so they are Unverified in the strict sense. The decision does not rest on them — (b) is at worst ignored and at best useful on either service — but the number the file *claims* does, which is what follows.
+
+The fault that this search turned up is in the **totals**, not the stream. Writing the GNSS altitude into each record set `has_alt`, which made the FIT accumulator treat the ride as having usable altitude, so every lap's and the session's `total_ascent` was computed from GNSS altitude with brief 5.3's 1 m threshold — and the `.meta` summary, and therefore the Summary screen's ASCENT tile, took the same number. That is wrong three times over:
+- Brief 5.3 defines ascent from the *smoothed barometer* altitude alone. Nothing authorises a GNSS ascent.
+- The unit's own ride screen shows `--` for ascent without a barometer (spec 5, `v->alt_ok`). The Summary screen for the same ride showed a confident figure. A device should not print a number it has just refused to print.
+- GNSS vertical error is several metres and wanders, so a 1 m threshold accumulates a large phantom ascent. This is exactly the "inflated gain" effect the Garmin and Suunto forum threads describe for unsmoothed barometric data, and GNSS noise is worse. The number would have been not just unauthorised but badly wrong, and Intervals.icu with correction off would have taken it at face value.
+
+Fixed by separating "there is an altitude" from "an ascent may be claimed". `cc_fit_record_t` gains `alt_baro`, set only on the barometric branch in `core.c`; the accumulator gains `ascent_claim`, set only by a record with `alt_baro` or by the ride engine's explicit barometric override in `cc_fit_close_messages`; lap and session write `total_ascent` as **FIT-invalid (0xFFFF), not 0**, without a claim. `cc_fit_summary_t` gains `has_ascent`, carried in the `.meta` flags byte's spare bit 3 (an older `.meta` decodes as "no ascent", which is the safe reading, so the format version stays 1), and the Summary screen shows `--`, the same idiom it already uses for power and heart rate. 0xFFFF rather than 0 matters: a 0 asserts "this ride was flat", which is a different false claim.
+
+Two tests pin it. `test_no_barometer_claims_no_ascent` records a clean 30 m climb with GNSS altitude only and asserts no claim, then the identical ride with `alt_baro` set and asserts 29 m (the threshold leaves the last 90 cm uncounted). `test_no_barometer_file_has_altitudes_but_no_ascent` decodes the resulting file with fitdecode and asserts `session.total_ascent is None` while all 300 record altitudes are present and span the climb — so the stream is there to correct and the total is absent rather than zero.
+
+One consequence worth stating: a **recovered** ride claims no ascent either, because recovery rebuilds the totals by re-reading the records and a FIT record does not say where its altitude came from. A recovered barometric ride therefore loses its session `total_ascent` while keeping every altitude, so any platform can still compute it. That is the truthful answer from the file alone; carrying the flag through recovery would need a byte in the `.part` sidecar and is not worth it.
+
+Still Unverified: whether this unit has a usable barometer at all, and its noise, which is a bring-up question. The no-barometer path above is the fallback, not the expected case.
 
 ### Q20 · WP4 · answered
 Question: Brief 6.2 asks for the glyph `→` in every font. The Barlow files available (Fontsource 5.3.0, all subsets) have no `→`, and no mockup uses it as text (arrows are drawn as icons).
@@ -74,55 +108,87 @@ Answer: **(a), and it was not a choice.** Verified directly against the fetched 
 Question: Brief 6.3 picks the map scale so "the next turn and 1.5 times the distance to it fit" in the view width, with the rider at 60 % of the map height. Only about 95 px of the 158 px map is above the rider, so at the 400 m view that rule gives for a turn 250 m ahead (the mockup's case) the turn is off the top of the map.
 Options: (a) fit across the view width as written; (b) fit 1.5 times the distance in the space above the rider.
 Default used: (b): view width at least 1.5 × distance × 240 / 95, from {100 … 3200} m, never below 200 m. The turn is then always on the map, as the mockup shows.
+Research: the numbers are now measurable, and they are what makes this a real choice rather than a bug fix. The rider sits at 60 % of the 158 px map, so 95 px of map lies ahead; the view is 240 px wide. For the mockup's case — a turn 250 m ahead — the brief as written needs 1.5 × 250 = 375 m across the width, which picks the 400 m step and puts the turn at 250/400 × 240 = 150 px ahead of the rider, 55 px past the top edge. So the mockup's own "400 m" label and its visible turn chevron cannot both be right. Fitting the same 375 m in the 95 px actually available needs 1.5 × 250 × 240 / 95 = 947 m, which picks **1600 m** from {100, 200, 400, 800, 1600, 3200}.
+That is the cost of (b), and it is visual: where the mockup reads "400 m", the unit will read "1600 m", and the route line and surroundings will be drawn four times smaller than the mockup suggests. The turn is always on the map, which is what (b) was chosen for, but the Navigation page looks more zoomed-out than the design.
+Two other ways out, both of which reopen something and so were not taken: move the rider lower than 60 % of the map (brief 6.3 fixes 60 %), or accept the turn being off the top and rely on the banner, which already states the distance and the instruction in words. The third is to keep (b) and coarsen nothing — the current code (`core/src/nav.c:464`).
+Deciding evidence is a look at the Navigation page in the simulator at both scales with a 250 m turn; it is one constant either way (`240.0f / 95.0f`), so changing your mind later is a one-line edit and a golden-image refresh.
 Answer:
 
 ### Q22 · WP4 · open
 Question: The Navigation mockup draws the route 8 px wide on a `#10151B` map; brief 6.3 and spec 8.3 say 3 px on the plain background `#0B0D10` for phase 1.
 Options: follow the mockup; follow the spec.
 Default used: the spec (3 px, `#0B0D10`), since phase 1 is defined there; the mockup's roads are phase 2. Easy to change if Daniel prefers the wider line.
+Research: the two documents are describing different phases, not disagreeing, which is why the spec wins for now. Spec 8.3 and brief 6.3 specify phase 1: no base map, a 3 px route line on the plain `#0B0D10` background. The mockup's 8 px line on `#10151B` is drawn over roads, where a thicker line is needed to stay legible against map detail and the lighter panel makes the map read as a surface. Taking the mockup's line weight into phase 1 would give a heavy line floating on an empty background — the weight without the reason for it.
+So this is a preference about phase 1 only, and it is cheap: the width and the colour are two constants in `ui/src/screens_ride.c`. If you want the wider line now, the thing to look at is the simulator's Navigation scenario at both widths, because 8 px of route on an empty background also eats the space the position marker and the turn chevron need.
 Answer:
 
 ### Q23 · WP4 · open
 Question: Profile (screen 12) has four steppers and "Applies on SAVE", with SAVE on the right button. With the three buttons alone, how is a stepper pressed?
 Options: (a) the power button moves focus through the four steppers and then SAVE; the right button activates the focused item; (b) the right button always saves and steppers are touch-only (breaks "every control reachable by buttons").
 Default used: (a). Focus starts on −5; with focus on SAVE the footer's SAVE is what the right button does. Holding a focused stepper's button repeats at 5 per second after 0.5 s, as spec 6 describes for touch.
+Research: (a) is not really a choice — it follows from "every control reachable by buttons", which the spec states and which the unit's three buttons make a hard constraint. With only power, left and right, and the right button owing a SAVE, the power button is the only candidate for moving focus, so the question is really what the right button does when focus is on a stepper rather than on SAVE. (a) answers: it activates the focused item, and the footer label follows the focus, so the rider always sees what the right button will do.
+What is worth checking on the real unit rather than in the simulator is the repeat: holding a focused stepper repeats at 5 per second after 0.5 s, the rate spec 6 gives for touch. Four steppers with a ±5 W step means a 40 W change is 8 presses or about 1.6 s of hold, which is fine; a larger range would want acceleration. Nothing here is expensive to change — it is the repeat constants in the Profile screen.
 Answer:
 
 ### Q24 · WP4 · open
 Question: The Sensors mockup shows "Add sensor" with both a power meter and a heart-rate strap paired; spec 6 says it is hidden once both are paired. Also the status bar mockups show all four icons, while spec 5 shows an icon only for each connected sensor or service.
 Options: follow the mockups; follow the spec.
 Default used: the spec, for both (behaviour is the spec's). The screenshots therefore differ from the mockups there.
+Research: both halves are cases where the mockup shows a *populated* screen rather than a rule. "Add sensor" appears in the Sensors mockup with both sensors already paired because the mockup is showing the row style, and all four status-bar icons appear together because the mockup is showing the icon set. Spec 5 and 6 state the behaviour: the row is hidden once both are paired, and the status bar shows an icon only for a connected sensor or service. Following the spec means the screenshots differ from the mockups on those two screens, which is the only cost and is already recorded.
+Worth saying plainly, because it decides it: a visible "Add sensor" with nothing left to add is a control that cannot do anything, and a status icon for a sensor that is not connected is the one case where an icon actively misleads — the rider glances at the bar to see whether the power meter is there. If you would rather the bar always showed four icons with the unconnected ones dimmed, that is a different and defensible design, but it is a spec change, not a mockup-versus-spec call, and it would want a mockup of the dimmed state.
 Answer:
 
-### Q25 · WP5 · open
+### Q25 · WP5 · answered
 Question: Brief 7.5 takes bearings over 30 m before and after each vertex, then merges candidates within 40 m "summing the angle". Neighbouring vertices' 30 m windows overlap, so summing them counts one corner several times (a 90° corner drawn with three points would read as about 180°, a U-turn).
 Options: (a) as written; (b) sum the local heading change at each vertex over a cluster of vertices less than 40 m apart, which is the true total change of direction; (c) keep the largest windowed angle in each cluster.
 Default used: (b). The bands (35, 60, 120, 165 degrees) are unchanged and the turn is placed at the cluster's sharpest vertex. Tested on synthetic corners drawn with one and with several points.
-Answer:
+Answer: **(b) stands, and the brief's wording really would have produced U-turns.** The fault is arithmetic, not interpretation: with 30 m windows before and after each vertex, two vertices 10 m apart share most of their windows, so the same change of direction is measured by both and then added. A single 90° corner drawn with three points reads as roughly 180°, which falls in brief 7.5's `>= 165°` band — a U-turn instruction at an ordinary left turn, on a route the phone drew faithfully. The denser the GPX, the worse it gets, so the bug would have been most visible on the best data.
+(b) sums the heading change *at each vertex* across a cluster of vertices less than 40 m apart, which is the real total change of direction through the corner and is independent of how many points were used to draw it. The bands (35, 60, 120, 165 degrees) and the 40 m merge distance are unchanged, so nothing else in brief 7.5 moves, and the turn is placed at the cluster's sharpest vertex, which is where a rider would say the corner is. Implemented in `android/core/.../route/Route.kt` (the `clusterAngle` / `clusterAt` loop).
+(c), keeping the largest single windowed angle in a cluster, was considered and rejected: it is right for a corner drawn with one point and wrong for a corner drawn with four, where no single vertex carries the whole turn and the instruction would come out as "slight left" for a right-angle bend. It fails in the opposite direction to the bug, which is not an improvement.
+`RouteTest.cornersCountOnce` pins it: a 90° left drawn with three points 10 m apart gives one LEFT, not a U-turn.
 
-### Q26 · WP6 · open
+### Q26 · WP6 · answered
 Question: Spec 10.6 and brief 7.2 say the app "asks for its date" for a ride flagged "time unknown". A date alone does not fix the start time, and the provisional time of day (2000-01-01 plus the unit's uptime) means nothing.
 Options: (a) date only, start at a fixed hour; (b) date and start time; (c) date, and take the time of day from the provisional clock.
 Default used: (b). Set date opens a date picker then a time picker (local time, starting at 07:00); every FIT time is shifted by the same offset (the `timestamp`, `start_time` and `time_created` fields, as the unit does in brief 5.6) and the upload uses the corrected start for the duplicate check and the file name.
-Answer:
+Answer: **(b) stands.** A date alone cannot place a ride in time, and the point of the question is that the alternative is not "approximate" but *meaningless*: the provisional clock starts at 2000-01-01 plus the unit's uptime, so the time of day in the file is a number of hours since the unit was switched on. (c) would therefore upload a ride that claims to have started at, say, 00:41 — and would do it confidently, with nothing on the activity to say the time was invented. (a) is the same fault with a rounder number.
+So the app asks for both: `Set date` opens a date picker and then a time picker in local time, starting at 07:00 because that is when a ride is most likely to have begun, and every FIT time field is shifted by one offset — `timestamp` on every record, lap, event, session and activity, plus `start_time` and `time_created` — exactly as the unit does when it learns the time during a ride (brief 5.6). The corrected start then drives both the duplicate check's day window and the file name, so a ride dated after the fact is indistinguishable from one recorded with a known clock.
+Two details worth recording. The shift is applied to the stored file, not at upload, so re-uploading does not re-shift. And the entered time is read as *local* and converted once, which is what a rider means by "I started at half past seven"; the FIT fields themselves stay UTC seconds.
+`FitShiftTest.shiftsEveryTimeFieldAndKeepsTheFileValid` moves a real simunit-recorded ride and checks every time field moved by the same offset, that nothing else changed, that both CRCs are valid and that `tools/fitcheck` accepts the result; `SimunitAppFlowTest.fullFlow` drives the whole path, entering 1 November 2026 07:30 Perth time and checking the uploaded file starts there.
 
-### Q27 · WP6 · open
+### Q27 · WP6 · answered
 Question: Brief 7.1 lists three modules (`:core`, `:testing`, `:app`). The app's behaviour (connection and pairing, the mirror, ride sync, the upload queue, the FIT time shift, import) needs testing against simunit, and this environment cannot build `:app` (no Android SDK, and Google's Maven repository is blocked).
 Options: (a) put it all in `:app`, untested here; (b) a fourth pure JVM module, `:sync`, that `:app` uses, with `:app` only adding the screens and the Android implementations of its store and connector interfaces.
 Default used: (b). `:sync` depends on `:core` and `:testing` (the app needs `SocketTransport` at run time to reach simunit).
-Answer:
+Answer: **(b) stands, and it turned out to be the reason WP6 could be verified at all.** The argument for the fourth module was testability; what it actually bought was the whole WP6 done-condition flow running against the real C core, through the same classes the Compose screens call, on a plain JVM with no Android SDK and no device — `SimunitAppFlowTest.fullFlow`, 19 tests in `:sync`. Had the behaviour sat in `:app`, none of it could have been exercised in the container where it was written, and the first opportunity to find a fault would have been an emulator on Daniel's PC.
+That is not hypothetical: the flow test is what found E7 (response and event opcodes overlap, so a receiver classifying by opcode alone mistakes a ride response for an event), which no unit test of either side alone would have shown.
+The split as built: `:core` holds the protocol, FIT, CW1/CR1 and the Intervals.icu client (OkHttp only); `:testing` the fixtures and `SocketTransport`; `:sync` the app's behaviour (`UnitSession`, `RideSync`, the upload queue, the FIT time shift, import, the store interfaces with in-memory versions); `:app` adds only the Compose screens and the Android implementations — Nordic BLE, Room, DataStore, Tink, WorkManager. `:app` is the only module that needs the Android SDK, and it is included in the Gradle build only when one is configured.
+The cost is one more module boundary and the interfaces across it, which is the usual price and was paid once.
 
-### Q28 · WP6 · open
+### Q28 · WP6 · answered
 Question: The WP6 flow needs pairing "with the passkey simulated", but simunit has no BLE security (connecting counts as the bonded phone).
 Options: (a) add a passkey exchange to simunit's TCP framing; (b) simulate it in the app's simulated connector, which plays the unit's part.
 Default used: (b). The simulated unit's passkey is 123456; the app asks for it in its own dialog (over BLE, Android's pairing dialog asks instead), refuses a wrong one, and stores the unit only after a good one. Nothing on the unit or in the protocol changes.
-Answer:
+Answer: **(b) stands.** The choice is between simulating the passkey where the *unit's* part is played and where the *phone's* part is played, and (b) is the only one that leaves the shipped artefacts alone: nothing in `simunit`, in `core/` or in the protocol changes, so the simulated path cannot drift from the real one by having taught the unit a second security model. `SimulatedConnector` (`android/sync/.../UnitSession.kt`) holds the passkey, defaulting to `123456`, refuses a wrong one, and stores the unit only after a good one; over real BLE the same `pair(unit, passkey)` signature is satisfied by Android's own pairing dialog instead.
+(a) — adding a passkey exchange to simunit's TCP framing — would have meant inventing a handshake that the real transport does not have, in the one component whose job is to be the C core's honest stand-in. A bug in that invented handshake would look like a protocol bug.
+What this deliberately does **not** test is real BLE bonding: Android's dialog, the unit's NimBLE security configuration (`CONFIG_BT_NIMBLE_SM_SC=y`, legacy pairing off) and the passkey the unit actually displays. That stays Unverified until a phone and the unit are in the same room, and it is listed as such in WP6. The simulated path tests everything above the bond: that a wrong code is refused, that nothing is stored on refusal, and that the connect sequence and mirror follow protocol 5.
+`SimunitAppFlowTest.fullFlow` starts with a wrong passkey and asserts nothing was stored, then pairs with the right one.
 
-### Q29 · WP7 · open
+### Q29 · WP7 · answered
 Question: An ESP-IDF app normally initialises the `nvs` partition and keeps PHY calibration data, BLE bonds and core dumps in flash data partitions. On this unit those partitions belong to the stock firmware (its settings and pairing may live in `nvs`), and step 4 of the bring-up must leave the stock firmware able to run unchanged.
 Options: (a) let the custom app use `nvs`, `phy_init` and `coredump`; (b) the custom app touches none of them: no `nvs_flash_init`, no PHY data storage, core dumps off, NimBLE bonds in RAM.
 Default used: (b). The cost is that the phone bond is forgotten at every reboot until bonds move to the separate storage (`CC700/config/`, the same two-slot scheme as settings) during bring-up step 6. Tests in `tools/tests/test_fw_partitions.py` check the configuration.
-Answer:
+Answer: **(b), and the built firmware now proves it rather than asserting it.** `tools/tests/test_fw_partitions.py` checks the *source* for the absence of `nvs_flash_init` and of partition and OTA writes. Now that `make fw-build` passes, the same claim can be made from the linked image, which is a much stronger statement because it covers everything ESP-IDF pulls in behind the application's back.
+
+Read with `xtensa-esp32s3-elf-nm --defined-only` over `build/fw/cc700.elf` (8,321 defined symbols):
+
+- **No flash write or erase entry point of any kind.** No `esp_flash_write`, `esp_flash_erase`, `spi_flash_write`, `spi_flash_erase`, `esp_partition_write`, `esp_partition_erase`, `esp_efuse_write` or `esp_efuse_burn`. The firmware is physically unable to modify flash or eFuses: the code to do it is not in the image. That covers the whole of the stock firmware's data — `nvs`, `phy_init`, `coredump`, `otadata`, the partition table and `ota_0` — in one statement, and it holds however the app is driven.
+- **No NVS API.** No `nvs_flash_init`, no `nvs_open`, no `nvs::NVSPartitionManager`. Three symbols match the name "nvs" and none is an NVS call: `nvs_sec_provider_include_impl` is the linker anchor named in the link line (`-u nvs_sec_provider_include_impl`), and `ble_restore_our_sec_nvs` and `ble_restore_peer_sec_nvs` are NimBLE store helpers which, with no NVS API linked at all, cannot reach NVS. That is independent evidence that `CONFIG_BT_NIMBLE_NVS_PERSIST=n` took effect, which matters because a mistyped Kconfig name in a defaults file is ignored silently.
+- **One OTA symbol, and it is a read.** `esp_ota_get_running_partition`, which is how the app knows which partition it booted from; `esp_partition`'s own code calls it. No `esp_ota_begin`, `esp_ota_write` or `esp_ota_set_boot_partition`.
+
+So the cost named in the default is confirmed as the only cost: the phone bond lives in RAM and is forgotten at every reboot until bring-up step 6 moves bonds to `CC700/config/`. Nothing else about the stock firmware's state is reachable from this image.
+
+Not covered by this: that the stock firmware still *runs* after step 4 writes `ota_1` and flips `otadata`. That is a hardware step and stays Unverified until bring-up; what is settled here is that the custom app, once running, cannot touch anything.
 
 ### Q30 · WP7 · answered
 Question: The handover gives 8 MB of in-package PSRAM ("AP_3v3") but not its interface. ESP32-S3 parts with 8 MB in-package PSRAM are octal; the wrong mode makes PSRAM fail to start.

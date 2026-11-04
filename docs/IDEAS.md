@@ -104,3 +104,24 @@ to it until the build directory is reconfigured), and it checks warnings only, n
 cannot see a section overflow like the one that followed. Making `fw-build` run `fw-check` first, and
 having `fw-check` warn when a source file in `core/`, `ui/` or `fw/main/` is absent from the compile
 database, would close both gaps cheaply.
+
+### I12 · Tell the FIT file where its altitude came from
+Q19's fix stops a lap or session claiming an ascent that was computed from GNSS altitude, by carrying
+an `alt_baro` flag on each record into the accumulator. The flag lives only in RAM, so the one case it
+cannot cover is **recovery**: a ride rebuilt from a truncated `.part` is re-totalled by re-reading its
+records, and a FIT record does not say where its altitude came from, so a recovered barometric ride
+loses its session `total_ascent` (every altitude is still in the file, so any platform can recompute
+it). Closing that would mean one byte of provenance beside the ride — the `.part` already has a
+`.time` sidecar for provisional-time rides, so the mechanism exists. Cost: a sidecar write per ride
+and a read in the recovery path. Value: only the recovered-ride case, which is already a damaged ride,
+so this is recorded rather than done.
+
+### I13 · A FIT `device_info` message would let platforms decide for themselves
+Strava reportedly keeps a file's elevation for a barometric device and substitutes its own for one
+without. It can only do that because it knows the device. This firmware writes six message types — file_id, event, record, lap, session, activity — and no
+`device_info` at all, and its `file_id` says manufacturer 255 ("development") with product 0, so no
+platform can recognise the device even in principle. A `device_info` message naming the
+product and its sensors would let a platform apply the right rule by itself instead of inferring, and
+would also make the files identifiable in a library full of other devices' rides. Cost: one more
+message definition and a handful of fields. Worth doing before the first upload if it is cheap; the
+decision in Q19 does not depend on it.

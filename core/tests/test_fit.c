@@ -34,6 +34,7 @@ static void fill(cc_fit_record_t *r, uint32_t s, uint32_t ts_base)
     r->lat_e7 = -319640000 + (int32_t)s * 30;
     r->lon_e7 = 1158300000 + (int32_t)s * 50;
     r->has_alt = 1;
+    r->alt_baro = 1;                                    /* a unit with a barometer: ascent is claimable */
     r->alt_cm = 2000 + (int32_t)(s % 300) * 10;        /* saw-tooth: 30 m up per 300 s */
     r->has_speed = 1;
     r->speed_mms = 8000;
@@ -117,6 +118,7 @@ static void test_finished_file(void)
     TEST_ASSERT_EQUAL_UINT8(85, s.avg_cad); /* zeros excluded */
     /* Saw-tooth: 29 m up per 300 s ramp in 1 m steps; ramps restart at 0, 300, 900, 1200, 1500, 1800
      * with the pause removing 600..659 so the 600 ramp starts at 660 (alt 2.0+0.6..). */
+    TEST_ASSERT_TRUE(s.has_ascent);
     TEST_ASSERT_TRUE(s.ascent_m > 100 && s.ascent_m < 200);
     TEST_ASSERT_EQUAL_UINT32(ex.records, s.records);
 }
@@ -290,6 +292,64 @@ static void test_storage_error_keeps_records_in_ram(void)
     TEST_ASSERT_TRUE(cc_fit_check(b, len));
 }
 
+
+/* Q19: with no barometer the GNSS altitude still goes in every record, but no ascent is claimed.
+ * Brief 5.3 defines ascent from the smoothed barometer alone, and the unit's own screens show "--"
+ * for ascent without one, so a lap or session total_ascent derived from GNSS altitude would be a
+ * number the device refuses to display -- and GNSS vertical noise inflates it badly through the 1 m
+ * threshold. The file therefore carries the altitude stream (so a platform can correct it) and an
+ * invalid total_ascent. The companion check that the written field really is FIT-invalid rather than
+ * zero is in tools/fitcheck/test_fit_recovery.py, which decodes no-baro.fit with fitdecode. */
+static void test_no_barometer_claims_no_ascent(void)
+{
+    TEST_ASSERT_EQUAL_INT(0, cc_fit_begin(&w, fs, "rides/2.fit.part", T0));
+    cc_fit_event_timer(&w, T0, 1);
+    for (uint32_t s = 0; s < 300; s++) {
+        cc_fit_record_t r;
+        memset(&r, 0, sizeof r);
+        r.ts = T0 + s;
+        r.has_pos = 1;
+        r.lat_e7 = -319640000;
+        r.lon_e7 = 1158300000;
+        r.has_alt = 1;                 /* GNSS altitude: in the file ... */
+        r.alt_baro = 0;                /* ... but not from the barometer, so not summed */
+        r.alt_cm = 2000 + (int32_t)s * 10; /* a clean 30 m climb: 0 only because nothing claims it */
+        r.dist_cm = s * 800;
+        cc_fit_record(&w, &r);
+    }
+    /* -1: the ride engine has no barometric ascent to override with (core.c do_finish) */
+    TEST_ASSERT_EQUAL_INT(0, cc_fit_close_messages(&w, T0 + 300, -1));
+    cc_fit_summary_t s2;
+    TEST_ASSERT_EQUAL_INT(0, cc_fit_finalise(&w, 0, "rides/2.fit", &s2, NULL, NULL));
+    TEST_ASSERT_FALSE(s2.has_ascent);
+    TEST_ASSERT_EQUAL_UINT16(0, s2.ascent_m);
+    uint32_t len;
+    const uint8_t *b = memfs_data(fs, "rides/2.fit", &len);
+    TEST_ASSERT_TRUE(cc_fit_check(b, len));
+    dump("no-baro.fit", b, len);
+
+    /* The same ride with a barometer does claim it, so the difference is the flag and nothing else. */
+    TEST_ASSERT_EQUAL_INT(0, cc_fit_begin(&w, fs, "rides/3.fit.part", T0));
+    cc_fit_event_timer(&w, T0, 1);
+    for (uint32_t s = 0; s < 300; s++) {
+        cc_fit_record_t r;
+        memset(&r, 0, sizeof r);
+        r.ts = T0 + s;
+        r.has_alt = 1;
+        r.alt_baro = 1;
+        r.alt_cm = 2000 + (int32_t)s * 10;
+        r.dist_cm = s * 800;
+        cc_fit_record(&w, &r);
+    }
+    TEST_ASSERT_EQUAL_INT(0, cc_fit_close_messages(&w, T0 + 300, -1));
+    cc_fit_summary_t s3;
+    TEST_ASSERT_EQUAL_INT(0, cc_fit_finalise(&w, 0, "rides/3.fit", &s3, NULL, NULL));
+    TEST_ASSERT_TRUE(s3.has_ascent);
+    /* 2000 cm to 4990 cm in 10 cm steps. The reference only advances when the rise reaches a whole
+     * metre, so 29 m is counted and the last 90 cm is not: brief 5.3's threshold, not a rounding. */
+    TEST_ASSERT_EQUAL_UINT16(29, s3.ascent_m);
+}
+
 static void test_crc16_known(void)
 {
     /* FIT header of the SDK's example files: crc of the 12 header bytes is self-consistent */
@@ -308,6 +368,7 @@ int main(void)
     RUN_TEST(test_recover_after_partial_finish);
     RUN_TEST(test_unknown_time_finish_and_recover);
     RUN_TEST(test_storage_error_keeps_records_in_ram);
+    RUN_TEST(test_no_barometer_claims_no_ascent);
     RUN_TEST(test_recover_every_cut);
     return UNITY_END();
 }

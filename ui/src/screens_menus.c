@@ -509,7 +509,7 @@ void scr_summary(lv_obj_t *r, const ui_model_t *m)
     ui_fmt_dist(v[1], 16, s->distance_m, mi);
     snprintf(v[2], 16, s->has_power ? "%u" : "--", s->avg_power);
     snprintf(v[3], 16, s->has_hr ? "%u" : "--", s->avg_hr);
-    snprintf(v[4], 16, "%u", s->ascent_m);
+    snprintf(v[4], 16, s->has_ascent ? "%u" : "--", s->ascent_m);
     ui_fmt_speed(v[5], 16, s->avg_speed_mms, mi);
     const char *lbl[6] = {"TIME", "DISTANCE", "AVG POWER", "AVG HEART RATE", "ASCENT", "AVG SPEED"};
     const char *un[6] = {"", mi ? "mi" : "km", "W", "bpm", "m", mi ? "mph" : "km/h"};

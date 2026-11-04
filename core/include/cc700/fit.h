@@ -30,6 +30,11 @@ typedef struct {
     int32_t lat_e7, lon_e7;
     int has_alt;
     int32_t alt_cm;
+    /* The altitude above came from the barometer, so an ascent total may be claimed from it. A GNSS
+       altitude is written to the file (Q19) but never summed: brief 5.3 defines ascent from the
+       smoothed barometer alone, and GNSS vertical noise accumulates a large phantom ascent through
+       the 1 m threshold below. */
+    int alt_baro;
     int has_speed;
     uint32_t speed_mms;
     uint32_t dist_cm;           /* always written */
@@ -54,6 +59,7 @@ typedef struct {
     uint64_t cad_sum; uint32_t cad_n; uint8_t cad_max;
     uint32_t speed_max_mms;
     int alt_have; int32_t alt_ref_cm; uint32_t ascent_cm;
+    int ascent_claim;           /* a barometric altitude was seen: ascent_cm may be reported */
 } cc_fit_acc_t;
 
 /* Summary of a finished ride, as stored in .meta and shown on the Summary screen. */
@@ -64,7 +70,7 @@ typedef struct {
     uint16_t avg_power, max_power; int has_power;
     uint8_t avg_hr, max_hr; int has_hr;
     uint8_t avg_cad; int has_cad;
-    uint16_t ascent_m;
+    uint16_t ascent_m; int has_ascent;
     uint32_t avg_speed_mms;
     uint32_t records;
     uint16_t laps;

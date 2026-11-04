@@ -799,9 +799,12 @@ static void second(uint32_t now_ms)
         float am;
         if (cc_alt_absolute(&S.alt, &am)) {
             r.has_alt = 1;
+            r.alt_baro = 1;
             r.alt_cm = (int32_t)lroundf(am * 100.0f);
         } else if (fix_ok) {
-            r.has_alt = 1; /* no barometer: GNSS altitude for the file only */
+            /* No barometer: the GNSS altitude goes in the file (Q19) but alt_baro stays 0, so no
+               ascent is claimed from it. Brief 5.3 defines ascent from the barometer alone. */
+            r.has_alt = 1;
             r.alt_cm = (int32_t)lroundf(S.fix.alt_m * 100.0f);
         }
         if (spd_ok && !S.gps_lost) {

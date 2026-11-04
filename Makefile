@@ -54,9 +54,12 @@ shots: sim
 	-cd tools/design && NODE_PATH=`npm root -g` node render_boards.js --fonts $(CURDIR)/build/deps/node/node_modules/@fontsource --gen $(CURDIR)/ui/out/design/canvas/project --out $(CURDIR)/ui/out/mockup >/dev/null
 	$(PYTHON) tools/design/contact_sheet.py --lv ui/out/lvgl --ref ui/out/mockup --out ui/out/contact-sheet.png
 
-# Android :core and :testing (JVM). The shared protocol suite also runs against simunit, so build it first.
+# Android :core and :testing (JVM). The shared protocol suite also runs against simunit, so build it
+# first. cleanTest is not belt and braces: the simunit-backed tests run a C binary that Gradle does not
+# know is an input, so a change to core/ leaves the test tasks UP-TO-DATE and this target reports green
+# from results that predate the change. Re-running all 64 costs about 35 s.
 android: test-c-plain
-	cd android && ./gradlew --no-daemon -q :core:test :testing:test :sync:test
+	cd android && ./gradlew --no-daemon -q :core:cleanTest :testing:cleanTest :sync:cleanTest :core:test :testing:test :sync:test
 
 # Every target-dependent warning in core/, ui/, hal/ and fw/ in one pass, reusing the flags the real
 # build recorded (IDEAS.md I7). Needs build/fw configured once; never links and never touches hardware.
@@ -64,7 +67,7 @@ fw-check:
 	$(PYTHON) tools/fw_check.py
 
 fw-build:
-	sh tools/fw_build.sh
+	PYTHON="$(PYTHON)" sh tools/fw_build.sh
 
 clean:
 	rm -rf $(BUILD) tools/reference/cc700-test-vectors.md

@@ -110,3 +110,18 @@ def test_recovery_cuts_decode(files):
         bad = [r for r in ex.map(_check_cut, cuts, chunksize=64) if not r[1]]
     assert not bad, bad[:5]
     print(f'checked {len(cuts)} cuts')
+
+
+def test_no_barometer_file_has_altitudes_but_no_ascent(files):
+    """Q19. Without a barometer the file still carries every GNSS altitude, so a platform can read or
+    correct the elevation profile, but the session claims no total_ascent: brief 5.3 derives ascent
+    from the barometer alone, and the unit shows "--" for ascent without one. The field must be
+    FIT-invalid, not 0 -- a 0 reads as "this ride was flat", which is a different false claim, and
+    Intervals.icu with elevation correction off takes the file's value as given."""
+    r = fitcheck.check(files['no-baro.fit'])
+    s = r['session']
+    assert s.get('total_ascent') is None, s.get('total_ascent')
+    alts = [x.get('altitude') for x in r['records']]
+    assert len(alts) == 300 and all(a is not None for a in alts)
+    assert alts[0] == pytest.approx(20.0, abs=0.3)
+    assert alts[-1] == pytest.approx(49.9, abs=0.3)   # a clean 30 m climb is in the file

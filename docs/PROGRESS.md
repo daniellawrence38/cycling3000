@@ -251,7 +251,7 @@ The first time any of this was built or run outside the cloud container. Windows
 ESP-IDF v5.5.6 installed at `/opt/esp/esp-idf`. **Nothing was flashed and no serial port was opened**
 (START-HERE rule 1): the target is `idf.py app`, which builds the application only.
 
-**Result.** `app.bin` is **1,146,640 bytes of the 8,192,000-byte `ota_1` limit (13 %)**, and the probe
+**Result.** `app.bin` is **1,146,640 bytes of the 8,192,000-byte `ota_1` limit (13 %)** — 1,146,736 after the Q19 fix below, and the probe
 RAM image is 106,768 bytes. No compiler warning anywhere, which is what brief WP7 asks for. The
 memory report:
 
@@ -315,6 +315,75 @@ storage, the real BLE behaviour, and whether 152,897 free DIRAM bytes are enough
 LVGL buffers and NimBLE's runtime allocations are all live. A build that links says nothing about any
 of that. The bring-up plan in `docs/BRINGUP.md` is still waiting for Daniel's review, and no step of it
 has been attempted.
+
+## Open questions closed, and an ascent the file should not have claimed · 4 November 2026
+
+Eleven of the open questions are now answered in `docs/QUESTIONS.md`: **Q14, Q15, Q17, Q19, Q25, Q26,
+Q27, Q28 and Q29**, with research notes added to **Q21, Q22, Q23 and Q24** so the four that are
+genuinely Daniel's to decide can be decided in one pass. Each answer records the evidence rather than
+restating the default; two of them found or proved something new.
+
+**Q19 found a real fault.** The question was only "what altitude goes in the file without a
+barometer", and the answer — the GNSS altitude — stands. But writing it set `has_alt`, which made the
+FIT accumulator treat the ride as having usable altitude, so **every lap's and the session's
+`total_ascent` was computed from GNSS altitude**, and the `.meta` summary and the Summary screen's
+ASCENT tile took the same number. Three things wrong with that: brief 5.3 defines ascent from the
+smoothed *barometer* alone; the ride screen already shows `--` for ascent without a barometer, so the
+unit was printing on one screen a number it refused to print on another; and GNSS vertical noise of
+several metres through a 1 m threshold inflates the total badly. Intervals.icu with elevation
+correction off takes the file's figure as given, so it would have been believed.
+
+Fixed by separating "there is an altitude" from "an ascent may be claimed": `cc_fit_record_t.alt_baro`,
+set only on the barometric branch; `cc_fit_acc_t.ascent_claim`, set only by such a record or by the
+ride engine's explicit barometric override; lap and session now write `total_ascent` as **FIT-invalid
+(0xFFFF), not 0** without a claim — a 0 would assert "this ride was flat", a different false claim.
+`cc_fit_summary_t.has_ascent` carries it to the `.meta` flags byte's spare bit 3 (an older `.meta`
+reads as "no ascent", the safe answer, so the format version stays 1) and the Summary screen shows
+`--`, the idiom it already uses for power and heart rate. Nothing in the protocol or the app changes:
+RIDE_LIST never carried ascent, and every ascent in the Android app is a *route* ascent the phone
+computed itself. Two new tests: one in `test_fit.c` for the claim, and one in
+`tools/fitcheck/test_fit_recovery.py` that decodes the file with fitdecode and asserts
+`session.total_ascent is None` while all 300 record altitudes are present.
+One consequence, stated in the answer: a **recovered** ride claims no ascent either, because recovery
+rebuilds the totals from the records and a FIT record does not say where its altitude came from.
+
+**Q29 is now proved from the binary, not the source.** `tools/tests/test_fw_partitions.py` checks that
+`fw/` contains no `nvs_flash_init` and no partition or OTA write. With the firmware finally linking,
+`nm` over `build/fw/cc700.elf` says something much stronger about all 8,321 defined symbols: there is
+**no flash write or erase entry point of any kind** in the image — no `esp_flash_write`,
+`esp_flash_erase`, `spi_flash_write`, `spi_flash_erase`, `esp_partition_write`, `esp_partition_erase`,
+`esp_efuse_write` or `esp_efuse_burn` — and no NVS API at all. The custom app is physically unable to
+modify the stock firmware's `nvs`, `phy_init`, `coredump`, `otadata` or `ota_0`, however it is driven,
+because the code to do it was never linked in. The only OTA symbol present is
+`esp_ota_get_running_partition`, a read. That also independently confirms
+`CONFIG_BT_NIMBLE_NVS_PERSIST=n` took effect.
+
+**The WP6 done-condition flow is confirmed to have run**, which the Windows-only run could not do.
+`:sync`'s `SimunitAppFlowTest.fullFlow` reaches simunit through `Sim.need()`, an `assumeTrue` that
+marks the test *skipped* when the binary is missing — which is what happened on Windows. Under WSL the
+Gradle XML reports `:core` 31, `:testing` 14 and `:sync` 19 tests with **0 skipped and 0 failures**, so
+the whole flow really did drive the C core over a socket. The manual emulator walkthrough in the WP6
+checklist (steps 1 to 5) is still Daniel's and has not been done.
+
+**Two firmware build gates added**, both paying for time lost tonight. `tools/fw_build.sh` now refuses to start
+when an ESP-IDF submodule is registered but not checked out, naming each one and the command to fix it
+(`IDEAS.md` I3 — that failure cost two rebuild cycles and surfaced as a CMake error about an include
+directory), and it runs `fw_check.py` first whenever a compile database exists, so a target-dependent
+warning costs ten seconds instead of forty minutes (I7, I11).
+
+A third gate closes a stale-green. `make android` ran the JVM suites through Gradle's up-to-date
+checks, and the simunit-backed tests execute a **C binary Gradle does not know is an input** — so after
+tonight's changes to `core/` the test tasks were skipped as up to date and the target reported green
+from results that predated the change. Caught by looking at the timestamps on the JUnit XML, not by
+anything failing. The target now runs `cleanTest` first; all 64 tests re-run in about 35 s, and the
+re-run confirms 64 passed, 0 skipped, 0 failures against the new core.
+
+One local finding while writing the submodule gate, worth knowing before trusting this PC's ESP-IDF
+clone: `git submodule status --recursive` exits 128 there because
+`components/mqtt/esp-mqtt`'s index is damaged ("index file smaller than expected"), almost certainly
+from the disk-full event during installation. Nothing in this firmware uses mqtt, so the build is
+unaffected, but it is why the gate reports what it could not inspect instead of treating an unreadable
+list as an all-clear — the same false-all-clear that `git submodule foreach` gave earlier.
 
 ## Future enhancements (not scheduled)
 
