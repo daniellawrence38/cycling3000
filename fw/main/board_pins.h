@@ -37,6 +37,12 @@
 #define LCD_BL_FREQ_HZ 20000           /* 0x4e20 */
 #define LCD_BL_DUTY_BITS 10            /* LEDC low-speed timer 0, channel 0 */
 
+/* Colour inversion. VERIFIED ON HARDWARE, 4 November 2026: with this false the dark UI came up pale
+ * and hard to read; with it true the screen is correct. ESP-IDF's stock ST7789 driver defaults to
+ * inversion off, and the stock firmware uses its own fork of that driver, which is where the
+ * difference comes from. The element order is left RGB because the stock firmware passes 0 for it. */
+#define LCD_INVERT_COLOR true
+
 /* The stock firmware sets these two to outputs and drives them high immediately before creating the
  * i80 bus. They belong to none of its three config structs, and esp_lcd's reset_gpio_num is -1, so
  * panel power enable and panel reset are the obvious candidates. Purpose Unverified; the sequence is

@@ -149,6 +149,12 @@ int hal_display_init(void)
 
     esp_lcd_panel_reset(panel);
     esp_lcd_panel_init(panel);
+    /* This panel needs inversion on. ESP-IDF's stock ST7789 driver leaves it off; the stock firmware
+       uses its own fork (mg_esp_lcd_panel_st7789.c), which evidently turns it on. Measured on the
+       unit on 4 November 2026: with inversion off the dark UI came up pale and barely readable, with
+       it on the screen is correct. This is the first fact here confirmed on hardware rather than
+       read out of the firmware. */
+    esp_lcd_panel_invert_color(panel, LCD_INVERT_COLOR);
     esp_lcd_panel_disp_on_off(panel, true);
     /* Only now is there something worth lighting. Leaving this out would give a perfectly
        initialised panel behind a dark backlight, which looks exactly like wrong pins. */

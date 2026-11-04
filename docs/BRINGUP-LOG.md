@@ -433,3 +433,31 @@ rotation and offsets, whether GPIO 43 and 44 really are power and reset, and whe
 a reset pulse this driver does not give because `esp_lcd`'s `reset_gpio_num` is `-1`. All are
 cheap to correct once there is something on the screen to look at.
 
+
+## Step 4 · First write · **the screen works**
+
+`app.bin` (1,183,312 bytes, stamped `7211bc9`) was written to `ota_1` at `0x7f0000`, verified, and
+`otadata` switched to select it. Daniel reports: **the layout is right, the colours are inverted.**
+
+That is the headline result of the whole exercise. **Right layout means the entire i80 decode was
+correct** — the 8-bit bus, all eight data lines, DC, WR, CS, the backlight and the 15 MHz pixel
+clock, every one of them read out of the vendor's compiled firmware and none of them ever measured.
+A single wrong data line would have given garbage, not a correct screen in the wrong colours.
+
+**First fact confirmed on hardware rather than read from the firmware: this panel needs colour
+inversion on.** ESP-IDF's stock ST7789 driver leaves inversion off; the stock firmware uses its own
+fork (`mg_esp_lcd_panel_st7789.c`), which evidently turns it on. Fixed by
+`esp_lcd_panel_invert_color(panel, LCD_INVERT_COLOR)` with `LCD_INVERT_COLOR` defined `true` in
+`board_pins.h`. The element order stays RGB, because the stock firmware passes 0 for it and the
+layout and brightness were otherwise right.
+
+**Also learned: the power button does nothing under our firmware.** `hal_input` is still a stub, and
+the button almost certainly reaches a power-management IC that the stock firmware services and ours
+does not — so the unit cannot be switched off or power-cycled by hand while running our image. The
+way to reset it is esptool (`chip-id` ends in a hard reset). Worth remembering: until the power path
+is understood, **our firmware leaves the unit unable to turn itself off**, so it should not be left
+running on battery.
+
+Still untouched and still true: `ota_0` holds the stock firmware, and writing `otadata-now.bin` back
+to `0xd000` returns the unit to it.
+
