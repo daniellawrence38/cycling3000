@@ -449,3 +449,22 @@ in its own right: the UI changes for Q35 did not disturb any existing screen.
 - **Shimano 12-speed Di2 gear display (105 R7100).** Requested by Daniel on 3 November 2026, deferred.
   **Corrected 3 November 2026 (Q34).** This entry previously said the unit has no identified ANT+ radio and that the first step was a BLE capture with nRF Connect. Both are wrong. Reading the flash backup offline (`docs/STOCK-FIRMWARE-FINDINGS.md`) shows the stock firmware implements seven ANT+ profiles under `Modules/Middlewares/MidAntDeviceManage/`, including `ant_di2/ant_di2.c` and `ant_shft/ant_shft.c`, and that an nRF co-processor sits on a UART (`mSysTimeStampFromNrf`, two configured UARTs, a `MidComm` layer). The stock Di2 module already reads manufacturer and model, gear index, front and rear tooth counts, Di2 battery status and shift mode.
   So the gear data arrives over **ANT, through the nRF**, not over BLE, and it is demonstrably readable on this hardware. The first step when picked up is therefore to learn what `MidComm` speaks over that UART — cheapest during bring-up step 3, which already probes GPIO. Then: gear in the ride data, FIT front and rear gear-change events, and a gear display (needs a mockup change; the Main grid is full). Still out of scope for v1 under START-HERE rule 4.
+
+## Bring-up step 3c · 4 November 2026 · touch decoded and implemented
+
+The display is finished and confirmed on the unit (colour bars in the right order with both the byte
+swap and inversion in). The touch controller is now fully decoded from the stock firmware and
+implemented: a Hynitron **CST3240 at I2C address 0x5A**, 400 kHz, register 0xD000 read seven bytes,
+with the coordinate arithmetic and the no-transform behaviour lifted from the vendor's own LVGL
+callback. `hal/hal_touch.h` and `fw/main/hal_touch_esp.c` are new; `main.c` registers an LVGL pointer
+device and, while bringing up, draws a dot under the finger. See `docs/BRINGUP-LOG.md` for the
+provenance of every byte and **Q37** for the two deliberate differences from the vendor.
+
+**A finding that redirects the sensor work, logged as Q36.** The barometer, light sensor, battery
+gauge and IMU are **not on I2C**. Every I2C transfer in the vendor application goes through two
+wrappers, those wrappers are the only references to `i2c_master_transmit`/`transmit_receive` anywhere
+in the image, and all sixteen of their call sites are inside the touch driver. The sensors sit behind
+the nRF co-processor on UART1 with a framed protocol of the vendor's own — which is the same link the
+deferred Di2 gear display needs. So `hal_baro` and `hal_power` are not I2C drivers waiting to be
+written; they are one protocol decode, and that is the next piece of work. The boot-time I2C scan
+stays in so the claim is testable on the next flash rather than merely asserted.
