@@ -348,3 +348,48 @@ benign rather than a power fault.
 
 It also explains why no button is on GPIO 0: the pin is taken.
 
+
+### Buttons, touch and I2C — what the firmware does and does not say
+
+**Every `gpio_config`, `gpio_set_direction`, `gpio_set_level` and `gpio_reset_pin` call site in the
+image was enumerated** by the same literal-and-`l32r` method: 2, 4, 5 and 6 sites respectively. All
+the ones with immediate pin numbers belong to the LCD init already decoded. The rest are **generic
+wrappers** — the pin arrives in a register (`sll a10, a2` to build `1 << pin`), so the vendor keeps
+pin numbers in a table rather than inline, and they cannot be read straight out of the code.
+
+**There is no `gpio_install_isr_service` anywhere in the firmware.** The ESP32 never takes a GPIO
+interrupt. So the buttons are either polled, or they do not reach the ESP32 at all.
+
+`Btn1`…`Btn5` in the strings are **LVGL widget demo text**, not this unit's buttons. A false lead.
+
+**Touch is on I2C, from the ESP32.** `MidLcd` is followed by an I2C device manager whose messages are
+`Dev Handle Is NULL,Port:%d,Addr:0x%x`, `New Dev Addr,Port:%d,Addr:0x%x`, `Dev List Is Full,…`, plus
+`Touch driver init failed`, `touch screen is on`/`off` and `X=%u,Y=%u`. The `Port`/`Addr` pair and the
+"Dev Handle" vocabulary match ESP-IDF's newer `i2c_master` driver with a per-device handle.
+
+In the touch init at `0x42032230` the code does `movi a10, 90` and calls `0x42032c74`. **90 is
+`0x5A`**, which is the I2C address of the Hynitron CST3240 family — consistent with the factory
+screen reporting `TOUCHVer 3240: 0x1004`. Treat the address as a strong candidate rather than a fact
+until an I2C scan confirms it; the register could be an argument of another kind.
+
+**Still unknown after this pass:** the SDA and SCL pins, the barometer, the ambient-light sensor
+(which demonstrably works — the factory screen read 600 lux), battery and charger sensing, the
+SD/eMMC pins, the GNSS power enable, and what GPIO 43 and 44 do.
+
+### Pin map so far
+
+| Function | GPIO | Confidence |
+| --- | --- | --- |
+| LCD DC | 40 | from vendor code |
+| LCD WR | 3 | from vendor code |
+| LCD RD | 39 | from vendor code |
+| LCD CS | 2 | from vendor code |
+| LCD D0–D7 | 4, 38, 5, 48, 6, 47, 7, 11 | from vendor code |
+| LCD backlight | 45 | from vendor code |
+| UART0 TX / RX | 1 / 0 | from vendor code |
+| UART1 (ESP port 2) TX / RX | 42 / 41 | from vendor code |
+| unexplained, driven high at LCD init | 43, 44 | observed, purpose unknown |
+
+Seventeen of the chip's pins are now accounted for, none of them measured on the board. Everything in
+this table is Unverified until our own driver uses it.
+
