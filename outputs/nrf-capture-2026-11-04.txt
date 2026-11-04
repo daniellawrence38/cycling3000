@@ -1,0 +1,156 @@
+I (109828) nrf: #4708 id   0 sub 0x53 kind 4 | 53 ff 25 3b 08 64I (117828) nrf: #5056 id   0 sub 0x53 kind 4 | 53 ff 2d 3b 08 64 0a 7e
+I (118918) nrf: #5098 id   0 sub 0x53 kind 4 | 53 ff 2e 3b 08 64 0a 7e
+I (119818) nrf: #5144 id   0 sub 0x53 kind 4 | 53 ff 2f 3b 08 64 0a 7e
+I (120928) nrf: #5186 id   0 sub 0x53 kind 4 | 53 ff 30 3b 08 64 0a 7e
+I (121828) nrf: #5228 id   0 sub 0x53 kind 4 | 53 ff 31 3b 08 64 0a 7e
+I (123028) nrf: #5274 id   0 sub 0x53 kind 4 | 53 ff 32 3b 08 64 0a 7e
+I (123928) nrf: #5316 id   0 sub 0x53 kind 4 | 53 ff 33 3b 08 64 0a 7e
+I (124828) nrf: #5358 id   0 sub 0x53 kind 4 | 53 ff 34 3b 08 64 0a 7e
+I (126018) nrf: #5404 id   0 sub 0x53 kind 4 | 53 ff 35 3b 08 64 0a 7e
+I (126918) nrf: #5446 id   0 sub 0x53 kind 4 | 53 ff 36 3b 08 64 0a 7e
+I (127828) nrf: #5488 id   0 sub 0x53 kind 4 | 53 ff 37 3b 08 64 0a 7e
+I (128918) nrf: #5534 id   0 sub 0x53 kind 4 | 53 ff 38 3b 08 64 0a 7e
+I (129818) nrf: #5576 id   0 sub 0x53 kind 4 | 53 ff 39 3b 08 64 0a 7e
+I (130918) nrf: #5618 id   0 sub 0x53 kind 4 | 53 ff 3a 3b 08 64 0a 7e
+I (131818) nrf: #5664 id   0 sub 0x53 kind 4 | 53 ff 3b 3b 08 64 0a 7e
+I (132928) nrf: #5706 id   0 sub 0x53 kind 4 | 53 ff 00 00 09 64 0a 7e
+I (133828) nrf: #5748 id   0 sub 0x53 kind 4 | 53 ff 01 00 09 64 0a 7e
+I (135028) nrf: #5794 id   0 sub 0x53 kind 4 | 53 ff 02 00 09 64 0a 7e
+I (135918) nrf: #5836 id   0 sub 0x53 kind 4 | 53 ff 03 00 09 64 0a 7e
+I (136828) nrf: #5878 id   0 sub 0x53 kind 4 | 53 ff 04 00 09 64 0a 7e
+I (138008) nrf: #5924 id   0 sub 0x53 kind 4 | 53 ff 05 00 09 64 0a 7e
+I (138908) nrf: #5966 id   0 sub 0x53 kind 4 | 53 ff 06 00 09 64 0a 7e
+I (139828) nrf: #6008 id   0 sub 0x53 kind 4 | 53 ff 07 00 09 64 0a 7e
+I (140908) nrf: #6054 id   0 sub 0x53 kind 4 | 53 ff 08 00 09 64 0a 7e
+I (141628) nrf: 115200 baud: 20864 byte(s), 1304 valid frame(s)
+W (141628) nrf: ---- summary: 6088 frames, 0 CRC rejects, 4 id/sub-tag pair(s) ----
+W (141628) nrf:   id  16 sub 0xf1 kind 4 dir 0xf1:   951 frame(s), every    31 ms | f1 01-0a 00-ff 00-ff 00-ff 00-ff 00-9b 00-05 
+W (141628) nrf:       last as u16le: 1009 3258 6356 155 
+W (141628) nrf:       last as u32le: 213517297 10164436 
+W (141628) nrf:   id   0 sub 0x53 kind 4 dir 0xf1:   151 frame(s), every   199 ms | 53 ff 00-3b 00-3b 08-09 64 0a 7e 
+W (141628) nrf:       last as u16le: 65363 8 25609 32266 
+W (141628) nrf:       last as u32le: 589651 2114610185 
+W (141628) nrf:   id   0 sub 0x52 kind 4 dir 0xf1:   101 frame(s), every   299 ms | 52 ff ff ff c2 10 64 ff 
+W (141628) nrf:       last as u16le: 65362 65535 4290 65380 
+W (141628) nrf:       last as u32le: 4294967122 4284747970 
+W (141628) nrf:   id  16 sub 0xf0 kind 4 dir 0xf1:   101 frame(s), every   299 ms | f0 02 00 00 00 00 00 00 
+W (141628) nrf:       last as u16le: 752 0 0 0 
+W (141628) nrf:       last as u32le: 752 0 
+W (141628) nrf: ---- end of summary ----
+W (141628) nrf: ==== window 5 of 6 starting ====
+I (141908) nrf: raw #6089: a5 0c 6f f1 04 10 f1 01 09 00 f8 ff 18 04 55 13
+I (141908) nrf: raw #6090: a5 0c 6f f1 04 10 f1 01 09 00 04 00 14 04 24 49
+I (141908) nrf: raw #6091: a5 0c 6f f1 04 10 f1 01 0d 00 ff ff 1e 04 7f ee
+I (141918) nrf: raw #6092: a5 0c 6f f1 04 10 f1 01 07 00 fd ff 14 04 de 6a
+I (141918) nrf: raw #6093: a5 0c 6f f1 04 10 f1 03 bc 0c d3 18 9b 00 8f 42
+I (141918) nrf: raw #6094: a5 0c 6f f1 04 00 53 ff 09 00 09 64 0a 7e 09 8f
+I (141918) nrf: raw #6095: a5 0c 6f f1 04 10 f1 01 0e 00 f9 ff 10 04 09 24
+I (141918) nrf: raw #6096: a5 0c 6f f1 04 10 f1 01 04 00 f9 ff 15 04 fe 5d
+I (142018) nrf: raw #6097: a5 0c 6f f1 04 00 52 ff ff ff c2 10 64 ff d7 8e
+I (142018) nrf: raw #6098: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (142018) nrf: raw #6099: a5 0c 6f f1 04 10 f1 04 58 02 00 00 1e 05 2f 74
+I (142018) nrf: raw #6100: a5 0c 6f f1 04 10 f1 0a ec 0d 00 00 00 00 8a ae
+I (142018) nrf: raw #6101: a5 0c 6f f1 04 10 f1 01 04 00 01 00 14 04 22 bb
+I (142018) nrf: raw #6102: a5 0c 6f f1 04 10 f1 01 09 00 00 00 1d 04 4d 39
+I (142018) nrf: raw #6103: a5 0c 6f f1 04 10 f1 03 bb 0c d2 18 9b 00 7a fc
+I (142018) nrf: raw #6104: a5 0c 6f f1 04 00 53 ff 09 00 09 64 0a 7e 09 8f
+I (142228) nrf: raw #6105: a5 0c 6f f1 04 10 f1 01 09 00 01 00 11 04 94 0a
+I (142228) nrf: raw #6106: a5 0c 6f f1 04 10 f1 01 06 00 ff ff 12 04 b0 68
+I (142228) nrf: raw #6107: a5 0c 6f f1 04 10 f1 01 08 00 04 00 1e 04 4f e3
+I (142228) nrf: raw #6108: a5 0c 6f f1 04 10 f1 01 09 00 01 00 26 04 96 96
+I (142228) nrf: raw #6109: a5 0c 6f f1 04 10 f1 03 bb 0c d2 18 9b 00 7a fc
+I (142228) nrf: raw #6110: a5 0c 6f f1 04 00 53 ff 09 00 09 64 0a 7e 09 8f
+I (142228) nrf: raw #6111: a5 0c 6f f1 04 00 52 ff ff ff c2 10 64 ff d7 8e
+I (142228) nrf: raw #6112: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (142418) nrf: raw #6113: a5 0c 6f f1 04 10 f1 04 d0 07 00 00 03 00 90 ab
+I (142418) nrf: raw #6114: a5 0c 6f f1 04 10 f1 0a ef 0d 00 00 00 00 6a 60
+I (142418) nrf: raw #6115: a5 0c 6f f1 04 10 f1 01 09 00 ff ff 1a 04 1a 24
+I (142418) nrf: raw #6116: a5 0c 6f f1 04 10 f1 01 07 00 01 00 16 04 a0 13
+I (142418) nrf: raw #6117: a5 0c 6f f1 04 10 f1 01 0b 00 fb ff 15 04 95 75
+I (142418) nrf: raw #6118: a5 0c 6f f1 04 10 f1 01 08 00 fd ff 1c 04 74 26
+I (142418) nrf: raw #6119: a5 0c 6f f1 04 10 f1 03 ba 0c d1 18 9b 00 06 22
+I (142418) nrf: raw #6120: a5 0c 6f f1 04 00 53 ff 09 00 09 64 0a 7e 09 8f
+I (142608) nrf: raw #6121: a5 0c 6f f1 04 10 f1 01 08 00 ff ff 14 04 b5 42
+I (142608) nrf: raw #6122: a5 0c 6f f1 04 10 f1 01 06 00 ff ff 12 04 b0 68
+I (142608) nrf: raw #6123: a5 0c 6f f1 04 00 52 ff ff ff c2 10 64 ff d7 8e
+I (142608) nrf: raw #6124: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (142618) nrf: raw #6125: a5 0c 6f f1 04 10 f1 04 d0 07 00 00 03 00 90 ab
+I (142618) nrf: raw #6126: a5 0c 6f f1 04 10 f1 0a e8 0d 00 00 00 00 2b a8
+I (142618) nrf: raw #6127: a5 0c 6f f1 04 10 f1 01 0b 00 fd ff 16 04 5f 07
+I (142618) nrf: raw #6128: a5 0c 6f f1 04 10 f1 01 03 00 ff ff 14 04 17 81
+I (142828) nrf: raw #6129: a5 0c 6f f1 04 10 f1 03 bb 0c cf 18 9b 00 5b de
+I (142828) nrf: raw #6130: a5 0c 6f f1 04 00 53 ff 09 00 09 64 0a 7e 09 8f
+I (142828) nrf: raw #6131: a5 0c 6f f1 04 10 f1 01 07 00 01 00 16 04 a0 13
+I (142828) nrf: raw #6132: a5 0c 6f f1 04 10 f1 01 02 00 fc ff 1d 04 f3 e5
+I (142828) nrf: raw #6133: a5 0c 6f f1 04 10 f1 01 0d 00 fe ff 15 04 31 44
+I (142828) nrf: raw #6134: a5 0c 6f f1 04 10 f1 01 04 00 fd ff 15 04 0f 97
+I (142828) nrf: raw #6135: a5 0c 6f f1 04 10 f1 03 bb 0c ce 18 9b 00 ef a8
+I (142828) nrf: raw #6136: a5 0c 6f f1 04 00 53 ff 0a 00 09 64 0a 7e e9 41
+I (143008) nrf: raw #6137: a5 0c 6f f1 04 00 52 ff ff ff c2 10 64 ff d7 8e
+I (143008) nrf: raw #6138: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (143008) nrf: raw #6139: a5 0c 6f f1 04 10 f1 04 d0 07 00 00 03 00 90 ab
+I (143008) nrf: raw #6140: a5 0c 6f f1 04 10 f1 0a ed 0d 00 00 00 00 2a eb
+I (143018) nrf: raw #6141: a5 0c 6f f1 04 10 f1 01 09 00 ff ff 0d 04 fe be
+I (143018) nrf: raw #6142: a5 0c 6f f1 04 10 f1 01 08 00 02 00 19 04 41 5d
+I (143018) nrf: raw #6143: a5 0c 6f f1 04 10 f1 01 0c 00 05 00 16 04 f3 1a
+I (143018) nrf: raw #6144: a5 0c 6f f1 04 10 f1 01 10 00 fc ff 18 04 c2 8b
+I (143118) nrf: raw #6145: a5 0c 6f f1 04 10 f1 03 bb 0c ce 18 9b 00 ef a8
+I (143118) nrf: raw #6146: a5 0c 6f f1 04 00 53 ff 0a 00 09 64 0a 7e e9 41
+I (143128) nrf: raw #6147: a5 0c 6f f1 04 10 f1 01 09 00 01 00 14 04 61 f5
+I (143128) nrf: raw #6148: a5 0c 6f f1 04 10 f1 01 0d 00 02 00 1c 04 b5 e1
+I (143128) nrf: #6149 id   0 sub 0x52 kind 4 | 52 ff ff ff c2 10 64 ff
+I (143128) nrf: #6150 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (143128) nrf: #6151 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 1a 05
+I (143128) nrf: #6152 id  16 sub 0xf1 kind 4 | f1 0a ef 0d 00 00 00 00
+I (143408) nrf: #6153 id  16 sub 0xf1 kind 4 | f1 01 08 00 00 00 16 04
+I (143408) nrf: #6154 id  16 sub 0xf1 kind 4 | f1 01 09 00 00 00 15 04
+I (143408) nrf: #6155 id  16 sub 0xf1 kind 4 | f1 03 bb 0c ce 18 9b 00
+I (143408) nrf: #6156 id   0 sub 0x53 kind 4 | 53 ff 0a 00 09 64 0a 7e
+I (143418) nrf: #6157 id  16 sub 0xf1 kind 4 | f1 01 09 00 fe ff 18 04
+I (143418) nrf: #6158 id  16 sub 0xf1 kind 4 | f1 01 0d 00 00 00 16 04
+I (143418) nrf: #6159 id  16 sub 0xf1 kind 4 | f1 01 0b 00 fb ff 1d 04
+I (143418) nrf: #6160 id  16 sub 0xf1 kind 4 | f1 01 10 00 ff ff 18 04
+I (143508) nrf: #6161 id  16 sub 0xf1 kind 4 | f1 03 ba 0c ce 18 9b 00
+I (143508) nrf: #6162 id   0 sub 0x53 kind 4 | 53 ff 0a 00 09 64 0a 7e
+I (143508) nrf: #6163 id   0 sub 0x52 kind 4 | 52 ff ff ff c2 10 64 ff
+I (143508) nrf: #6164 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (143518) nrf: #6165 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 1e 05
+I (143518) nrf: #6166 id  16 sub 0xf1 kind 4 | f1 0a f0 0d 00 00 00 00
+I (143518) nrf: #6167 id  16 sub 0xf1 kind 4 | f1 01 06 00 01 00 10 04
+I (143518) nrf: #6168 id  16 sub 0xf1 kind 4 | f1 01 07 00 00 00 16 04
+I (143718) nrf: #6169 id  16 sub 0xf1 kind 4 | f1 01 03 00 01 00 1a 04
+I (143718) nrf: #6170 id  16 sub 0xf1 kind 4 | f1 01 03 00 fb ff 16 04
+I (143718) nrf: #6171 id  16 sub 0xf1 kind 4 | f1 03 ba 0c ce 18 9b 00
+I (143718) nrf: #6172 id   0 sub 0x53 kind 4 | 53 ff 0a 00 09 64 0a 7e
+I (143728) nrf: #6173 id  16 sub 0xf1 kind 4 | f1 01 04 00 fd ff 15 04
+I (143728) nrf: #6174 id  16 sub 0xf1 kind 4 | f1 01 0b 00 01 00 15 04
+I (143728) nrf: #6175 id   0 sub 0x52 kind 4 | 52 ff ff ff c2 10 64 ff
+I (143728) nrf: #6176 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (143908) nrf: #6177 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 1c 05
+I (143908) nrf: #6178 id  16 sub 0xf1 kind 4 | f1 0a f1 0d 00 00 00 00
+I (143908) nrf: #6179 id  16 sub 0xf1 kind 4 | f1 01 04 00 fc ff 15 04
+I (143918) nrf: #6180 id  16 sub 0xf1 kind 4 | f1 01 06 00 fc ff 12 04
+I (143918) nrf: #6181 id  16 sub 0xf1 kind 4 | f1 03 bb 0c ce 18 9b 00
+I (143918) nrf: #6182 id   0 sub 0x53 kind 4 | 53 ff 0b 00 09 64 0a 7e
+I (143918) nrf: #6183 id  16 sub 0xf1 kind 4 | f1 01 06 00 f7 ff 15 04
+I (143918) nrf: #6184 id  16 sub 0xf1 kind 4 | f1 01 08 00 fe ff 1a 04
+I (144028) nrf: #6185 id  16 sub 0xf1 kind 4 | f1 01 06 00 f7 ff 1c 04
+I (144028) nrf: #6186 id  16 sub 0xf1 kind 4 | f1 01 0d 00 fb ff 10 04
+I (144028) nrf: #6187 id  16 sub 0xf1 kind 4 | f1 03 ba 0c ce 18 9b 00
+I (144028) nrf: #6191 id  16 sub 0xf1 kind 4 | f1 04 d0 07 00 00 03 00
+I (144028) nrf: #6192 id  16 sub 0xf1 kind 4 | f1 0a f3 0d 00 00 00 00
+I (144308) nrf: #6193 id  16 sub 0xf1 kind 4 | f1 01 0c 00 03 00 11 04
+I (144308) nrf: #6194 id  16 sub 0xf1 kind 4 | f1 01 10 00 ff ff 20 04
+I (144308) nrf: #6195 id  16 sub 0xf1 kind 4 | f1 01 01 00 fc ff 1c 04
+I (144318) nrf: #6196 id  16 sub 0xf1 kind 4 | f1 01 06 00 ff ff 15 04
+I (144318) nrf: #6197 id  16 sub 0xf1 kind 4 | f1 03 ba 0c cf 18 9b 00
+I (144318) nrf: #6199 id  16 sub 0xf1 kind 4 | f1 01 09 00 ff ff 14 04
+I (144318) nrf: #6200 id  16 sub 0xf1 kind 4 | f1 01 0d 00 00 00 16 04
+I (144418) nrf: #6203 id  16 sub 0xf1 kind 4 | f1 04 d0 07 00 00 03 00
+I (144418) nrf: #6204 id  16 sub 0xf1 kind 4 | f1 0a ef 0d 00 00 00 00
+I (144818) nrf: #6224 id   0 sub 0x53 kind 4 | 53 ff 0c 00 09 64 0a 7e
+I (145908) nrf: #6266 id   0 sub 0x53 kind 4 | 53 ff 0d 00 09 64 0a 7e
+I (146818) nrf: #6312 id   0 sub 0x53 kind 4 | 53 ff 0e 00 09 64 0a 7e
+I (147918) nrf: #6354 id   0 sub 0x53 kind 4 | 53 ff 0f 00 09 64 0a 7e
+I (148818) nrf: #6396 id   0 sub 0x53 kind 4 | 53 ff 10 00 09 64 0a 7e
+I (150018) nrf: #6442 id   0 sub 0x53 kind 4 | 53 ff 11 00 09 64 0a 7e

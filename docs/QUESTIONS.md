@@ -245,7 +245,7 @@ Why it matters beyond tidiness: a flat-looking profile is not a cosmetic error. 
 Not covered by a screenshot: no simulator scenario has a route without elevation, so the "no elevation" row has not been through `make shots` or the lint. It is not a clipping risk — "38.4 km · no elevation" is shorter than the existing worst case, "81.2 km · 1,150 m · 7 climbs" — and adding a scenario was left alone because it would change the contact sheet that is waiting for your review. Say the word and it becomes a fourth route in the Routes scenario.
 Answer:
 
-### Q36 · bring-up · open
+### Q36 · bring-up · answered 4 November 2026
 Question: The spec, the brief and `hal/` all assume the barometer, the light sensor and the battery
 gauge are devices this firmware talks to. Static analysis of the stock firmware says they are not.
 Every I2C transfer in the whole vendor application goes through two wrappers at `0x42032b78` and
@@ -270,6 +270,40 @@ Why it matters: this is not one driver, it is the shape of the next work package
 nRF link is on the critical path for ANT+ *and* for altitude, battery and the light sensor at once,
 so it is worth doing properly rather than four times.
 Answer:
+
+Answer: **Confirmed, and (b) is done as far as it can go without transmitting.** The link runs at
+**115200** baud and the frame format decoded from the binary is exactly right: over 200,000 frames
+across three captures, **not one CRC reject**, with every byte of the stream accounted for. The sensors
+are all on this link, as predicted, and three of them are now decoded from real data
+(`docs/NRF-PROTOCOL.md`): the **barometer** (temperature in hundredths of a degree, pressure in
+hundredths of a pascal, reading 32.6 °C and 1016.4 hPa), the **accelerometer** (three int16 at about
+1024 counts per g, which read 9, -8, 1048 with the unit flat), and a **clock** of seconds, minutes and
+hours. A probable **battery voltage** around 3.56 V and an unresolved message that may be the light
+sensor each need one more experiment. The I2C scan reported only 0x5A, so the falsifiable prediction
+held: touch is the only I2C device.
+
+What this changes: `hal_baro_read_pa` is implementable now, which closes the real hole behind Q19 --
+`total_ascent` can come from a barometer instead of GPS elevation.
+
+### Q38 · bring-up · open
+Question: None of the message ids the vendor's dispatcher forwards to the application -- 11, 17, 34,
+35, 40, 120 to 123 and 128 -- has ever appeared on the link, over 200,000 frames and more than an hour
+of listening. Only ids 0 and 16 arrive unprompted. Either those ids are responses to requests the
+ESP32 has to send first, or they only exist when the thing they describe does (a paired ANT+ sensor, a
+button press, a charger state change). Reading them may need us to transmit, and transmitting to the
+nRF is not a free action: **id 16 is also the id `SendPowerOffCmd` uses**, so a malformed frame on it
+could switch the unit off mid-ride, and the four senders build their payloads from globals rather than
+constants, so they cannot be replayed byte-exactly from the image alone.
+Options: (a) stay receive-only and accept whatever the nRF volunteers; (b) transmit a reconstructed
+`SendQuerySlaveModeCmd` (kind 1, id 16) and watch for a reply; (c) press buttons and change the charger
+state during a passive capture first, and only consider transmitting if nothing new appears.
+Default used: **(c)**, and no frame has been sent. The passive tests cost one window each and carry no
+risk at all, and if the buttons do arrive on this link then the ids resolve themselves without us
+touching the power channel. If (b) becomes necessary it needs Daniel's explicit go-ahead and a
+narrower target than id 16.
+Why it matters: this is the only remaining unknown on the link, and it gates the buttons, ANT+ and the
+Di2 gear display. It is also the first point in this project where the safe and the fast option differ,
+which is worth recording rather than deciding quietly.
 
 ### Q37 · bring-up · open
 Question: `fw/main/hal_touch_esp.c` reproduces the vendor's CST3240 sequence byte for byte, but

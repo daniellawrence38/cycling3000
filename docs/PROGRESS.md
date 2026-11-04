@@ -493,3 +493,56 @@ hardware (task #19 and #20).
 builds, and 21 of 21 Python tool tests pass. Note for a fresh WSL shell: `make test-py` needs a
 Python with pytest, so `make test PYTHON=/root/venv/bin/python`; the Makefile already honours the
 override and needed no change.
+
+## Session end · 4 November 2026 · where to pick this up
+
+**What now works on the real unit.** The display (ST7789 on the i80 bus, inversion and byte swap both
+needed), the touch panel (CST3240 at 0x5A — the bring-up dot follows a finger), and the nRF link at
+115200 baud, from which the barometer, the accelerometer and a clock are decoded. Three subsystems
+brought up entirely from static analysis of the vendor binary; the only one that needed correcting on
+hardware was the display.
+
+**Read these first:** `claude/cc700-START-HERE.md`, then this file, then `docs/QUESTIONS.md`, then
+`docs/BRINGUP-LOG.md` for the narrative and **`docs/NRF-PROTOCOL.md`** for the link specification and
+the decoded sensor map. `fw/main/board_pins.h` holds every pin with its provenance and its verified
+or Unverified status.
+
+### The next three things, in order
+
+1. **Two experiments, one window each, to finish the sensor map.** Flash `build/fw/app.bin` and run
+   `python tools/capture_serial.py COM3 --seconds 300 --out capture.txt`. The firmware prints
+   `==== window N of 6 ====` and ends itself after three minutes.
+   - **Cover the light sensor, then a lamp.** Decides whether id 16 sub-tag 0xF1 byte 1 = 0x04 is the
+     light sensor. It shows two shapes, `600 / 0 / ~1308` and `2000 / 0 / 3`; 600 matches the factory
+     screen's `Light lux` exactly, but the round numbers look more like identifiers than readings, so
+     the field that *moves* is the answer.
+   - **Unplug the USB for one window.** Decides whether byte 1 = 0x0a (3560–3576) is the battery in
+     millivolts.
+   - **Press A and B.** Tests whether the buttons arrive on this link (Q38). No id outside 0 and 16
+     has ever been seen in 200,000 frames.
+2. **Implement `hal_baro_read_pa` against id 16 / 0xF1 / 0x03.** This is ready now: temperature is an
+   int16 in hundredths of a degree at payload bytes 2–3, pressure a uint32 in hundredths of a pascal at
+   bytes 4–7. It closes the real hole behind Q19 — `total_ascent` from a barometer rather than GPS
+   elevation. The listener task already parses and verifies frames; it needs a consumer, not a rewrite.
+3. **Then `hal_power_battery_pct` and `hal_power_ambient_lux`**, once step 1 says which message is
+   which.
+
+### Do not do these without asking Daniel
+
+- **Transmitting to the nRF** (Q38). Id 16 is also what `SendPowerOffCmd` uses, so a malformed frame
+  could switch the unit off. Nothing has been sent, and the passive tests above come first.
+- **Bring-up step 1, preserving the 4 GB storage** (task #16). Still open, still Daniel's call: no copy
+  route has been found and the decision is his.
+- **The WP4 contact sheet review gate.** Work packages stop there by instruction; the firmware
+  bring-up has been running alongside it, not past it.
+
+### State of the tree
+
+Everything is committed on `ccr-555714d9-9rv8ob`; nothing has been pushed, as instructed. The full
+regression passes with all of the firmware work in place: `make vectors` reproduces
+`claude/cc700-test-vectors.md` byte for byte, 14 of 14 C tests pass under both plain and ASan+UBSan,
+and 21 of 21 Python tool tests pass — use `make test PYTHON=/root/venv/bin/python` in WSL, since the
+system interpreter has no pytest. `make fw-build` reports 29 sources compiling clean for xtensa with no
+warnings and an `app.bin` of about 1.24 MB in an 8 MB slot.
+
+Captures are kept in `outputs/`; `nrf-capture*.txt` in the root is now git-ignored.

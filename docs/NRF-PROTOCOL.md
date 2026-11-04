@@ -284,3 +284,100 @@ ever appeared, over 196,464 frames and 75 minutes. They are either responses to 
 send first, or they only exist when the thing they describe does (a paired sensor, a button press, a
 charger state change). The next capture should include **pressing buttons A and B**, which costs
 nothing and tests the button hypothesis directly.
+
+---
+
+# The sensor map, from the first sub-tag-aware capture
+
+`outputs/nrf-capture-2026-11-04.txt`. 6088 frames, **0 CRC rejects**, four id/sub-tag pairs. The raw
+frames confirm the header byte for byte:
+
+```
+a5 0c 6f f1 04 10 | f1 01 09 00 f8 ff 18 04 | 55 13
+^sync ^len ^6f ^f1 ^kind ^id=0x10        ^payload (8)   ^CRC
+```
+
+Splitting on the sub-tag worked. **Payload byte 1 is a second level of type**, and with both levels
+separated the sensors are legible.
+
+## id 16, sub-tag 0xF1 — the sensor transport
+
+| byte 1 | rate | reading | confidence |
+| --- | --- | --- | --- |
+| **0x01** | ~8 ms | **accelerometer**, three int16 little-endian | **high** |
+| **0x03** | ~100 ms | **barometer**: int16 temperature ×0.01 °C, then uint32 pressure ×0.01 Pa | **high** |
+| **0x04** | ~70 ms | two alternating shapes, unresolved | low |
+| **0x0a** | ~1 s | one uint16 around 3560–3576 | medium |
+| 0x0d | once | seen a single time | — |
+
+### Accelerometer (byte 1 = 0x01)
+
+```
+f1 01  09 00  f8 ff  18 04   ->  x = 9      y = -8     z = 1048
+f1 01  10 00  fc ff  18 04   ->  x = 16     y = -4     z = 1048
+f1 01  02 00  fc ff  1d 04   ->  x = 2      y = -4     z = 1053
+```
+
+Across the whole capture x stays within ±16, y within ±9, and **z sits at 1037–1062** while the unit
+lay flat on a table. One axis reading ~1024 while the other two read ~0 is gravity, so this is the
+accelerometer and the scale is about **1024 counts per g**. The exact scale and the axis order still
+want the tilt test — stand the unit on each edge and whichever axis goes to ~1024 is that edge.
+
+### Barometer (byte 1 = 0x03)
+
+```
+f1 03  bc 0c  d3 18 9b 00   ->  3260 = 32.60 degC   10,164,435 = 1016.44 hPa
+f1 03  ba 0c  ce 18 9b 00   ->  3258 = 32.58 degC   10,164,430 = 1016.44 hPa
+```
+
+Temperature is bytes 2–3 as an int16 in hundredths of a degree. Pressure is bytes **4–7** as a uint32
+in hundredths of a pascal — the byte 6 value of `0x9b` is the stable high byte, which is why reading
+bytes 4–5 alone looked like noise. 1016.4 hPa is an ordinary Perth pressure and 32.6 °C is reasonable
+for a unit that had been running a while. This confirms the earlier hypothesis on clean data.
+
+**That is barometric altitude solved**, which closes the real hole behind Q19: `total_ascent` can come
+from a barometer rather than from GPS elevation.
+
+### Byte 1 = 0x04, unresolved — and why I am not calling it the light sensor
+
+Two shapes alternate:
+
+```
+f1 04  58 02  00 00  1e 05    ->  600    0    1310
+f1 04  d0 07  00 00  03 00    ->  2000   0    3
+```
+
+**600** is exactly what the factory test screen showed for `Light lux` on this unit, which is
+tempting. But 2000 is also a suspiciously round number, and a field that is only ever 600 or 2000 looks
+like an identifier or an interval, not a measurement — so the thing that moves would be the third
+field (1306–1310 against 3). Calling this the light sensor on the strength of one coincidence is
+exactly the mistake the display taught; the cover-and-uncover test decides it in one window.
+
+### Byte 1 = 0x0a — probably battery millivolts
+
+A single uint16 rising slowly through 3560, 3564, 3565, 3567, 3568, 3569, 3571, 3576. That reads
+naturally as **3.56–3.58 V**. Caveat worth keeping: the unit was on USB throughout, and a charging
+cell would normally read higher, so this may be something else that happens to live in the same range.
+Unplugging for one window settles it.
+
+## id 0 — status and a clock
+
+| sub-tag | rate | content |
+| --- | --- | --- |
+| **0x53** | ~200 ms | `53 ff SS MM HH 64 0a 7e` — **seconds, minutes, hours** |
+| **0x52** | ~300 ms | `52 ff ff ff c2 10 64 ff` — every byte constant: a status or configuration record |
+
+The clock is not a guess. Across the capture byte 2 counts up and rolls over from `0x3b` (59) to
+`0x00`, and on that rollover byte 3 does the same, and when byte 3 rolls over byte 4 goes from `0x08`
+to `0x09`. Two carries observed. Whether it is time of day or elapsed time is open — `09:00` matched
+neither UTC nor Perth time at the moment of capture, so elapsed is the better guess. Bytes 5–7
+(`0x64`, `0x0a`, `0x7e` = 100, 10, 126) never changed.
+
+## What this means for the HAL
+
+`hal_baro_read_pa` and the temperature are implementable now. `hal_power_battery_pct` and
+`hal_power_ambient_lux` need the two experiments above, each one window long. The IMU is a bonus the
+spec never asked for and is out of scope for v1 (rule 4), but it is recorded here because it is free.
+
+**No id outside 0 and 16 has ever been seen**, over more than 200,000 frames. The ids the dispatcher
+forwards to the application are still unaccounted for, and the button question is still open.
