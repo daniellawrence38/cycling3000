@@ -150,7 +150,11 @@ int hal_display_init(void)
     esp_lcd_panel_reset(panel);
     esp_lcd_panel_init(panel);
     esp_lcd_panel_disp_on_off(panel, true);
-    ESP_LOGI(TAG, "ST7789 up on i80: %dx%d, pclk %d Hz", HAL_DISPLAY_W, HAL_DISPLAY_H, LCD_PCLK_HZ);
+    /* Only now is there something worth lighting. Leaving this out would give a perfectly
+       initialised panel behind a dark backlight, which looks exactly like wrong pins. */
+    hal_display_backlight(100);
+    ESP_LOGI(TAG, "ST7789 up on i80: %dx%d, pclk %d Hz, backlight on", HAL_DISPLAY_W, HAL_DISPLAY_H,
+             LCD_PCLK_HZ);
     return 0;
 }
 

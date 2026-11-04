@@ -17,7 +17,8 @@
  * must be called before hal_display_flush, which does nothing until it succeeds. */
 int hal_display_init(void);
 
-/* Backlight brightness, 0 to 100 per cent. Starts at 0 so a cold start shows no noise. */
+/* Backlight brightness, 0 to 100 per cent. hal_display_init leaves it at 0 until the panel is up,
+ * then takes it to 100, so a cold start shows no noise and no false "dark screen". */
 void hal_display_backlight(int pct);
 
 /* Copies a rectangle of RGB565 pixels to the panel and returns when the buffer may be reused. */
