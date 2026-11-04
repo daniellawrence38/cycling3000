@@ -1,11 +1,10 @@
 /* hal_esp.c: the HAL on the ESP32-S3. Only the clock is real; everything that depends on unknown wiring
- * (display, buttons, touch, GNSS, barometer, battery, backlight, light sensor) is a stub that returns
+ * (buttons, touch, GNSS, barometer, battery, light sensor) is a stub that returns
  * "not implemented" and logs once (brief 4), until bring-up identifies the hardware (BRINGUP.md step 3). */
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "hal_baro.h"
 #include "hal_clock.h"
-#include "hal_display.h"
 #include "hal_gnss.h"
 #include "hal_input.h"
 #include "hal_power.h"
@@ -38,12 +37,7 @@ void hal_clock_set_utc(uint32_t unix_seconds)
     utc_base_ms = hal_clock_monotonic_ms();
 }
 
-/* display: ST7789 per the firmware strings; bus, pins and orientation Unverified */
-void hal_display_flush(int16_t x1, int16_t y1, int16_t x2, int16_t y2, const uint16_t *px)
-{
-    (void)x1; (void)y1; (void)x2; (void)y2; (void)px;
-    NOT_IMPLEMENTED();
-}
+/* display: the real ST7789 i80 driver is in hal_display_esp.c */
 
 /* input */
 int hal_input_poll(hal_input_event_t *ev)

@@ -393,3 +393,43 @@ SD/eMMC pins, the GNSS power enable, and what GPIO 43 and 44 do.
 Seventeen of the chip's pins are now accounted for, none of them measured on the board. Everything in
 this table is Unverified until our own driver uses it.
 
+
+## The real display driver is written — `fw/main/hal_display_esp.c`
+
+Written entirely from the decoded configuration; **the unit was not involved**.
+
+`hal/hal_display.h` previously described an ST7789 whose "bus and pins are Unverified" and
+`fw/main/hal_esp.c` answered `hal_display_flush` with "not implemented". Both are replaced:
+
+- **`fw/main/board_pins.h`** holds every pin, with the provenance and the Unverified status stated at
+  the top of the file so nobody downstream mistakes a decode for a measurement.
+- **`fw/main/hal_display_esp.c`** brings up the LEDC backlight, drives the two unexplained lines and
+  RD high in the stock firmware's order, creates the i80 bus, the panel IO and the ST7789, and
+  implements the flush.
+- `hal_display.h` gains `hal_display_init()` and `hal_display_backlight(pct)`; `main.c` calls the
+  first before `lv_init()` and logs if it fails rather than dying.
+
+**One design point worth recording.** `hal_display.h` promises that `hal_display_flush` "returns when
+the buffer may be reused", but `esp_lcd_panel_draw_bitmap` is asynchronous: it queues a DMA transfer
+and returns, which would let LVGL start redrawing a buffer still being clocked out, and the tearing
+would have looked like a wiring fault. The driver therefore takes a binary semaphore given from the
+transfer-complete callback, so the flush blocks until the DMA is done. That honours the documented
+contract and leaves `main.c`'s existing `flush_cb` correct as it stands.
+
+**An independent check on the decode.** ESP-IDF v5.5.6's own `esp_lcd_i80_bus_config_t` has
+`dc_gpio_num`, `wr_gpio_num`, `clk_src`, `data_gpio_nums[16]`, then `bus_width` — field for field
+where the stock firmware's stores landed, including `bus_width` at `+12 + 16×4`. The vendor's IDF and
+ours lay the struct out identically, which is strong corroboration that the pins were read correctly
+rather than off by a field.
+
+**Build:** `make fw-build` passes, `app.bin` **1,183,040 of 8,192,000 bytes (14 %)**, 36 KB larger
+than before for `esp_lcd` and LEDC, no warnings. `make fw-check` now covers 26 sources. Host tests
+unaffected, 16 of 16.
+
+**Still Unverified, and this is the point:** nothing here has driven a pin on the real board. The
+first time this driver runs is bring-up step 4, and the honest list of what could still be wrong is:
+the RGB element order (RGB assumed, BGR is equally likely and shows as swapped colours), the panel's
+rotation and offsets, whether GPIO 43 and 44 really are power and reset, and whether the panel needs
+a reset pulse this driver does not give because `esp_lcd`'s `reset_gpio_num` is `-1`. All are
+cheap to correct once there is something on the screen to look at.
+

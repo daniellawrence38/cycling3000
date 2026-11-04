@@ -4,7 +4,7 @@
  *
  * What runs: the core on null storage (fs_null.c) until the separate storage is identified; the link
  * server on GATT; the sensor manager; LVGL drawing the Ready screen from the core's view into a buffer
- * that hal_display_flush (a stub until the panel's bus and pins are known) would send to the ST7789.
+ * that hal_display_flush sends to the ST7789 over the i80 bus (fw/main/hal_display_esp.c).
  * The full screen manager is ui/sim/app.c in the simulator; it moves to a shared ui/ file in bring-up
  * step 7, when buttons and touch exist.
  *
@@ -57,11 +57,13 @@ static void flush_cb(lv_display_t *d, const lv_area_t *a, uint8_t *px)
 
 static void ui_start(void)
 {
+    if (hal_display_init() != 0)
+        ESP_LOGE(TAG, "display did not start: the UI runs but nothing is drawn");
     lv_init();
     lv_tick_set_cb(tick_cb);
     lv_display_t *d = lv_display_create(HAL_DISPLAY_W, HAL_DISPLAY_H);
     lv_display_set_color_format(d, LV_COLOR_FORMAT_RGB565);
-    /* Two 40-line buffers in internal DMA-capable RAM, for the SPI panel once it is driven. */
+    /* Two 40-line buffers in internal DMA-capable RAM, sized to the i80 bus max_transfer_bytes. */
     size_t sz = HAL_DISPLAY_W * 40 * 2;
     void *b1 = heap_caps_malloc(sz, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
     void *b2 = heap_caps_malloc(sz, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
