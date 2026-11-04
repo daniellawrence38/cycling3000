@@ -94,3 +94,71 @@ Three things this settles:
   so the custom firmware keeps this route working by construction.
 - The chip, revision, PSRAM and MAC all match the handover.
 
+### 2.2 · No physical download-mode entry found — but a factory menu was
+
+Holding a button and plugging in gives the **charge screen** every time, for each of the three
+buttons. That is decisive on its own: a charge screen means the application booted, so the ROM did
+not enter download mode and GPIO0 was not held low at that reset.
+
+**Two bottom buttons held with power opens a hidden factory test menu** (`AppFactoryManage` in the
+firmware). `--before no-reset --after no-reset chip-id` still times out there, as expected: it is a
+firmware mode, not the ROM.
+
+Its screens, read out of the image, are:
+
+1. `MAC QR` — MAC and a QR code
+2. `PWM TEST` — `BackLight:`, `ScreenLight:`, `Environment Light:`, `LightLux:`
+3. `RECOVERY FUNC TEST` — the version block below, **with a `FactoryData Reset?` /
+   `[PRESS B TO RECOVERY]` prompt on the same screen**
+4. `FACTORY UPDATE TEST` — `Factory Update?` / `[PRESS B TO Update]` / `No file to Updating`
+
+**Screens 3 and 4 are destructive if B is pressed**: the factory reset is described elsewhere in the
+image as "all data will be cleared and all settings will be reset", and the update flashes from a
+file. Those are the two things that could destroy the un-backed-up 4 GB. Only navigate; never press B.
+
+### Hardware inventory, read off `RECOVERY FUNC TEST`
+
+| Field | Value | What it means |
+| --- | --- | --- |
+| `SPUVer` | 1.711 | rendered `%d.%d%02d`, so **1.7.11** |
+| `ESP32Ver` | 1.711 | same build |
+| `52810Ver` | 1.704 | **1.7.4** on a part the firmware calls `52810` |
+| `GPSVer` | V3.13 | GNSS firmware |
+| `TOUCHVer` | `3240: 0x1004` | touch controller |
+| `SPUHardVer` | V1 | board revision |
+| `HardwareVer` | V1 | board revision |
+
+From `PWM TEST`: **`LightLux: 600`** and **`ScreenLight: 10`**, so there is a working ambient-light
+sensor and a PWM backlight — both of which the spec assumes.
+
+What this adds to `docs/STOCK-FIRMWARE-FINDINGS.md`:
+
+- **The co-processor is a 52810.** That document could only call it "an nRF co-processor". With 67
+  ANT+ strings and a UART link, an **nRF52810** is the obvious reading — Nordic's part that carries
+  ANT. Still inferred from a version label, so Unverified until the board is seen.
+- **Two touch controllers are supported, and this unit has the `3240`.** The firmware prints either
+  `6336: 0x%02x` or `3240: 0x%x%x%x%x`; this unit answers on the 3240 path with `0x1004`. `6336`
+  reads as a FocalTech FT6336; `3240` is most likely a Hynitron CST3240. Both Unverified.
+- **The GNSS is Airoha-family.** Independent of the version number, the image carries `$PAIR001`,
+  `$PAIR491` and `$PAIR867` command strings, which are Airoha's command set.
+
+**A correction to the earlier report.** `backup_report.py` lists `AXP` with 2 hits, which I nearly
+took for an AXP power-management IC. Both are false positives inside the format string
+`%s: MaxPathNum:%d` — "M-**axP**-athNum". There is **no evidence of an AXP PMIC**, and in fact a
+search for every common barometer, IMU, PMIC, charger and light-sensor part number
+(SPL06, BMP/BME, LPS2x, DPS3xx, QMI8, ICM, MPU, AXP, BQ, CW201x, LTR, BH17xx, AP3216, STK) finds
+**nothing** in all 38,971 strings. The vendor's drivers do not name their parts, so the sensors will
+have to be identified by an I2C scan during step 3, not from the image.
+
+### An open question the screen raised: does the backup still match the unit?
+
+The backup's `ota_0` app descriptor says `CC700Pro_V1.710-2-g44e3c9e-dirty`; the unit now displays
+**1.7.11**. That may be nothing — "V1.710-2" is two commits past tag V1.710, and a version constant
+bumped to 1.7.11 in those two commits would explain it exactly. But the alternative is that the unit
+has taken an update since 2 November, and that matters a great deal: **the whole plan assumes
+`ota_1` is empty and `otadata` points at `ota_0`**. An OTA update would have written the new firmware
+into `ota_1` and repointed `otadata` at it. Writing our app into `ota_1` would then overwrite the
+unit's current firmware.
+
+Settled by reading three small regions off the unit, read-only (see next).
+
