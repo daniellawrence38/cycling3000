@@ -63,3 +63,34 @@ the exact versions in the backup's `capture-tool-requirements.txt`.
 **Backup verified before anything else.** `original-flash-16MB.bin` hashes to
 `8ec2dfd530d6dbf2f078d23114c589d88ac0fbd728b926da70c0526e5c7b3ec7`, matching the handover.
 
+### 2.1 · The normal route works — and needs no button
+
+```
+esptool v5.6.0
+Connected to ESP32-S3 on COM3:
+Chip type:          ESP32-S3 (QFN56) (revision v0.2)
+Features:           Wi-Fi, BT 5 (LE), Dual Core + LP Core, 240MHz, Embedded PSRAM 8MB (AP_3v3)
+Crystal frequency:  40MHz
+USB mode:           USB-Serial/JTAG
+MAC:                dc:b4:d9:25:0f:10
+Stub flasher running.
+WARNING: ESP32-S3 has no chip ID. Reading MAC address instead.
+MAC:                dc:b4:d9:25:0f:10
+Hard resetting via RTS pin...
+```
+
+Read-only, and the stub flasher runs from RAM, which is what the original backup did. Nothing was
+written to flash.
+
+Three things this settles:
+
+- **esptool can reset the unit into download mode by itself, with no button held.** On a chip with
+  native USB-Serial/JTAG that reset goes through the USB peripheral rather than a DTR/RTS circuit
+  ("Hard resetting via RTS pin" is esptool's generic wording). This is the convenient route, and it
+  is exactly the route that disappears if custom firmware crashes early or takes the USB peripheral
+  somewhere else — which is why 2.2 still has to find a physical entry before anything is flashed.
+- **`USB mode: USB-Serial/JTAG`** confirms the native controller, matching the Windows enumeration.
+  `fw/sdkconfig.defaults` sets `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` and the tests forbid TinyUSB,
+  so the custom firmware keeps this route working by construction.
+- The chip, revision, PSRAM and MAC all match the handover.
+
