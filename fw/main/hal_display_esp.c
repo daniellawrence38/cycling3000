@@ -86,8 +86,12 @@ void hal_display_backlight(int pct)
  * and dark are flipped the panel needs inversion. One photograph settles what guessing could not. */
 static void test_pattern(void)
 {
+    /* Eight reference colours in the top half, then the UI's own background colour (C_BG 0x0B0D10,
+       which is 0x0862 in RGB565) filling the bottom half. If the bottom half is near-black while the
+       UI's background comes out blue, the panel is innocent and LVGL is not putting the value we
+       think into its buffer. If both are blue, the fault is below LVGL. */
     static const uint16_t bars[8] = {0xF800, 0x07E0, 0x001F, 0xFFFF, 0x0000, 0xFFE0, 0x07FF, 0xF81F};
-    const int rows = HAL_DISPLAY_H / 8;
+    const int rows = HAL_DISPLAY_H / 16;  /* bars take the top half, 20 rows each */
     uint16_t *line = heap_caps_malloc((size_t)HAL_DISPLAY_W * rows * sizeof(uint16_t),
                                       MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
     if (!line)
@@ -98,7 +102,19 @@ static void test_pattern(void)
         esp_lcd_panel_draw_bitmap(panel, 0, b * rows, HAL_DISPLAY_W, (b + 1) * rows, line);
         xSemaphoreTake(flush_done, pdMS_TO_TICKS(1000));
     }
-    vTaskDelay(pdMS_TO_TICKS(4000));
+    /* bottom half: exactly the colour the UI paints its background with */
+    for (int i = 0; i < HAL_DISPLAY_W * rows; i++)
+        line[i] = 0x0862;
+    for (int b = 8; b < 16; b++) {
+        esp_lcd_panel_draw_bitmap(panel, 0, b * rows, HAL_DISPLAY_W, (b + 1) * rows, line);
+        xSemaphoreTake(flush_done, pdMS_TO_TICKS(1000));
+    }
+    /* Held long enough to photograph, and logged repeatedly so the monitor can be opened after the
+       reset and still catch it. */
+    for (int i = 0; i < 10; i++) {
+        ESP_LOGI(TAG, "test pattern up: top half 8 reference colours, bottom half C_BG 0x0862 (%d/10)", i + 1);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
     free(line);
 }
 #endif
