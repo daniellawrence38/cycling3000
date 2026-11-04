@@ -269,3 +269,51 @@ while it runs, and no summary at the end. Before another live run it should: set
 about 45 s, print a per-pin edge count every 10 s, and mark pins whose edges are periodic so traffic
 is visually separated from presses.
 
+
+## Step 3a (offline) · The display is fully decoded from the stock firmware
+
+Daniel chose option A: read the vendor's own initialisation code instead of probing the live unit.
+This is all static analysis of `ota_0` in the backup — **the unit was not touched**.
+
+**Method.** The vendor built with `ESP_ERROR_CHECK`, whose macro stringifies its argument, so the
+image contains the literal text `esp_lcd_new_i80_bus(&bus_config, &i80_bus)` and friends. Parsing the
+app image header gives the segment map (DROM `0x3c2d0020`, IROM `0x42000020`, IRAM `0x40374000`),
+which turns a file offset into a virtual address. Scanning IROM for `l32r` instructions whose
+computed target is the literal holding each string's address locates the exact call sites. The
+display init sits at `0x42031d94`–`0x4203203x`, and the struct fields are plain `movi`/`s32i` pairs
+that can be read straight off.
+
+### Display: ST7789 on an 8-bit Intel i80 bus
+
+| Signal | GPIO | Where it comes from |
+| --- | --- | --- |
+| DC (command/data) | **40** | `esp_lcd_i80_bus_config_t` +0 |
+| WR | **3** | +4 |
+| D0–D7 | **4, 38, 5, 48, 6, 47, 7, 11** | +12…+40, `bus_width = 8` at +76 |
+| RD | **39** | `gpio_config` with `pin_bit_mask` high word `0x80`, mode OUTPUT, then driven high |
+| CS | **2** | `esp_lcd_panel_io_i80_config_t` +0 |
+| Backlight | **45** | `ledc_channel_config_t.gpio_num` |
+| Reset | **none** | `esp_lcd_panel_dev_config_t.reset_gpio_num = -1` |
+
+Settings: **pclk 15 MHz** (`0x00e4e1c0`), command and parameter widths 8 bits, `dc_data_level = 1`
+(DC low for command, high for data), transaction queue depth 10, **16 bits per pixel (RGB565)**,
+backlight PWM **20 kHz at 10-bit resolution** on LEDC low-speed timer 0 channel 0.
+
+`bus_width = 8` landing exactly at `+12 + 16×4` is what confirms the field alignment: the data array
+is 16 ints wide in the struct and only the first eight are set, so the offsets cannot be
+coincidental.
+
+**GPIO 43 and 44 are driven high immediately before the bus is created** (set to output, level 1).
+They are not part of any of the three config structs. Panel power enable and panel reset are the
+obvious candidates — `reset_gpio_num` being `-1` means the panel's reset is *not* handled by
+`esp_lcd`, so something else must do it. Unconfirmed.
+
+**Status: Unverified on hardware.** This is read from the stock firmware's own code, which is far
+stronger than a guess, but no pin has been measured and our driver has not lit the panel. It stays
+Unverified until it does.
+
+**What it changes.** `hal/hal_display.h` says "ST7789 per the firmware strings; the bus and pins are
+Unverified". The bus is now known and it is **not SPI** — an i80 parallel bus needs a completely
+different driver, `esp_lcd_new_i80_bus` rather than an SPI panel IO. Writing that driver no longer
+needs the unit at all.
+
