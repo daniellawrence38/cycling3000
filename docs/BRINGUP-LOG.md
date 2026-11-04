@@ -183,3 +183,40 @@ Every precondition step 4 depends on — `ota_1` erased, `otadata` naming `ota_0
 and bootloader untouched, the backup matching — now holds **as measured on the unit**, not only as
 recorded in a file from two days earlier.
 
+## Step 3b · RAM probe, first run · one button found
+
+The probe loaded and ran from RAM on the first attempt. Download mode was entered by esptool itself
+(`--after no-reset --no-stub load-ram`), since step 2 found no physical entry. Nothing was written to
+flash; the unit returns to stock on a power-cycle.
+
+```
+CC700 probe (RAM only, read only)
+chip: model 9, revision v0.2, 2 cores, features 0x00000012
+reset reason: 11
+initial levels: 0=1 1=1 2=0 3=0 4=0 5=0 6=0 7=0 8=0 9=0 10=0 11=0 12=1 13=1 14=1 15=1
+                16=1 17=1 18=1 21=1 38=0 39=1 40=1 41=1 42=0 43=1 44=1 45=0 46=0 47=0 48=0
+watching for 120 s
+  55975 ms  GPIO 41  1 -> 0        (ten transitions in 130 ms: one press with contact bounce)
+  …
+  56105 ms  GPIO 41  0 -> 1
+```
+
+**Found: a button on GPIO 41, active low** (idle high, pressed low). Which of the three it is still
+has to be confirmed — the first run was not narrated.
+
+**Idle levels.** High: 0, 1, 12–18, 21, 39, 40, 41, 43, 44. Low: 2–11, 38, 42, 45–48. GPIO 19 and 20
+(USB) and 26–37 (flash and PSRAM) are deliberately not watched. 43 and 44 reading high is consistent
+with the default UART0 pins.
+
+**GPIO 0 idles high and never moved**, so none of the buttons pressed in this run is the boot strap.
+
+**Three of the four actions produced nothing**, which has several possible explanations and the next
+run is designed to separate them:
+
+- the actions may simply have fallen outside the window, or been too light;
+- **the power button very probably does not reach the ESP32 at all** — on almost every design it goes
+  to the power-management IC, which is why a long press can cut power;
+- **the touch controller is not initialised during the probe**, so it has no reason to pulse its
+  interrupt line. Touch needs its rail and I2C configuration first, which this probe deliberately
+  does not do (it never drives a pin).
+
