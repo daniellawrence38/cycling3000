@@ -41,7 +41,10 @@
  * and hard to read; with it true the screen is correct. ESP-IDF's stock ST7789 driver defaults to
  * inversion off, and the stock firmware uses its own fork of that driver, which is where the
  * difference comes from. The element order is left RGB because the stock firmware passes 0 for it. */
-#define LCD_INVERT_COLOR true
+/* Back to false: the pale screen was a byte-order fault, not inversion (see LCD_SWAP_COLOR_BYTES). */
+#define LCD_INVERT_COLOR false
+#define LCD_SWAP_COLOR_BYTES 1
+#define LCD_TEST_PATTERN 1   /* colour bars for four seconds at boot; set to 0 once the panel is right */
 
 /* The stock firmware sets these two to outputs and drives them high immediately before creating the
  * i80 bus. They belong to none of its three config structs, and esp_lcd's reset_gpio_num is -1, so

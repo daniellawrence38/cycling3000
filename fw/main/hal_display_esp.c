@@ -23,6 +23,8 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "freertos/task.h"
+#include "esp_heap_caps.h"
 #include "hal_display.h"
 
 static const char *TAG = "display";
@@ -78,7 +80,31 @@ void hal_display_backlight(int pct)
     ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
 }
 
+#if LCD_TEST_PATTERN
+/* Eight known colours, top to bottom, held briefly before the UI starts. If they come out in this
+ * order the pixel format is right; if red and blue are swapped the element order needs BGR; if light
+ * and dark are flipped the panel needs inversion. One photograph settles what guessing could not. */
+static void test_pattern(void)
+{
+    static const uint16_t bars[8] = {0xF800, 0x07E0, 0x001F, 0xFFFF, 0x0000, 0xFFE0, 0x07FF, 0xF81F};
+    const int rows = HAL_DISPLAY_H / 8;
+    uint16_t *line = heap_caps_malloc((size_t)HAL_DISPLAY_W * rows * sizeof(uint16_t),
+                                      MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+    if (!line)
+        return;
+    for (int b = 0; b < 8; b++) {
+        for (int i = 0; i < HAL_DISPLAY_W * rows; i++)
+            line[i] = bars[b];
+        esp_lcd_panel_draw_bitmap(panel, 0, b * rows, HAL_DISPLAY_W, (b + 1) * rows, line);
+        xSemaphoreTake(flush_done, pdMS_TO_TICKS(1000));
+    }
+    vTaskDelay(pdMS_TO_TICKS(4000));
+    free(line);
+}
+#endif
+
 int hal_display_init(void)
+
 {
     if (panel)
         return 0;
@@ -131,6 +157,12 @@ int hal_display_init(void)
         .lcd_param_bits = 8,
         /* DC low for command, high for data: dc_data_level is the only bit the stock firmware sets. */
         .dc_levels = {.dc_idle_level = 0, .dc_cmd_level = 0, .dc_dummy_level = 0, .dc_data_level = 1},
+        /* LVGL 9 renders RGB565 in the CPU's native little-endian order; the ST7789 wants the high
+           byte first. Without this the panel reads each pixel's bytes the wrong way round, which
+           leaves white (0xFFFF, symmetric) white while turning the near-black background (0x0862)
+           into a mid-tone (0x6208) -- a grey screen with pale text that looks like a contrast or
+           inversion fault but is neither. Measured on the unit, 4 November 2026. */
+        .flags = {.swap_color_bytes = LCD_SWAP_COLOR_BYTES},
     };
     if (esp_lcd_new_panel_io_i80(bus, &io_cfg, &io_handle) != ESP_OK) {
         ESP_LOGE(TAG, "panel io failed");
@@ -159,6 +191,9 @@ int hal_display_init(void)
     /* Only now is there something worth lighting. Leaving this out would give a perfectly
        initialised panel behind a dark backlight, which looks exactly like wrong pins. */
     hal_display_backlight(100);
+#if LCD_TEST_PATTERN
+    test_pattern();
+#endif
     ESP_LOGI(TAG, "ST7789 up on i80: %dx%d, pclk %d Hz, backlight on", HAL_DISPLAY_W, HAL_DISPLAY_H,
              LCD_PCLK_HZ);
     return 0;
