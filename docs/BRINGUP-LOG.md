@@ -675,3 +675,54 @@ can be silent for thirteen seconds.
 
 `app.bin` is 1,233,920 bytes of 8,192,000 (15 %), 29 sources compiling clean for xtensa with no
 warnings.
+
+### The frame builder closes the loop, and names the unknown header byte
+
+`0x4205062c` is the sender: `build(kind, id, payload, payload_len)`. It allocates `payload_len + 8`,
+then writes `0xA5`, `payload_len + 4`, `0x6F`, **`0xF1`**, the kind, the id, the payload, and the
+checksum. So the encoder and the decoder agree independently on the arithmetic — six header bytes plus
+payload plus two of CRC, frame total `len + 4`, payload `total - 8` — which is the best internal check
+available without the hardware.
+
+**Header byte 3 is a direction or address marker: `0xF1` on everything the ESP32 sends.** The parser
+reads it and does not validate it, so what the nRF puts there is unknown, and the listener now reports
+it per id. That is a one-line finding from the first capture.
+
+The four command senders sit together and all use **id 16** through that builder:
+`SendPowerOffCmd` and `SendPowerOnCmd` with kind 2, `SendCheckPowerOnReasonCmd` and
+`SendQuerySlaveModeCmd` with kind 1. So `kind` separates a query from a command on the same id.
+
+**That the ESP32 asks the nRF why it powered on is the strongest hint yet about the buttons.** It fits
+everything else: every `gpio_config`, `gpio_set_direction`, `gpio_set_level` and `gpio_reset_pin` call
+site in the image was enumerated earlier and all the ones with immediate pin numbers belong to the
+LCD. There is no GPIO key scan and no key interrupt anywhere in the stock firmware, and
+`KeyEventQueueInit`, `KeyQueueReceive` and `ArmSendBtnEvent` live in the same compilation unit as those
+four senders. The buttons almost certainly arrive as messages on this link. Still Unverified, but it
+now has a mechanism rather than a shrug — and pressing A and B during the first capture tests it for
+free.
+
+The whole decode is written up in **`docs/NRF-PROTOCOL.md`** rather than left in this log, because it
+is a specification the firmware will keep referring to.
+
+### The listener was rebuilt to make one capture answer as much as possible
+
+Chasing the id-to-sensor mapping statically means following five hops: parser, the intrusive list at
+`0x3c70b008`, the event dispatcher at `0x42050a48`, a repackage into a 16-byte struct, then another
+queue through `0x42057be4`, with the meaning only resolved at the far end. Watching real numbers move
+is faster and far more certain, so the effort went into the listener instead. It now:
+
+- keeps per-id statistics — count, mean period, and for every payload byte whether it is constant or
+  varies and between what values;
+- prints a frame when its id is new or its payload has **changed**, not on every arrival, so a
+  multi-minute capture stays readable;
+- prints each id's payload read as 16- and 32-bit little-endian integers, because a pressure in
+  pascals, a battery in millivolts or a lux reading is recognisable on sight once the bytes are
+  grouped the way the sender meant them;
+- and reports the direction byte per id.
+
+`docs/NRF-PROTOCOL.md` ends with what to look for: a byte that tracks a hand over the light sensor, a
+`u32le` near 101325, a `u16le` between 3300 and 4200 drifting slowly, and a value that moves only when
+a button is pressed.
+
+`app.bin` is 1,235,472 bytes of 8,192,000 (15 %), 29 sources compiling clean for xtensa with no
+warnings.
