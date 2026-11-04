@@ -616,3 +616,62 @@ probing, and unlike the display it needed no correction on the hardware. Worth n
 was judged from photographs of anti-aliased text, where two stacked faults masked each other, while
 touch was judged by sending a known input and watching where it landed. Choose the test that produces
 an unambiguous answer and the first attempt tends to be the last.
+
+## Step 4 (offline) · The nRF frame format, decoded — and a listener that finds the baud rate itself
+
+Still all static analysis of `ota_0`. The sensors are behind the nRF (Q36), so the protocol had to come
+first. The stock firmware's own parser gives it up completely.
+
+### The frame
+
+From the parser at `0x42050766`–`0x4205088d`:
+
+| Offset | Value | How we know |
+| --- | --- | --- |
+| 0 | **`0xA5`** sync | `movi a3, 165` then `bne a8, a3` — bytes are discarded until this matches |
+| 1 | **len**, total frame = `len + 4` | `addi a8, a8, 4` before the second peek; `bgeu 132, hdr[1]` else `InstrLen Error!` |
+| 2 | **`0x6F`** | `movi a9, 111` then `bne` — checked as strictly as the sync |
+| 3 | unknown | read but not validated |
+| 4 | **kind**, 1..5 | `addi a8, -1; bltui a8, 5` else `Com Instr Err:%x` |
+| 5 | **id** | what the dispatcher at `0x42051590` switches on |
+| 6… | payload | |
+| last two | **CRC-16, little-endian** | `buf[total-2]` low, `buf[total-1]` high, over every byte before them |
+
+The checksum routine at `0x4222137c` is a bitwise CRC-16 with polynomial **0x1021** (literal at
+`0x4220e4a8`), init 0, no reflection, no final XOR. It feeds the message bits in low-end first and
+then shifts sixteen zero bits through the register — the augmented form, which is arithmetically
+identical to the ordinary **CRC-16/XMODEM** of the message. So a standard implementation will agree
+with it byte for byte.
+
+### The message ids that matter
+
+The dispatcher acts on **0, 1, 11, 16, 17, 34, 35, 40, 120, 121, 122, 123, 128**. The 11-to-40 set is
+not a range check but a bitmask, `0x21800041` at `0x4203eeb0`, tested with `bbs`. Ids 11, 17, 34, 35,
+40, 120–123 and 128 are handled the same way: malloc 12 bytes, store the id, copy **eight bytes** of
+payload, and post it to the application on queue event 5. Ids 0, 1 and 16 have their own handlers
+(`0x42050d78`, `0x42050fa4`, `0x42051200`).
+
+So the sensor values are almost certainly eight-byte payloads among that list — but **which id is
+which is not in the parser**, and guessing would be rule 3 all over again.
+
+### The baud rate is not in the firmware, so let the CRC find it
+
+`uart_param_config` takes the baud as a parameter, and no constant anywhere near `MidComm` is a
+plausible rate (the `1000000` literals that looked promising turn out to be decimal-parsing
+multipliers — `addi a8, a8, -48` on an ASCII digit).
+
+Rather than guess, `fw/main/hal_nrf_esp.c` tries the eight standard rates in turn, twenty seconds each
+— comfortably longer than the ~13 s heartbeat — and **lets the checksum decide**. For a wrong baud
+rate to produce a false positive, byte salsa would have to begin `0xA5`, carry `0x6F` in the third
+byte, declare a length under 132, and then match a 16-bit CRC: a one-in-millions coincidence, and the
+listener reports the rate it found rather than the rate it assumed. The first rate that yields a valid
+frame wins, and it then stays there logging every frame with its id, kind, header byte 3, length and
+payload.
+
+**It never transmits.** The nRF is also holding the ANT+ radio and, on the evidence so far, the
+buttons; a passive sniff cannot upset it, and a guessed frame could. It runs in its own task on core 0
+at priority 2, because the core task owns the core, the link and LVGL and must not wait on a line that
+can be silent for thirteen seconds.
+
+`app.bin` is 1,233,920 bytes of 8,192,000 (15 %), 29 sources compiling clean for xtensa with no
+warnings.

@@ -25,6 +25,7 @@
 #include "hal_clock.h"
 #include "hal_display.h"
 #include "hal_i2c.h"
+#include "hal_nrf.h"
 #include "hal_input.h"
 #include "hal_touch.h"
 #include "lvgl.h"
@@ -139,6 +140,9 @@ static void ui_start(void)
     } else {
         ESP_LOGW(TAG, "no touch panel: the UI is button-only");
     }
+    /* The nRF link, in its own task: the sensors and ANT+ are behind it (Q36) and it is a listener
+       only for now, searching for the baud rate and logging the frames it can verify. */
+    hal_nrf_start();
     root = lv_obj_create(NULL);
     lv_screen_load(root);
 }
