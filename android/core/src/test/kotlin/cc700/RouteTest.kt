@@ -3,6 +3,7 @@ package cc700
 import cc700.route.Pt
 import cc700.route.TurnType
 import cc700.route.buildRoute
+import cc700.route.cr1HasProfile
 import cc700.route.cumulative
 import cc700.route.generateTurns
 import cc700.route.parseGpx
@@ -10,6 +11,7 @@ import cc700.route.profileStep
 import cc700.route.simplify
 import cc700.route.smoothProfile
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -51,6 +53,30 @@ class RouteTest {
         val b = buildRoute("Hill", raw, { s -> s.map { null } })
         assertTrue(b.fromFile)
         assertEquals(1, b.climbs.size)
+    }
+
+
+    /** A route with no elevation anywhere — no service answered and the GPX carried none — must say so
+     * rather than present an ascent of 0 and an empty climb list as a flat route. It must also not claim
+     * the elevation came "from file" when the file had none: that was the old behaviour, and it made the
+     * import preview state a provenance and a figure that were both untrue. The same shape of fault as
+     * Q19 on the unit. */
+    @Test fun noElevationAnywhereIsReportedAsUnknownNotFlat() {
+        val raw = (0..40).map { at(it * 25.0, 0.0) }       // no ele in the file
+        val b = buildRoute("No elevation", raw, { s -> s.map { null } })  // and no service
+        assertFalse(b.hasElevation)
+        assertFalse(b.fromFile, "the file had no elevation, so nothing came from it")
+        assertEquals(0, b.profileM.size)
+        assertEquals(0, b.climbs.size)
+        assertEquals(0, b.obj.ascentM)                      // 0 because unknown, which is why hasElevation exists
+        assertFalse(cr1HasProfile(b.obj.bytes), "nprof must be 0 so a stored route reads as unknown too")
+
+        // A genuinely flat route, with elevation known to be constant, is the case that must stay
+        // distinguishable: same ascent of 0, but a profile and so a real claim.
+        val flat = buildRoute("Flat", raw, { s -> s.map { 12.0 } })
+        assertTrue(flat.hasElevation)
+        assertEquals(0, flat.obj.ascentM)
+        assertTrue(cr1HasProfile(flat.obj.bytes))
     }
 
     @Test fun cornersCountOnce() {

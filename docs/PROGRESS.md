@@ -302,8 +302,9 @@ object-load failure path the UI already has. The whole host suite is unchanged b
 16 of 16 C tests plain, 14 of 14 under ASan and UBSan, 20 of 20 Python, and the three JVM modules green.
 
 **`make fw-check` is new** (`tools/fw_check.py`, `IDEAS.md` I7). It re-compiles only the project's own
-24 sources with the xtensa compiler and `-fsyntax-only`, reusing the exact flags the real build
-recorded in `build/fw/compile_commands.json`. It reports every target-dependent warning in the whole
+25 sources — core/, ui/, hal/, fw/main and the probe's main — with the xtensa compiler and
+`-fsyntax-only`, reusing the exact flags the real build recorded in the two
+`compile_commands.json` files. It reports every target-dependent warning in the whole
 project in about ten seconds. This matters more than it sounds: a full `fw-build` takes roughly forty
 minutes and stops at the first failing file, so the `%u` class above surfaced a few files at a time and
 cost three rebuild cycles before the fast check was written and found the remaining 30 at once.
@@ -318,9 +319,10 @@ has been attempted.
 
 ## Open questions closed, and an ascent the file should not have claimed · 4 November 2026
 
-Eleven of the open questions are now answered in `docs/QUESTIONS.md`: **Q14, Q15, Q17, Q19, Q25, Q26,
+Nine of the open questions are now answered in `docs/QUESTIONS.md`: **Q14, Q15, Q17, Q19, Q25, Q26,
 Q27, Q28 and Q29**, with research notes added to **Q21, Q22, Q23 and Q24** so the four that are
-genuinely Daniel's to decide can be decided in one pass. Each answer records the evidence rather than
+genuinely Daniel's to decide can be decided in one pass. One new question, **Q35**, came out of the
+work below. Each answer records the evidence rather than
 restating the default; two of them found or proved something new.
 
 **Q19 found a real fault.** The question was only "what altitude goes in the file without a
@@ -384,6 +386,33 @@ clone: `git submodule status --recursive` exits 128 there because
 from the disk-full event during installation. Nothing in this firmware uses mqtt, so the build is
 unaffected, but it is why the gate reports what it could not inspect instead of treating an unreadable
 list as an all-clear — the same false-all-clear that `git submodule foreach` gave earlier.
+
+### The same fault on the phone: a route with no elevation (Q35)
+
+Looking for more of the shape Q19 had — a confident value standing in for a missing one — turned one up
+in the Android app's route import, which is the least reality-tested path in the project and the one
+the DEM spike already found E8 in.
+
+A route can end up with no elevation at all: the GPX has no `<ele>` and neither elevation service
+answers, which on a phone means nothing more exotic than importing a file with no signal.
+`buildRoute` then produces a CR1 with `nprof = 0`, `ascent_m = 0` and no climbs — and both the app and
+the unit showed that as **"0 m up, 0 climbs"**, which says the route is flat. Worse, the import preview
+said **"Elevation: from file"**, because the flag was set when the code *fell back* to the file rather
+than when the file actually supplied anything: it named a source that had given nothing.
+
+That is not cosmetic. The Climb page, the "climb ahead" alert and `ASCENT LEFT` all come from the
+climb list, so a route with no elevation behaves exactly like a route with no climbs and the rider
+cannot tell which they are looking at.
+
+No format change was needed: `nprof == 0` already distinguishes "unknown" from "flat" in the object
+(protocol 3.3), so only the screens had to ask. `BuiltRoute.hasElevation` and `cr1HasProfile(cr1)` —
+two bytes of the CR1 header, cheap enough for a list row — now drive the import preview ("elevation
+unknown", with a warning-coloured line saying why), the phone's library row, the unit's Routes list
+("no elevation") and the route detail (`--` for ASCENT and CLIMBS). `fromFile` is set only when the
+file really supplied elevations. `RouteTest.noElevationAnywhereIsReportedAsUnknownNotFlat` pins both
+halves, including that a genuinely flat route — elevation known and constant — still reads as known
+with an ascent of 0. Logged as **Q35**, open, because the default changes what two screens say and no
+mockup covers the state.
 
 ## Future enhancements (not scheduled)
 

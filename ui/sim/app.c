@@ -89,6 +89,7 @@ static int obj_cb(void *ctx, const hal_dirent_t *e)
             it->dist_m = r.dist_m;
             it->ascent_m = r.ascent_m;
             it->climbs = r.nclimbs;
+            it->has_profile = r.nprof > 0;
             memcpy(it->id, r.id, 8);
         }
     }

@@ -45,7 +45,10 @@ typedef enum {
 } ui_screen_id_t;
 
 typedef struct { char name[41]; uint32_t secs; int steps; uint8_t id[8]; } ui_wo_item_t;
-typedef struct { char name[41]; uint32_t dist_m; uint32_t ascent_m; int climbs; uint8_t id[8]; } ui_rt_item_t;
+/* has_profile: the route object carried an elevation profile (CR1 nprof > 0). Without one its
+   ascent and climb count are 0 because nothing was known, not because the route is flat, so the
+   screens show "--" instead of a figure (QUESTIONS Q35). */
+typedef struct { char name[41]; uint32_t dist_m; uint32_t ascent_m; int climbs; int has_profile; uint8_t id[8]; } ui_rt_item_t;
 typedef struct { uint32_t ride_id; uint32_t start_local; uint32_t dist_m, timer_s; int avg_power, has_power; int uploaded; } ui_ride_item_t;
 typedef struct { char name[24]; char id4[8]; int kind; int bars; } ui_scan_item_t;
 

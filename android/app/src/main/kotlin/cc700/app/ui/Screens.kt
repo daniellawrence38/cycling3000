@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cc700.app.data.ConnectionMode
 import cc700.link.ObjInfo
+import cc700.route.cr1HasProfile
 import cc700.sync.ElevationSource
 import cc700.sync.LinkState
 import cc700.sync.RideRecord
@@ -275,8 +276,17 @@ fun RoutesScreen(m: AppModel) {
                 val b = r.route
                 Column(Modifier.padding(horizontal = 16.dp)) {
                     Text(r.name, color = Tok.text, fontWeight = FontWeight.SemiBold)
-                    Text("${km(b.obj.distM)}, ${b.obj.ascentM} m up, ${b.climbs.size} climbs, ${b.turns.size} turn cues", color = Tok.muted, fontSize = 13.sp)
-                    Text(if (b.fromFile) "Elevation: from file" else "Elevation: ${settings.elevation.label}", color = Tok.muted, fontSize = 13.sp)
+                    // With no elevation at all the object's ascent is 0 because nothing is known, not
+                    // because the route is flat, and the climb list is empty for the same reason. Saying
+                    // "0 m up, 0 climbs" would assert both.
+                    val up = if (b.hasElevation) "${b.obj.ascentM} m up, ${b.climbs.size} climbs"
+                             else "elevation unknown"
+                    Text("${km(b.obj.distM)}, $up, ${b.turns.size} turn cues", color = Tok.muted, fontSize = 13.sp)
+                    Text(
+                        if (!b.hasElevation) "Elevation: none found. ${settings.elevation.label} returned nothing and the file has no elevation, so this route has no profile and no climbs."
+                        else if (b.fromFile) "Elevation: from file"
+                        else "Elevation: ${settings.elevation.label}",
+                        color = if (b.hasElevation) Tok.muted else Tok.warn, fontSize = 13.sp)
                     ProfileChart(b.profileM, b.step, b.climbs, Modifier.fillMaxWidth().heightIn(min = 120.dp).padding(vertical = 8.dp))
                     val t = settings.thresholds
                     Text("Climbs: at least ${t.minLenM} m long, ${t.minAscentM} m up, ${t.minGradePct} % average (Settings)",
@@ -296,7 +306,9 @@ fun RoutesScreen(m: AppModel) {
         if (local.isEmpty()) item { Note("Routes you import appear here; send them to the unit from here.") }
         items(local) { r ->
             val onUnit = st.routes.any { it.id.contentEquals(r.cr1.copyOfRange(4, 12)) }
-            RowItem(r.name, "${km(r.distM)}, ${r.ascentM} m up, ${r.climbs} climbs" + (if (r.elevationFromFile) ", elevation from file" else "") +
+            val hasProf = cr1HasProfile(r.cr1)
+            RowItem(r.name, "${km(r.distM)}, " + (if (hasProf) "${r.ascentM} m up, ${r.climbs} climbs" else "elevation unknown") +
+                (if (hasProf && r.elevationFromFile) ", elevation from file" else "") +
                 if (onUnit) ", on the unit" else "", trailing = {
                 Row {
                     if (st.connected && !onUnit) TextButton(onClick = { m.send(2, r.cr1, r.name) }) { Text("Send") }

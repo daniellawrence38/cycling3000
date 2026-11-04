@@ -24,13 +24,16 @@ recommendation; the `Answer:` line is left empty for him. Provisional decisions 
 
 
 **Status, 4 November 2026.** Answered: Q14, Q15, Q16, Q17, Q19, Q20, Q25, Q26, Q27, Q28, Q29, Q30,
-Q31 and Q33 — fourteen of the twenty-one. The seven still open all need Daniel or a real ride, and
-none of them blocks anything: **Q18** (what "LAP n" counts), **Q21**, **Q22**, **Q23** and **Q24**
-(preference and mockup-versus-spec calls on the UI, each with a `Research:` line setting out the trade
-and what it costs to change later), **Q32** (whether 30 m elevation sampling is good enough for climb
-detection, which needs a ride over a known climb), and **Q34** (whether ANT+ comes into scope for a
-later version). Q19 and Q29 are worth reading even though they are answered: Q19 found a fault, and
-Q29 is now proved from the linked firmware rather than from the source.
+Q31 and Q33 — fourteen of the twenty-two. The eight still open all need Daniel, and none of them
+blocks anything: **Q18** (what "LAP n" counts), **Q21**, **Q22**, **Q23** and **Q24** (preference and
+mockup-versus-spec calls on the UI, each with a `Research:` line setting out the trade and what it
+costs to change later), **Q32** (whether 30 m elevation sampling is good enough for climb detection,
+which needs a ride over a known climb), **Q34** (whether ANT+ comes into scope for a later version)
+and **Q35**, added tonight: its default is implemented, but it changes what two screens say for a
+route with no elevation and no mockup covers that state.
+Three are worth reading even though two of them are answered. **Q19** found a fault: the file was
+claiming an ascent it had measured with GNSS. **Q29** is now proved from the linked firmware rather
+than from the source. **Q35** is the same fault on the phone and in the route screens.
 
 ## Open questions
 
@@ -231,6 +234,16 @@ Options: (a) run simunit under WSL; (b) port it with a small socket and free-spa
 Default used: (c) for now, because nothing in the brief asks for a Windows build and the tests self-skip cleanly rather than failing. (a) is the cheap unlock on Daniel's PC: WSL is present but has no distribution installed.
 Answer: **(c) stands, and (a) is now done on Daniel's PC, so nothing is blocked.** Ubuntu was installed into the existing WSL 2 (no elevation needed — only a distribution was missing) and the full gate then ran natively: `make test` green end to end, 16/16 C tests plain, 14/14 under ASan and UBSan, and 20/20 Python with no skips. The JVM suite run under WSL is 61 tests, 0 failures, **0 skipped** — the 9 simunit-backed tests that had always skipped now run and pass. `simunit` itself builds unchanged under Linux.
 So the Windows port (b) buys nothing now and is not worth doing; `IDEAS.md` I1 keeps it on record if a Windows-native workflow is ever wanted. Two practical notes for anyone repeating this: the WSL virtual disk defaults to C:, which is where it filled the system drive here, and `make test-c-asan` still cannot link on Windows at all because MinGW ships no sanitizer runtime (`IDEAS.md` I2).
+
+
+### Q35 · WP4/WP5/WP6 · open
+Question: A route can end up with no elevation at all — the GPX carries no `<ele>` and neither elevation service answers (no network at import time, which is ordinary on a phone). `buildRoute` then produces a CR1 with `nprof = 0` and `ascent_m = 0`, and an empty climb list. Nothing in the mockups or the spec says what the screens should show for such a route, and both the app and the unit showed "0 m up, 0 climbs" — which asserts the route is flat. The import preview also said "Elevation: from file" in that case, because the code set that flag when it *fell back* to the file rather than when the file actually supplied anything, so it named a source that had given nothing.
+Options: (a) show the zeros, as before; (b) show that the elevation is unknown, and keep "from file" only when the file really supplied elevations; (c) refuse the import until an elevation source can be reached.
+Default used: (b). `nprof == 0` already distinguishes "no elevation known" from "flat" in the object itself (protocol 3.3), so no format change is needed — only the screens had to ask. The phone's import preview says "elevation unknown" with a warning-coloured line naming why ("… returned nothing and the file has no elevation, so this route has no profile and no climbs"), its library row says "elevation unknown", and the unit's Routes list says "no elevation" with `--` for ASCENT and CLIMBS on the route detail. (c) was rejected because the route is still useful for navigation: the line, the turns and the distance are all real, and only the climb features are missing.
+Why it matters beyond tidiness: a flat-looking profile is not a cosmetic error. The Climb page, the "climb ahead" alert and `ASCENT LEFT` all come from the climb list, so a route with no elevation behaves exactly like a route with no climbs, and the rider has no way to tell which they are looking at. This is the same shape of fault as Q19 on the unit and E8 on the phone: a confident value standing in for a missing one.
+`RouteTest.noElevationAnywhereIsReportedAsUnknownNotFlat` pins both halves, including that a genuinely flat route (elevation known and constant) still reads as known with an ascent of 0.
+Not covered by a screenshot: no simulator scenario has a route without elevation, so the "no elevation" row has not been through `make shots` or the lint. It is not a clipping risk — "38.4 km · no elevation" is shorter than the existing worst case, "81.2 km · 1,150 m · 7 climbs" — and adding a scenario was left alone because it would change the contact sheet that is waiting for your review. Say the word and it becomes a fourth route in the Routes scenario.
+Answer:
 
 ## Document errors
 

@@ -336,7 +336,12 @@ fun encodeCr1(name: String, pts: List<Pt>, profStep: Int, profileDm: List<Int>, 
 /** The whole phone-side pipeline: simplify, profile, climbs, turns, CR1. [elevations] gives one value
  * (or null) per sample position; null everywhere falls back to the GPX's own elevations. */
 class BuiltRoute(val obj: RouteObject, val points: List<Pt>, val profileM: DoubleArray, val step: Int,
-                 val climbs: List<Climb>, val turns: List<Turn>, val fromFile: Boolean)
+                 val climbs: List<Climb>, val turns: List<Turn>, val fromFile: Boolean) {
+    /** False when no elevation was found at all: no service answered and the file carried none. The
+     * object's ascent is then 0 because nothing is known, not because the route is flat, and its
+     * climb list is empty for the same reason. Callers must say "unknown" rather than "0 m up". */
+    val hasElevation: Boolean get() = profileM.isNotEmpty()
+}
 
 fun buildRoute(name: String, raw: List<Pt>, elevations: (List<Pt>) -> List<Double?>, params: ClimbParams = ClimbParams()): BuiltRoute {
     val pts = simplify(raw)
@@ -346,8 +351,15 @@ fun buildRoute(name: String, raw: List<Pt>, elevations: (List<Pt>) -> List<Doubl
     var elev = elevations(samples)
     var fromFile = false
     if (elev.all { it == null }) {
-        elev = samples.map { it.ele }
-        fromFile = true
+        // Fall back to the GPX's own elevations, but only call it "from file" if the file actually
+        // had some. Setting the flag when the file had none too is a false provenance claim, and
+        // leaves the route with no elevation at all -- which [hasElevation] then reports, so that
+        // nothing downstream presents an ascent of 0 as if the route were flat.
+        val fromGpx = samples.map { it.ele }
+        if (fromGpx.any { it != null }) {
+            elev = fromGpx
+            fromFile = true
+        }
     }
     val prof = if (elev.any { it != null }) smoothProfile(elev) else DoubleArray(0)
     val climbs = if (prof.isNotEmpty()) detectClimbs(prof, step, params).take(60) else emptyList()
@@ -356,6 +368,13 @@ fun buildRoute(name: String, raw: List<Pt>, elevations: (List<Pt>) -> List<Doubl
     val safeName = name.filter { it.code in 0x20..0x7E }.take(40).ifBlank { "Route" }
     return BuiltRoute(encodeCr1(safeName, pts, step, dm, turns, climbs), pts, prof, step, climbs, turns, fromFile)
 }
+
+/** True if a stored CR1 object carries an elevation profile (`nprof`, protocol 3.3 offset 23). An
+ * object built with no elevation at all has `nprof == 0` and an `ascent_m` of 0 because nothing was
+ * known, which is a different thing from a flat route, so a screen showing a route's ascent must ask
+ * this first. Reads two bytes of the header: cheap enough for a list row. */
+fun cr1HasProfile(cr1: ByteArray): Boolean =
+    cr1.size > 24 && ((cr1[23].toInt() and 0xFF) or ((cr1[24].toInt() and 0xFF) shl 8)) > 0
 
 // ------------------------------------------------------------------ CR1 decoding (as the unit validates)
 data class RouteInfo(val name: String, val distM: Long, val ascentM: Int, val points: List<Pt>, val profileDm: List<Int>,

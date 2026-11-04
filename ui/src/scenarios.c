@@ -62,8 +62,8 @@ void ui_model_demo(ui_model_t *m)
         {"Ramp test to failure", 2460, 24, {0}}};
     memcpy(m->workouts, wo, sizeof wo);
     m->n_workouts = 7;
-    static const ui_rt_item_t rt[] = {{"Swan River loop", 38400, 210, 2, {0}}, {"Kings Park hills", 24600, 380, 4, {0}},
-                                      {"Perth Hills 80", 81200, 1150, 7, {0}}};
+    static const ui_rt_item_t rt[] = {{"Swan River loop", 38400, 210, 2, 1, {0}}, {"Kings Park hills", 24600, 380, 4, 1, {0}},
+                                      {"Perth Hills 80", 81200, 1150, 7, 1, {0}}};
     memcpy(m->routes, rt, sizeof rt);
     m->n_routes = 3;
     static const ui_ride_item_t rides[] = {

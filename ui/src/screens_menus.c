@@ -381,9 +381,14 @@ void scr_routes(lv_obj_t *r, const ui_model_t *m)
     int i;
     for (i = s; i < m->n_routes && i < s + LIST_ROWS; i++) {
         ui_fmt_dist(d, sizeof d, m->routes[i].dist_m, mi);
-        ui_fmt_thousands(a, sizeof a, m->routes[i].ascent_m);
-        snprintf(t, sizeof t, "%s %s \xC2\xB7 %s m \xC2\xB7 %d climb%s", d, mi ? "mi" : "km", a, m->routes[i].climbs,
-                 m->routes[i].climbs == 1 ? "" : "s");
+        if (m->routes[i].has_profile) {
+            ui_fmt_thousands(a, sizeof a, m->routes[i].ascent_m);
+            snprintf(t, sizeof t, "%s %s · %s m · %d climb%s", d, mi ? "mi" : "km", a, m->routes[i].climbs,
+                     m->routes[i].climbs == 1 ? "" : "s");
+        } else {
+            /* No profile: the object's ascent and climb count are 0 because nothing was known (Q35) */
+            snprintf(t, sizeof t, "%s %s · no elevation", d, mi ? "mi" : "km");
+        }
         ui_chev(ui_row46(r, LIST_Y + (i - s) * 46, m->routes[i].name, t, i == m->focus, C_TEXT));
     }
     if (i - s < LIST_ROWS)
@@ -446,9 +451,10 @@ void scr_route_detail(lv_obj_t *r, const ui_model_t *m)
     ui_text(r, 232, 160, 0, 12, &font_b600_11, C_MUTED, LV_TEXT_ALIGN_RIGHT, 0, t);
     ui_hline(r, 0, 172, 240, C_DIV);
     stat3(r, 0, 173, "DIST", d, mi ? "mi" : "km", 1);
-    ui_fmt_thousands(t, sizeof t, rt->ascent_m);
+    if (rt->has_profile) ui_fmt_thousands(t, sizeof t, rt->ascent_m);
+    else snprintf(t, sizeof t, "--");            /* unknown, not flat (Q35) */
     stat3(r, 80, 173, "ASCENT", t, "m", 1);
-    snprintf(t, sizeof t, "%d", rt->climbs);
+    snprintf(t, sizeof t, rt->has_profile ? "%d" : "--", rt->climbs);
     stat3(r, 160, 173, "CLIMBS", t, "", 0);
     ui_hline(r, 0, 220, 240, C_DIV);
     ui_btn(r, 8, 228, 224, 52, "LOAD ROUTE", ride_on(m) ? BTN_DISABLED : BTN_PRIMARY, &font_b700_18, 0);
