@@ -137,3 +137,81 @@ confident guesses cost.
   sits between 0 and 100 is a percentage.
 - A value that changes **only when a button is pressed** is the key channel. Pressing A and B during
   the capture is worth doing for that reason alone.
+
+---
+
+# Confirmed on the wire, 4 November 2026
+
+First live capture. **The protocol decode is right.**
+
+| Claim | Result |
+| --- | --- |
+| Baud rate | **115200**, found on the first candidate |
+| Framing and CRC | **2184 frames, 0 CRC rejects** |
+| Frame arithmetic | 872 frames × 16 bytes = **13,952 bytes — every byte of the stream**, nothing discarded |
+| `len` byte | 12, so payload 8, total 16: exactly `len + 4` |
+
+Zero rejects over 2184 frames is the strongest possible confirmation. Random or misaligned data passes
+a 16-bit CRC once in 65,536 tries; passing 2184 times consecutively cannot happen by accident, and the
+byte count shows the parser is not skipping or overlapping anything.
+
+## Two corrections
+
+**Offset 3 is a constant, not a direction marker.** The builder writes `0xF1` and the nRF sends `0xF1`
+too, on every frame of both ids. Calling it a direction marker was an inference from seeing it written
+on only one side, and it was wrong.
+
+**Id 16 is not "the power channel".** The four senders use id 16 with kind 1 and 2, but the nRF streams
+id 16 with **kind 4** at 36 Hz. So `kind` is a real selector, not a modifier: the same id carries
+different things depending on it. The earlier description overstated what one id means.
+
+## What the link carries when the unit is idle
+
+| id | kind | len | period | frames in 50 s |
+| --- | --- | --- | --- | --- |
+| 16 | 4 | 12 | **28 ms** (≈36 Hz) | 1765 |
+| 0 | 4 | 12 | **119 ms** (≈8 Hz) | 419 |
+
+**Nothing else.** Ids 11, 17, 34, 35, 40, 120–123 and 128 — the ones the dispatcher forwards to the
+application as eight-byte payloads — never arrived. Two readings, and the next capture separates them:
+either those are **responses to requests** the ESP32 has to send first, or they only appear when the
+thing they describe exists (a paired ANT+ sensor, a charger, a button press).
+
+## What those two streams might be, and the experiment that decides it
+
+The first capture cannot say, for a reason worth recording: the min-to-max digest was accumulated over
+the whole run, and for a 36 Hz stream almost every byte saturates to `00-ff`, which carries no
+information. Worse, the capture included twenty screen taps inside the window — and tapping the screen
+moves the unit, so if either stream is the accelerometer the test contaminated itself.
+
+Two things stand out from the little that was legible:
+
+- **id 0 byte 1 is constant `0xff`** and byte 0 is only ever `0x52` or `0x53`, so that stream has fixed
+  structure rather than being a raw radio dump.
+- **id 0 bytes 5 and 6 both top out at exactly `0x64` = 100**, which is what a percentage looks like.
+
+And the leading hypothesis for id 16: **36 Hz with an eight-byte payload is an IMU**. The firmware has
+`ImuDataInit`, `ImuHandleAccData` and `ImuEventFuncCbReg`, and the factory test screen shows raw
+accelerometer and gyroscope axes. Three 16-bit axes plus two bytes is eight.
+
+**The experiment** needs no new code and carries no risk, because it only requires leaving the unit
+alone:
+
+1. **One full window (30 s) with the unit untouched on a table.** No taps. If id 16 is the IMU its
+   payload bytes will be nearly constant and the digest will show narrow ranges.
+2. **The next window spent moving it** — tilt, rotate, shake. If the same bytes go wide, that stream is
+   the accelerometer, and the still-window values give the zero offsets for free.
+3. **A third window with a hand over the light sensor**, then uncovered. A byte in id 0 that follows
+   that is the light sensor.
+
+To support it, `hal_nrf_esp.c` now **resets its digest at every window boundary** and prints a fresh
+sample of 60 verbatim frames at the top of each window. A per-window digest is the difference between
+"these bytes vary" and "these bytes vary *when the unit moves*", which is the whole question.
+
+## On transmitting
+
+The sensor ids may well need asking for, but sending to the nRF is not a step to take casually: id 16
+is also what `SendPowerOffCmd` uses, so a malformed frame on that id could switch the unit off, and the
+payloads of the four senders are built from globals rather than constants, so they cannot be replayed
+byte-exactly from the image alone. The listener stays receive-only until the passive experiment above
+has been run and Daniel has agreed to the first transmit.

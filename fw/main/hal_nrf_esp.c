@@ -11,8 +11,10 @@
  *     offset 0   0xA5          sync; the parser discards bytes until it sees this
  *     offset 1   len           payload length + 4, so the whole frame is len + 4; rejected above 132
  *     offset 2   0x6F          a second constant, checked as strictly as the sync
- *     offset 3   direction     0xF1 on frames the ESP32 sends; what the nRF sends is what we are
- *                              about to find out. The parser reads it but does not validate it.
+ *     offset 3   0xF1          CORRECTED 4 November 2026: this is a plain constant, not a direction
+ *                              marker. The builder writes 0xF1 and the first live capture shows the
+ *                              nRF sending 0xF1 too, on every frame of both ids. The parser reads it
+ *                              and does not validate it.
  *     offset 4   kind          1..5, else "Com Instr Err:%x"
  *     offset 5   id            the message id the dispatcher at 0x42051590 switches on
  *     offset 6+  payload
@@ -106,6 +108,25 @@ static uint32_t locked_baud;
 static uint32_t frame_count;
 static uint32_t bad_crc;
 
+/* Frames printed in full, header and CRC included, immediately after the baud rate is found.
+ *
+ * The first capture showed why this is needed: in idle the nRF sends only ids 0 and 16, their payload
+ * bytes cover most of 0x00..0xFF, and a min-to-max digest of a fifty-second window therefore says
+ * almost nothing. Sequences are what carry the structure -- a counter, a timestamp, an axis that
+ * barely moves while the unit sits still -- and sequences can only be seen frame by frame. 240 frames
+ * is about six seconds of this link and a few kilobytes of log, which is cheap for the first look at
+ * a protocol nobody outside the vendor has written down. */
+static uint32_t verbatim_left = 240;
+#define VERBATIM_PER_WINDOW 60 /* about a second and a half of this link, per window */
+
+/* The digest is only useful per window. Accumulated over minutes every byte saturates to 00-ff and
+ * says nothing, which is exactly what the first capture showed. */
+static void reset_stats(void)
+{
+    nstats = 0;
+    memset(stats, 0, sizeof stats);
+}
+
 uint32_t hal_nrf_baud(void) { return locked_baud; }
 uint32_t hal_nrf_frames(void) { return frame_count; }
 
@@ -179,6 +200,13 @@ static void record(const uint8_t *f, size_t total)
         s->last[i] = v;
     }
 
+    if (verbatim_left) {
+        verbatim_left--;
+        char hex[3 * (TRACK_BYTES + 8) + 4];
+        hexdump(hex, sizeof hex, f, total > TRACK_BYTES + 8 ? TRACK_BYTES + 8 : total);
+        ESP_LOGI(TAG, "raw #%" PRIu32 ": %s", frame_count, hex);
+        return;
+    }
     /* Three of every id unconditionally, then only when something moves, and never more than a
        handful per id, so a five-minute capture does not scroll the summary off the screen. */
     if (s->shown < 3 || (changed && s->shown < 40)) {
@@ -360,9 +388,17 @@ static void nrf_task(void *arg)
         vTaskDelete(NULL);
         return;
     }
+    /* The search phase's frames are not part of any window's digest. */
+    reset_stats();
     for (;;) {
+        /* A fresh verbatim sample at the top of every window, not just the first. The experiment that
+           identifies this data is to leave the unit untouched for one window and move it for the
+           next, so each window needs its own raw sample to compare and its own min-to-max digest. */
+        verbatim_left = VERBATIM_PER_WINDOW;
         listen_at(locked_baud, WINDOW_MS, 1);
         summarise();
+        /* Cleared so each window's digest stands on its own rather than accumulating for ever. */
+        reset_stats();
     }
 }
 
