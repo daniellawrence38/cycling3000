@@ -60,7 +60,7 @@ shots: sim
 # Android :core and :testing (JVM). The shared protocol suite also runs against simunit, so build it
 # first. cleanTest is not belt and braces: the simunit-backed tests run a C binary that Gradle does not
 # know is an input, so a change to core/ leaves the test tasks UP-TO-DATE and this target reports green
-# from results that predate the change. Re-running all 64 costs about 35 s.
+# from results that predate the change. Re-running all of them costs about 35 s.
 android: test-c-plain
 	cd android && ./gradlew --no-daemon -q :core:cleanTest :testing:cleanTest :sync:cleanTest :core:test :testing:test :sync:test
 

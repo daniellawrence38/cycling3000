@@ -270,13 +270,14 @@ looked exactly like success.
 
 **Two real bug classes had to be fixed first, and neither is visible on a host.**
 
-1. **`%u` for `uint32_t`: 29 call sites in 7 files.** `uint32_t` is `unsigned int` on x86-64 but
+1. **`%u` for `uint32_t`, in 7 files.** `uint32_t` is `unsigned int` on x86-64 but
    `long unsigned int` on xtensa, so every `printf("%u", some_uint32)` compiles clean in all 16 host C
    tests and then fails the firmware's `-Werror=format` gate. They were in `core/src/alerts.c`,
    `core.c`, `nav.c` and `store.c` and in `ui/src/ui_kit.c`, `screens_ride.c` and `screens_menus.c` —
    that is most of the formatting code in the project. All now use `PRIu32` from `<inttypes.h>`.
-   Eleven sites were fixed in the first pass, from the build log; `make fw-check` then found the other
-   18 (30 compiler errors, since the warning counts each argument) in one go.
+   Eight lines were fixed in the first pass, from the build log; `make fw-check` then found the
+   other 18 in one go (30 compiler errors, since the warning counts each argument). 26 lines across
+   those seven files use `PRIu32` today.
    A `uint16_t` or `uint8_t` argument is *not* affected (it promotes to `int`, which GCC accepts for
    `%u`), so only the 32-bit cases changed.
 2. **An include guard that was also a constant.** `hal/hal_display.h` opened with `#ifndef
@@ -377,8 +378,8 @@ A third gate closes a stale-green. `make android` ran the JVM suites through Gra
 checks, and the simunit-backed tests execute a **C binary Gradle does not know is an input** — so after
 tonight's changes to `core/` the test tasks were skipped as up to date and the target reported green
 from results that predated the change. Caught by looking at the timestamps on the JUnit XML, not by
-anything failing. The target now runs `cleanTest` first; all 64 tests re-run in about 35 s, and the
-re-run confirms 64 passed, 0 skipped, 0 failures against the new core.
+anything failing. The target now runs `cleanTest` first; all 65 tests re-run in about 35 s, and the
+re-run confirms 65 passed (:core 32, :testing 14, :sync 19), 0 skipped, 0 failures against the new core.
 
 One local finding while writing the submodule gate, worth knowing before trusting this PC's ESP-IDF
 clone: `git submodule status --recursive` exits 128 there because
