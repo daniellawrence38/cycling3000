@@ -87,11 +87,19 @@ static const uint32_t CANDIDATE_BAUD[] = {115200, 921600, 460800, 230400, 100000
 #define RX_RING 2048
 #define ACC_MAX 512 /* the longest frame is 132 + 4; this leaves room to resynchronise */
 
-#define MAX_IDS 24     /* the dispatcher knows thirteen; this leaves room to be surprised */
+/* Streams are keyed on the id AND the first payload byte, not the id alone.
+ *
+ * The first long capture made the reason plain. Id 16 kind 4 arrives at 36 Hz and its payload byte 0
+ * ranges over 0x49..0xF1 while byte 1 stays between 0 and 10: a sub-message tag and a small index. It
+ * is a multiplexed transport, not one stream, and a digest that mixes every sub-message together
+ * saturates every byte to 00-ff and says nothing -- which is precisely what the first two captures
+ * reported. Split on the tag and the constants inside each sub-message stand out immediately. */
+#define MAX_IDS 48     /* ids times sub-tags; the first capture showed two ids and several tags */
 #define TRACK_BYTES 12 /* most payloads are eight, but ids 0, 1 and 16 carry more */
 
 typedef struct {
     uint8_t id;
+    uint8_t sub; /* payload byte 0: the sub-message tag */
     uint8_t kind;
     uint8_t dir;   /* header byte 3: 0xF1 is the ESP32's own; the nRF's value is a finding */
     uint8_t len;   /* the frame's length byte */
@@ -118,6 +126,12 @@ static uint32_t bad_crc;
  * a protocol nobody outside the vendor has written down. */
 static uint32_t verbatim_left = 240;
 #define VERBATIM_PER_WINDOW 60 /* about a second and a half of this link, per window */
+
+/* The capture ends itself after this many windows. It used to run for ever, which meant the only way
+ * to end a capture was to kill the monitor -- and killing a monitor that is piped to a file can lose
+ * the tail of it. Six windows is three minutes, which is the still / moving / light-sensor experiment
+ * with a window of slack at each end. */
+#define MAX_WINDOWS 6
 
 /* The digest is only useful per window. Accumulated over minutes every byte saturates to 00-ff and
  * says nothing, which is exactly what the first capture showed. */
@@ -154,16 +168,17 @@ static void hexdump(char *out, size_t outsz, const uint8_t *p, size_t n)
         out[k - 1] = '\0';
 }
 
-static id_stat_t *stat_for(uint8_t id)
+static id_stat_t *stat_for(uint8_t id, uint8_t sub)
 {
     for (int i = 0; i < nstats; i++)
-        if (stats[i].id == id)
+        if (stats[i].id == id && stats[i].sub == sub)
             return &stats[i];
     if (nstats == MAX_IDS)
         return NULL;
     id_stat_t *s = &stats[nstats++];
     memset(s, 0, sizeof *s);
     s->id = id;
+    s->sub = sub;
     memset(s->lo, 0xFF, sizeof s->lo);
     return s;
 }
@@ -179,9 +194,15 @@ static void record(const uint8_t *f, size_t total)
         plen = TRACK_BYTES;
     uint32_t now = hal_clock_monotonic_ms();
 
-    id_stat_t *s = stat_for(id);
+    uint8_t sub = plen ? f[6] : 0;
+    id_stat_t *s = stat_for(id, sub);
     if (!s) {
-        ESP_LOGW(TAG, "more than %d distinct ids; id %u not tracked", MAX_IDS, id);
+        static int once;
+        if (!once) {
+            once = 1;
+            ESP_LOGW(TAG, "more than %d id/sub-tag pairs; id %u sub 0x%02x not tracked", MAX_IDS, id,
+                     sub);
+        }
         return;
     }
     int changed = s->count == 0 || memcmp(s->last, f + 6, plen) != 0 || s->plen != (uint8_t)plen;
@@ -213,8 +234,7 @@ static void record(const uint8_t *f, size_t total)
         s->shown++;
         char hex[3 * TRACK_BYTES + 4];
         hexdump(hex, sizeof hex, f + 6, plen);
-        ESP_LOGI(TAG, "#%" PRIu32 " id %3u kind %u hdr3 0x%02x len %2u | %s", frame_count, id, f[4],
-                 f[3], f[1], hex);
+        ESP_LOGI(TAG, "#%" PRIu32 " id %3u sub 0x%02x kind %u | %s", frame_count, id, sub, f[4], hex);
     }
 }
 
@@ -226,7 +246,7 @@ static void summarise(void)
         ESP_LOGI(TAG, "summary: no frames");
         return;
     }
-    ESP_LOGW(TAG, "---- summary: %" PRIu32 " frames, %" PRIu32 " CRC rejects, %d distinct id(s) ----",
+    ESP_LOGW(TAG, "---- summary: %" PRIu32 " frames, %" PRIu32 " CRC rejects, %d id/sub-tag pair(s) ----",
              frame_count, bad_crc, nstats);
     for (int i = 0; i < nstats; i++) {
         id_stat_t *s = &stats[i];
@@ -241,9 +261,9 @@ static void summarise(void)
             else
                 k += (size_t)snprintf(bytes + k, sizeof bytes - k, "%02x-%02x ", s->lo[b], s->hi[b]);
         }
-        ESP_LOGW(TAG, "  id %3u kind %u dir 0x%02x len %2u: %5" PRIu32 " frame(s), every %5" PRIu32
+        ESP_LOGW(TAG, "  id %3u sub 0x%02x kind %u dir 0x%02x: %5" PRIu32 " frame(s), every %5" PRIu32
                       " ms | %s",
-                 s->id, s->kind, s->dir, s->len, s->count, period, bytes);
+                 s->id, s->sub, s->kind, s->dir, s->count, period, bytes);
 
         char nums[160];
         k = 0;
@@ -390,7 +410,8 @@ static void nrf_task(void *arg)
     }
     /* The search phase's frames are not part of any window's digest. */
     reset_stats();
-    for (;;) {
+    for (int win = 1; win <= MAX_WINDOWS; win++) {
+        ESP_LOGW(TAG, "==== window %d of %d starting ====", win, MAX_WINDOWS);
         /* A fresh verbatim sample at the top of every window, not just the first. The experiment that
            identifies this data is to leave the unit untouched for one window and move it for the
            next, so each window needs its own raw sample to compare and its own min-to-max digest. */
@@ -400,6 +421,10 @@ static void nrf_task(void *arg)
         /* Cleared so each window's digest stands on its own rather than accumulating for ever. */
         reset_stats();
     }
+    ESP_LOGW(TAG, "==== capture finished: %" PRIu32 " frames, %" PRIu32 " CRC rejects, %" PRIu32
+                  " baud. Nothing more will be logged; the monitor can be closed. ====",
+             frame_count, bad_crc, locked_baud);
+    vTaskDelete(NULL);
 }
 
 void hal_nrf_start(void)

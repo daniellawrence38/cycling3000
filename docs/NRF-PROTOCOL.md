@@ -215,3 +215,72 @@ is also what `SendPowerOffCmd` uses, so a malformed frame on that id could switc
 payloads of the four senders are built from globals rather than constants, so they cannot be replayed
 byte-exactly from the image alone. The listener stays receive-only until the passive experiment above
 has been run and Daniel has agreed to the first transmit.
+
+---
+
+# The 75-minute capture: id 16 kind 4 is a multiplexed transport
+
+196,464 frames, still **0 CRC rejects**. The structural finding came from comparing two summaries
+sixty seconds apart rather than from the digests, which had saturated as expected.
+
+```
+id 16  last as u16le:  1009  3281  5942  155     (t = 4537348)
+id 16  last as u16le:  1009  3280  6053  155     (t = 4597538)
+```
+
+Word 0 is **constant 1009 = 0x03F1**, so payload byte 0 is `0xF1` and byte 1 is `0x03`. The digest's
+byte 0 range of `49-f1` and byte 1 range of `00-0a` then read as **a sub-message tag and a small
+index**, not as data. Id 16 kind 4 is a *transport*, carrying many different sub-messages interleaved
+at 36 Hz — and a digest that mixes them together saturates every byte to `00-ff`, which is exactly
+what the first two captures reported. That was a flaw in the listener, not in the data.
+
+`hal_nrf_esp.c` now keys its statistics on **(id, payload byte 0)**.
+
+## Hypothesis: id 16, sub-tag 0xF1 index 3, is the barometer
+
+Taking bytes 2–7 of that sub-message as one 16-bit value and one 32-bit value:
+
+| | t = 4537348 | t = 4597538 | change |
+| --- | --- | --- | --- |
+| bytes 2–3, `u16le` | 3281 | 3280 | −1 |
+| bytes 4–7, `u32le` | 10,164,022 | 10,164,133 | **+111** |
+
+- **3281 → 32.81 °C** at 0.01 °C per count. The unit had been running for 75 minutes, so a little over
+  32 °C internal is reasonable, and a drift of one count a minute is what a settled temperature does.
+- **10,164,022 → 1016.40 hPa** at 0.01 Pa per count (101,640.22 Pa). That is an unremarkable
+  mean-sea-level pressure for Perth, and the +111 over 60.2 s is **1.11 Pa, about 9 cm of altitude** —
+  which is precisely the scale of barometer noise and weather drift.
+
+Two independent, plausible physical quantities falling out of one sub-message is a good sign, but it is
+**a hypothesis, not a finding** (START-HERE rule 3). It predicts two things that are easy to check:
+pressure should move by roughly **12 Pa — 1200 counts — per metre** of height, and the temperature
+should read noticeably lower on a cold start than after an hour of running.
+
+Also seen on id 16: sub-tag `0xF0` index 2 with all six data bytes zero, which looks like an idle or
+keep-alive sub-message.
+
+## Hypothesis: id 0, sub-tag 0x53, carries battery and charge state
+
+Id 0 byte 0 is only ever `0x52` or `0x53` and byte 1 is constant `0xFF`, so it is multiplexed the same
+way. For sub-tag `0x53`, two samples sixty seconds apart:
+
+```
+65363  6434  25608  32266
+65363  6690  25608  32266
+```
+
+Bytes 4–7 are **identical** across the minute, and byte 5 is exactly `0x64` = **100** while byte 6 is
+`0x0A` = **10**. A value pinned at 100 on a unit that is plugged into USB is what a battery percentage
+looks like, and the digest's ranges for those bytes (`10-64` and `0a-64`, both topping out at exactly
+100) support it. Bytes 2–3 move by +256 a minute, i.e. one count in the high byte — a slow counter.
+
+Testable the same way: the percentage should fall once the unit runs on battery, and a charge-state
+byte should change the moment the cable comes out.
+
+## What is still missing
+
+None of the ids the dispatcher forwards to the application — 11, 17, 34, 35, 40, 120–123, 128 — has
+ever appeared, over 196,464 frames and 75 minutes. They are either responses to requests the ESP32 must
+send first, or they only exist when the thing they describe does (a paired sensor, a button press, a
+charger state change). The next capture should include **pressing buttons A and B**, which costs
+nothing and tests the button hypothesis directly.
