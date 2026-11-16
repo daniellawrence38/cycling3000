@@ -25,6 +25,7 @@
 #include "hal_clock.h"
 #include "hal_display.h"
 #include "hal_i2c.h"
+#include "hal_baro.h"
 #include "hal_nrf.h"
 #include "hal_input.h"
 #include "hal_touch.h"
@@ -201,6 +202,12 @@ static void core_task(void *arg)
         fw_sensors_tick(now);
         if ((int32_t)(now - next_tick) >= 0) {
             next_tick += 100;
+            /* The nRF sends a pressure about every 100 ms and the core takes the mean of each
+               second's samples (brief 5.3), so polling at this tick's rate gives it about ten. A
+               repeated or skipped sample does not disturb a mean. -1 means no fresh reading. */
+            int32_t pa = hal_baro_read_pa();
+            if (pa >= 0)
+                cc_on_baro(now, pa);
             cc_tick(now);
             cc_link_tick(&link_srv, now);
             const cc_view_t *v = cc_view();

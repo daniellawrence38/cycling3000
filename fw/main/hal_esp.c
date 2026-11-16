@@ -1,9 +1,9 @@
-/* hal_esp.c: the HAL on the ESP32-S3. Only the clock is real; everything that depends on unknown wiring
- * (buttons, touch, GNSS, barometer, battery, light sensor) is a stub that returns
+/* hal_esp.c: the HAL on the ESP32-S3. The clock is real here; the display, touch and barometer are real
+ * in their own files; everything else that depends on unknown wiring
+ * (buttons, GNSS, battery, light sensor, power-off) is a stub that returns
  * "not implemented" and logs once (brief 4), until bring-up identifies the hardware (BRINGUP.md step 3). */
 #include "esp_log.h"
 #include "esp_timer.h"
-#include "hal_baro.h"
 #include "hal_clock.h"
 #include "hal_gnss.h"
 #include "hal_input.h"
@@ -55,12 +55,7 @@ int hal_gnss_poll(hal_gnss_fix_t *fix)
     return 0;
 }
 
-/* barometer */
-int32_t hal_baro_read_pa(void)
-{
-    NOT_IMPLEMENTED();
-    return -1;
-}
+/* barometer: the real one is in hal_nrf_esp.c, decoded from the nRF link */
 
 /* power */
 int hal_power_battery_pct(void)

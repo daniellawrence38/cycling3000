@@ -28,7 +28,7 @@
  * The checksum function at 0x4222137c is a bitwise CRC-16 with polynomial 0x1021 (the literal sits at
  * 0x4220e4a8), initial value 0, no reflection and no final XOR, feeding the message bits in low end
  * first and then shifting in sixteen zero bits. That augmented form is identical to the ordinary
- * CRC-16/XMODEM of the message, which is what crc16() below computes.
+ * CRC-16/XMODEM of the message, which is what fw_nrf_crc16() in nrf_proto.c computes.
  *
  * The dispatcher acts on ids 0, 1, 11, 16, 17, 34, 35, 40, 120..123 and 128 (the 11..40 set comes out
  * of the bitmask 0x21800041 at 0x4203eeb0). Most are forwarded to the application as an eight-byte
@@ -53,6 +53,11 @@
  * the third byte, declare a length under 132 and then match a 16-bit CRC is a one in millions event.
  * The first rate that yields a valid frame is the right one, and it is reported rather than assumed.
  *
+ * WHAT IT DELIVERS. The barometer is decoded (id 16, kind 4, sub-tag 0xF1, sensor 0x03: nrf_proto.c)
+ * and each reading is kept with its arrival time for hal_baro_read_pa(), which the core task polls.
+ * That part runs for as long as the unit is on. The capture logging around it is bring-up scaffolding:
+ * it runs for MAX_WINDOWS windows after boot and then goes quiet, while the decode carries on.
+ *
  * RECEIVE ONLY. Nothing here ever writes to the port. A passive sniff cannot upset a co-processor
  * that is also holding the ANT+ radio and, on the evidence so far, the buttons; sending it a guessed
  * frame could.
@@ -69,8 +74,10 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "hal_baro.h"
 #include "hal_clock.h"
 #include "hal_nrf.h"
+#include "nrf_proto.h"
 
 static const char *TAG = "nrf";
 
@@ -144,16 +151,57 @@ static void reset_stats(void)
 uint32_t hal_nrf_baud(void) { return locked_baud; }
 uint32_t hal_nrf_frames(void) { return frame_count; }
 
-/* CRC-16/XMODEM: poly 0x1021, init 0, no reflection, no final XOR. */
-static uint16_t crc16(const uint8_t *p, size_t n)
+/* The newest barometer reading, written by the nRF task and read by the core task. */
+static portMUX_TYPE baro_mux = portMUX_INITIALIZER_UNLOCKED;
+static int32_t baro_pa = -1;
+static int16_t baro_temp_c100;
+static uint32_t baro_ms;
+static uint32_t baro_count;
+/* A reading older than this is not offered: the nRF sends one about every 100 ms, so two seconds of
+ * silence means the link or the sensor has stopped, and a stale pressure would read as flat road. */
+#define BARO_STALE_MS 2000
+
+int32_t hal_baro_read_pa(void)
 {
-    uint16_t crc = 0;
-    for (size_t i = 0; i < n; i++) {
-        crc ^= (uint16_t)((uint16_t)p[i] << 8);
-        for (int b = 0; b < 8; b++)
-            crc = (crc & 0x8000u) ? (uint16_t)((uint16_t)(crc << 1) ^ 0x1021u) : (uint16_t)(crc << 1);
+    int32_t pa;
+    uint32_t at;
+    portENTER_CRITICAL(&baro_mux);
+    pa = baro_pa;
+    at = baro_ms;
+    portEXIT_CRITICAL(&baro_mux);
+    if (pa < 0 || hal_clock_monotonic_ms() - at > BARO_STALE_MS)
+        return -1;
+    return pa;
+}
+
+int hal_nrf_baro_temp_c100(int16_t *out)
+{
+    if (hal_baro_read_pa() < 0)
+        return -1;
+    portENTER_CRITICAL(&baro_mux);
+    *out = baro_temp_c100;
+    portEXIT_CRITICAL(&baro_mux);
+    return 0;
+}
+
+/* Every verified frame comes through here, whether or not the capture is still logging. */
+static void consume(const fw_nrf_frame_t *f)
+{
+    fw_nrf_baro_t b;
+    if (fw_nrf_parse_baro(f, &b) == 0) {
+        int32_t pa = fw_nrf_baro_pa(&b);
+        uint32_t now = hal_clock_monotonic_ms();
+        portENTER_CRITICAL(&baro_mux);
+        baro_pa = pa;
+        baro_temp_c100 = b.temp_c100;
+        baro_ms = now;
+        portEXIT_CRITICAL(&baro_mux);
+        if (baro_count++ == 0) {
+            int frac = b.temp_c100 % 100;
+            ESP_LOGW(TAG, "barometer: first reading %" PRId32 " Pa, %d.%02d C", pa, b.temp_c100 / 100,
+                     frac < 0 ? -frac : frac);
+        }
     }
-    return crc;
 }
 
 static void hexdump(char *out, size_t outsz, const uint8_t *p, size_t n)
@@ -291,26 +339,20 @@ static void summarise(void)
  * Returns the bytes consumed, 0 if more data is needed, or -1 to drop one byte and retry. */
 static int take_frame(const uint8_t *acc, size_t len, int keep)
 {
-    if (len < 8)
-        return 0; /* the stock parser likewise refuses to look at fewer than eight bytes */
-    if (acc[0] != 0xA5 || acc[2] != 0x6F)
-        return -1;
-    if (acc[1] > 132)
-        return -1;
-    size_t total = (size_t)acc[1] + 4;
-    if (total < 8)
-        return -1;
-    if (len < total)
+    fw_nrf_frame_t f;
+    int used = fw_nrf_take_frame(acc, len, &f);
+    if (used == FW_NRF_MORE)
         return 0;
-    uint16_t want = (uint16_t)(acc[total - 2] | ((uint16_t)acc[total - 1] << 8));
-    if (crc16(acc, total - 2) != want) {
-        bad_crc++;
+    if (used < 0) {
+        if (used == FW_NRF_BAD_CRC)
+            bad_crc++;
         return -1;
     }
     frame_count++;
+    consume(&f);
     if (keep)
-        record(acc, total);
-    return (int)total;
+        record(acc, (size_t)used);
+    return used;
 }
 
 /* Listens at one baud rate for ms. Returns how many valid frames arrived. */
@@ -362,7 +404,8 @@ static uint32_t listen_at(uint32_t baud, uint32_t ms, int keep)
         }
     }
     uint32_t got = frame_count - before;
-    ESP_LOGI(TAG, "%" PRIu32 " baud: %" PRIu32 " byte(s), %" PRIu32 " valid frame(s)", baud, bytes, got);
+    if (keep)
+        ESP_LOGI(TAG, "%" PRIu32 " baud: %" PRIu32 " byte(s), %" PRIu32 " valid frame(s)", baud, bytes, got);
     return got;
 }
 
@@ -424,7 +467,9 @@ static void nrf_task(void *arg)
     ESP_LOGW(TAG, "==== capture finished: %" PRIu32 " frames, %" PRIu32 " CRC rejects, %" PRIu32
                   " baud. Nothing more will be logged; the monitor can be closed. ====",
              frame_count, bad_crc, locked_baud);
-    vTaskDelete(NULL);
+    /* The capture is over; the sensors are not. Keep decoding, silently, for as long as the unit is on. */
+    for (;;)
+        listen_at(locked_baud, WINDOW_MS, 0);
 }
 
 void hal_nrf_start(void)

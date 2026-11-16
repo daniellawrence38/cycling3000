@@ -5,7 +5,7 @@
  * touch controller. They arrive as framed messages from the nRF on UART1 (ESP port 2), the same link
  * that carries ANT+.
  *
- * For now this is a listener only. It never transmits, because a passive sniff cannot upset a
+ * It is a listener only. It never transmits, because a passive sniff cannot upset a
  * co-processor that is also holding the ANT+ radio and, on this unit, the buttons. */
 #ifndef CC700_HAL_NRF_H
 #define CC700_HAL_NRF_H
@@ -20,4 +20,8 @@ uint32_t hal_nrf_baud(void);
 
 /* Count of frames accepted so far (checksum verified). */
 uint32_t hal_nrf_frames(void);
+
+/* The barometer's own temperature in hundredths of a degree Celsius. Returns 0, or -1 when there is no
+ * fresh barometer reading. hal_baro_read_pa() (hal_baro.h) is implemented on this link too. */
+int hal_nrf_baro_temp_c100(int16_t *out);
 #endif
