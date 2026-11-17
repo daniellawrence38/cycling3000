@@ -401,6 +401,39 @@ static void test_build_frame_and_power_off(void)
     TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(2, 16, NULL, 1, po, sizeof po));
     uint8_t big[140] = {0};
     TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(2, 16, big, 129, big, sizeof big));
+
+    /* SendPowerOnCmd (0x42055c00): kind 2, id 16, payload e2 02 00 00 00 01 00 00. */
+    uint8_t pon[FW_NRF_CMD_FRAME_LEN];
+    TEST_ASSERT_EQUAL(16, fw_nrf_build_power_on(pon));
+    TEST_ASSERT_EQUAL(16, fw_nrf_take_frame(pon, sizeof pon, &f));
+    TEST_ASSERT_EQUAL(2, f.kind);
+    TEST_ASSERT_EQUAL(16, f.id);
+    TEST_ASSERT_EQUAL(0xE2, f.payload[0]);
+    TEST_ASSERT_EQUAL(0x02, f.payload[1]);
+    TEST_ASSERT_EQUAL(0x00, f.payload[2]);
+    TEST_ASSERT_EQUAL(0x01, f.payload[5]);
+
+    /* GNSS power/reset (0x42155f84..0x42155fac): kind 2, id 16, payload e2 02 07 00 00 <0..2> 00 00. */
+    for (uint8_t m = 0; m <= 2; m++) {
+        uint8_t gp[FW_NRF_CMD_FRAME_LEN];
+        TEST_ASSERT_EQUAL(16, fw_nrf_build_gnss_power(gp, m));
+        TEST_ASSERT_EQUAL(16, fw_nrf_take_frame(gp, sizeof gp, &f));
+        TEST_ASSERT_EQUAL(2, f.kind);
+        TEST_ASSERT_EQUAL(16, f.id);
+        TEST_ASSERT_EQUAL(0xE2, f.payload[0]);
+        TEST_ASSERT_EQUAL(0x02, f.payload[1]);
+        TEST_ASSERT_EQUAL(0x07, f.payload[2]);
+        TEST_ASSERT_EQUAL(m, f.payload[5]);
+    }
+    TEST_ASSERT_EQUAL(-1, fw_nrf_build_gnss_power(pon, 3));
+
+    /* Power-on event from capture 2 (e2 02 00 00 ff 05 00 ff on id 16). */
+    const uint8_t p_on_ev[8] = {0xe2, 0x02, 0x00, 0x00, 0xff, 0x05, 0x00, 0xff};
+    fw_nrf_frame_t fev = {.kind = 4, .id = 16, .payload = p_on_ev, .plen = 8};
+    TEST_ASSERT_EQUAL(1, fw_nrf_is_power_on_event(&fev));
+    const uint8_t p_chg_ev[8] = {0xe2, 0x02, 0x00, 0x00, 0xff, 0x04, 0x00, 0xff};
+    fev.payload = p_chg_ev;
+    TEST_ASSERT_EQUAL(0, fw_nrf_is_power_on_event(&fev));
 }
 
 int main(void)

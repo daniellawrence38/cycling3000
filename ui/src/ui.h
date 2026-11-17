@@ -217,6 +217,8 @@ ui_screen_id_t ui_app_top(void);       /* top of the stopped-state UI stack */
 ui_screen_id_t ui_app_visible(void);   /* the screen currently shown (ride state overrides the stack) */
 ui_model_t *ui_app_model(void);
 void ui_app_refresh_lists(void);       /* reloads workout, route and ride lists from the store */
+void ui_app_touch(int down, int16_t x, int16_t y); /* feeds pointer state for drag scroll, swipe and tap */
+void ui_app_post_touch(void);          /* dispatches a released tap if LVGL's click event did not fire */
 
 /* ------------------------------------------------------------------ scenarios (screenshot tool) */
 typedef struct { const char *board; const char *scenario; ui_screen_id_t id; void (*fill)(ui_model_t *m); } ui_scenario_t;

@@ -188,6 +188,48 @@ int app_walk(const char *dir, int perf)
     shot("ready");
     expect(ui_app_top() == SCR_READY, "starts on Ready");
 
+    /* Touch navigation: footer MENU, drag-scroll Menu to Settings, open Settings, drag-scroll Settings,
+     * footer CHANGE and footer BACK. */
+    ui_app_touch(1, 40, 300);
+    ui_app_touch(0, 40, 300);
+    ui_app_post_touch();
+    step();
+    expect(ui_app_top() == SCR_MENU, "touch footer MENU opens Menu");
+    ui_app_touch(1, 120, 220);
+    ui_app_touch(1, 120, 180);
+    ui_app_touch(1, 120, 140);
+    ui_app_touch(0, 120, 140);
+    ui_app_post_touch();
+    step();
+    expect(m->scroll == 2 && ui_app_top() == SCR_MENU, "touch drag scrolls Menu to bottom without opening a row");
+    ui_app_touch(1, 120, 260); /* row 4 when scroll=2 is index 6 (Settings) */
+    ui_app_touch(0, 120, 260);
+    ui_app_post_touch();
+    step();
+    expect(ui_app_top() == SCR_SETTINGS, "touch row opens Settings");
+    ui_app_touch(1, 120, 220);
+    ui_app_touch(1, 120, 180);
+    ui_app_touch(0, 120, 180);
+    ui_app_post_touch();
+    step();
+    expect(m->scroll == 1, "touch drag scrolls Settings down to Firmware");
+    ui_app_touch(1, 120, 140);
+    ui_app_touch(1, 120, 180);
+    ui_app_touch(0, 120, 180);
+    ui_app_post_touch();
+    step();
+    expect(m->scroll == 0, "touch drag scrolls Settings back to top");
+    ui_app_touch(1, 40, 300);
+    ui_app_touch(0, 40, 300);
+    ui_app_post_touch();
+    step();
+    expect(ui_app_top() == SCR_MENU, "touch footer BACK returns to Menu");
+    ui_app_touch(1, 40, 300);
+    ui_app_touch(0, 40, 300);
+    ui_app_post_touch();
+    step();
+    expect(ui_app_top() == SCR_READY, "touch footer BACK returns to Ready");
+
     /* Load the workout and the route through the menus, with buttons only */
     press(CC_BTN_L, 100);
     expect(ui_app_top() == SCR_MENU, "left opens the Menu");

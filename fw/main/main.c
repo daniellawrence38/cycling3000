@@ -110,6 +110,7 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
     data->point.x = x;
     data->point.y = y;
     data->state = down == 1 ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+    ui_app_touch(down == 1, x, y);
 #if TOUCH_LOG_PRESSES
     if (touch_dot) {
         if (down == 1) {
@@ -251,6 +252,7 @@ static void core_task(void *arg)
             apply_backlight();
             if (v->power_off_request && !power_off_sent) {
                 power_off_sent = 1;
+                last_backlight_pct = -1;
                 hal_power_off();
             }
         }
@@ -270,6 +272,9 @@ static void core_task(void *arg)
         }
 #endif
         uint32_t wait = lv_timer_handler();
+        ui_app_post_touch();
+        if (ui_app_dirty())
+            ui_app_render();
         if (wait > 10)
             wait = 10;
         vTaskDelay(pdMS_TO_TICKS(wait ? wait : 1));

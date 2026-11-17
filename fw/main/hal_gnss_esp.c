@@ -9,25 +9,31 @@
  *   - Power and reset are behind the nRF co-processor on kind 2, id 16, sub-tag 0xE2 0x02, device 0x07
  *     (0x42155f84..0x42155fac: payload[5] = 0 off, 1 on, 2 reset).
  *
- * RECEIVE ONLY. This driver installs UART0 on RX GPIO 0 with TX left unconnected (UART_PIN_NO_CHANGE)
- * and never transmits, neither on UART0 nor to the nRF (Q38 authorises SendPowerOffCmd only). Whether
- * the nRF powers the GNSS on automatically when it wakes its sensors or waits for the 0xE2 0x02 0x07
- * power-on frame is answered by watching for NMEA sentences here. Unverified on hardware. */
+ * Power and reset are behind the nRF co-processor on kind 2, id 16, sub-tag 0xE2 0x02, device 0x07
+ * (0x42155f84..0x42155fac: payload[5] = 0 off, 1 on, 2 reset). hal_gnss_init() requests GNSS power-on,
+ * and if no bytes arrive on GPIO 0 within 3 s, hal_gnss_poll() issues a hardware reset pulse followed
+ * by power-on (matching GpsPthreadMachine State 16 GpsHdRst at 0x421b8694). */
 #include <inttypes.h>
 
 #include "board_pins.h"
+#include "driver/gpio.h"
 #include "driver/uart.h"
 #include "esp_log.h"
 #include "fw.h"
+#include "hal_clock.h"
 #include "hal_gnss.h"
+#include "hal_nrf.h"
 #include "nmea.h"
+#include "nrf_proto.h"
 
 static const char *TAG = "gnss";
 
 static int gnss_up;
 static fw_nmea_t nmea;
-#if GNSS_LOG
+static uint32_t init_ms;
 static uint32_t rx_bytes;
+static int reset_stage; /* 0 = none, 1 = reset sent, 2 = power-on resent */
+#if GNSS_LOG
 static int logged_first_fix;
 #endif
 
@@ -36,6 +42,7 @@ int hal_gnss_init(void)
     if (gnss_up)
         return 0;
     fw_nmea_init(&nmea);
+    gpio_pullup_en(PIN_UART0_RX);
     if (uart_driver_install(UART_GNSS_PORT, 2048, 0, 0, NULL, 0) != ESP_OK) {
         ESP_LOGE(TAG, "uart0 driver install failed");
         return -1;
@@ -54,8 +61,12 @@ int hal_gnss_init(void)
         ESP_LOGE(TAG, "uart0 config on RX GPIO %d failed", PIN_UART0_RX);
         return -1;
     }
+    init_ms = hal_clock_monotonic_ms();
+    rx_bytes = 0;
+    reset_stage = 0;
     gnss_up = 1;
-    ESP_LOGI(TAG, "listening on UART%d RX GPIO %d at %d baud (NMEA 0183, receive-only)", UART_GNSS_PORT,
+    hal_nrf_gnss_power(FW_NRF_GNSS_ON);
+    ESP_LOGI(TAG, "listening on UART%d RX GPIO %d at %d baud (NMEA 0183)", UART_GNSS_PORT,
              PIN_UART0_RX, UART_GNSS_BAUD);
     return 0;
 }
@@ -74,8 +85,8 @@ int hal_gnss_poll(hal_gnss_fix_t *fix)
 #if GNSS_LOG
         if (rx_bytes == 0)
             ESP_LOGW(TAG, "first bytes received on UART0 RX GPIO %d", PIN_UART0_RX);
-        rx_bytes += (uint32_t)n;
 #endif
+        rx_bytes += (uint32_t)n;
         for (int i = 0; i < n; i++) {
             hal_gnss_fix_t cand;
             if (fw_nmea_feed_byte(&nmea, (char)buf[i], &cand) == 1) {
@@ -89,6 +100,16 @@ int hal_gnss_poll(hal_gnss_fix_t *fix)
                 }
 #endif
             }
+        }
+    }
+    if (rx_bytes == 0) {
+        uint32_t elapsed = hal_clock_monotonic_ms() - init_ms;
+        if (reset_stage == 0 && elapsed >= 3000) {
+            reset_stage = 1;
+            hal_nrf_gnss_power(FW_NRF_GNSS_RESET);
+        } else if (reset_stage == 1 && elapsed >= 3200) {
+            reset_stage = 2;
+            hal_nrf_gnss_power(FW_NRF_GNSS_ON);
         }
     }
     if (got_fix)

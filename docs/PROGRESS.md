@@ -767,3 +767,49 @@ Daniel confirmed `d052f53`'s button input works on the unit, answered Q38 ("yes"
   backlight dimming.
 - Whether the Airoha GNSS chip already streams NMEA on UART0 RX (`GPIO 0`) when the nRF wakes, or stays
   powered down until the ESP sends `e2 02 07 00 00 01 00 00` to the nRF.
+
+## Hardware test of `ad7beee` and fixes for Power-On, GNSS power, and Touch · 17 November 2026
+
+Daniel flashed `ad7beee` and reported:
+
+- **Confirmed working on the unit:**
+  - **Power-off** (`SendPowerOffCmd` via 2 s Power hold).
+  - **Battery percentage** in the status bar (`hal_power_battery_pct` from id 0 / `0x52`).
+  - **Button navigation** across the 24-screen UI (`ui_app.c`).
+- **Three issues found on the unit, with root causes and fixes:**
+  1. **Power-on after power-off did not bring the unit back up:**
+     - *Causes*: (a) `hal_power_off()` called `hal_display_backlight(0)` directly and returned to
+       `core_task` without parking or resetting `last_backlight_pct`, so when the ESP32 stayed powered
+       (e.g. on USB or standby rail) and the nRF woke on a subsequent Power hold, `core_task` had
+       `power_off_sent = 1` and `last_backlight_pct` unchanged, leaving the backlight at 0 % forever.
+       (b) At boot, `nrf_task` never sent `SendPowerOnCmd` (`e2 02 00 00 00 01 00 00`, `0x42055c00` in
+       `ArmStateProcess` State 1), and `consume()` fed ongoing `FW_NRF_KEY_HELD` frames from the user's
+       power-on hold straight into `key_state`, starting a 2 s power-off hold right as the unit booted.
+     - *Fix* (`fw/main/nrf_proto.c`, `fw/main/hal_nrf_esp.c`): Added `fw_nrf_build_power_on()` and
+       `fw_nrf_is_power_on_event()`. At boot, `nrf_task` sends `SendPowerOnCmd` (and retries up to 5
+       times at 1 s intervals if `baro_count == 0`), and `consume()` swallows a key-0 hold that begins
+       within the first 2.5 s after boot until release. In `hal_power_off()`, after sending `GpsClose`
+       and `SendPowerOffCmd`, the task waits 1.2 s for button release, drains `key_queue`, and polls for
+       `HAL_PWR_DOWN` or `power_on_seen` (`0xE2 0x02` code 5/6), calling `nrf_send_power_on()` +
+       `esp_restart()` (matching stock `FUN_420561ec` → `FUN_42055b68`) to reboot cleanly.
+  2. **No GPS signal:**
+     - *Cause*: The Airoha GNSS receiver's power rail is gated by the nRF co-processor and remains off
+       until the ESP32 sends `GpsOpen` (`e2 02 07 00 00 01 00 00`, `0x42155f98` called from `0x421b875c`).
+     - *Fix* (`fw/main/nrf_proto.c`, `fw/main/hal_nrf_esp.c`, `fw/main/hal_gnss_esp.c`): Added
+       `fw_nrf_build_gnss_power(out, mode)` and `hal_nrf_gnss_power(mode)`. `nrf_task` and
+       `hal_gnss_init()` send `FW_NRF_GNSS_ON` (`1`), enable the pull-up on `PIN_UART0_RX` (GPIO 0), and
+       if no UART0 bytes arrive within 3 s, `hal_gnss_poll()` sends `FW_NRF_GNSS_RESET` (`2`) followed
+       200 ms later by `FW_NRF_GNSS_ON` (`1`) (matching `GpsPthreadMachine` State 16 `GpsHdRst`).
+  3. **Cannot scroll down Settings or select `BACK` / `OPEN` with the touch screen:**
+     - *Causes*: (a) `ui_footer()` drew the bottom 32 px bar (`BACK` / `MENU` on the left, `OPEN` /
+       `CHANGE` / `LOAD` / `DONE` on the right) with no clickable hit objects on any screen except
+       `SCR_PAUSED` and `SCR_READY`'s right button. (b) `ui_app.c` had no vertical drag/swipe scroll
+       handler (`U.m.scroll` was only updated by the Power button). (c) `ui_app_step()` set
+       `U.dirty = 1` every 1.0 s unconditionally, calling `lv_obj_delete(U.scr)` even while a finger was
+       pressing the panel, which cleared LVGL's active press before release.
+     - *Fix* (`ui/src/ui_app.c`, `ui/src/ui.h`, `fw/main/main.c`): `ui_app_render()` now adds clickable
+       left (`0..108, 282..320`) and right (`132..240, 282..320`) footer targets on `scr`;
+       `ui_app_touch()` implements vertical drag scrolling on all list screens (`SCR_MENU`,
+       `SCR_SETTINGS`, `SCR_WORKOUTS`, `SCR_ROUTES`, `SCR_HISTORY`), horizontal swipe page switching
+       while recording, drag click-suppression, and coordinate fallback tap dispatch (`ui_app_post_touch()`);
+       and `ui_app_step()` suppresses the 1 s screen rebuild while `U.touch_down` is active.

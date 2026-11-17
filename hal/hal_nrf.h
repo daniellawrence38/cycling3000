@@ -29,4 +29,7 @@ int hal_nrf_baro_temp_c100(int16_t *out);
  * hal_power_battery_pct(), hal_power_ambient_lux() and hal_power_off() (hal_power.h) are implemented
  * on this link too. */
 int hal_nrf_battery_mv(uint16_t *out);
+
+/* Sends the GNSS power/reset command on id 16 (0xE2 0x02 0x07, mode: 0 off, 1 on, 2 reset). */
+void hal_nrf_gnss_power(uint8_t mode);
 #endif

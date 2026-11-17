@@ -72,6 +72,7 @@
 #include "board_pins.h"
 #include "driver/uart.h"
 #include "esp_log.h"
+#include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
@@ -197,8 +198,35 @@ static uint32_t bat_ms;
 static int32_t light_val = -1;
 static uint32_t light_ms;
 static volatile int nrf_uart_up;
+static volatile int power_on_seen;
+static volatile int pending_gnss_mode = -1;
+static int boot_pwr_swallow;
 #define BATT_STALE_MS 5000
 #define LIGHT_STALE_MS 2000
+
+static void nrf_send_power_on(void)
+{
+    uint8_t frame[FW_NRF_CMD_FRAME_LEN];
+    int n = fw_nrf_build_power_on(frame);
+    if (n > 0 && nrf_uart_up) {
+        ESP_LOGW(TAG, "sending SendPowerOnCmd (%d bytes) to nRF", n);
+        uart_write_bytes(UART_NRF_PORT, frame, (size_t)n);
+    }
+}
+
+void hal_nrf_gnss_power(uint8_t mode)
+{
+    if (!nrf_uart_up) {
+        pending_gnss_mode = (int)mode;
+        return;
+    }
+    uint8_t frame[FW_NRF_CMD_FRAME_LEN];
+    int n = fw_nrf_build_gnss_power(frame, mode);
+    if (n > 0) {
+        ESP_LOGW(TAG, "sending GNSS power mode %u (%d bytes) to nRF", (unsigned)mode, n);
+        uart_write_bytes(UART_NRF_PORT, frame, (size_t)n);
+    }
+}
 
 int hal_power_battery_pct(void)
 {
@@ -249,12 +277,37 @@ void hal_power_off(void)
         ESP_LOGW(TAG, "hal_power_off: nRF UART not up");
         return;
     }
+    hal_nrf_gnss_power(FW_NRF_GNSS_OFF);
     uint8_t frame[FW_NRF_POWER_OFF_FRAME_LEN];
     int n = fw_nrf_build_power_off(frame);
     if (n > 0) {
         ESP_LOGW(TAG, "sending SendPowerOffCmd (%d bytes) to nRF", n);
         uart_write_bytes(UART_NRF_PORT, frame, (size_t)n);
         uart_wait_tx_done(UART_NRF_PORT, pdMS_TO_TICKS(200));
+    }
+    /* Wait for the user to finish releasing the power button from the power-off hold, then drain any
+     * queued edges. If the nRF cuts the 3.3 V rail (battery mode), execution stops here. If the 3.3 V
+     * rail stays up (USB charge mode, stock ArmStateProcess State 8/9 FUN_420561ec), wait for the next
+     * power-button press or nRF power-on event and reboot cleanly. */
+    vTaskDelay(pdMS_TO_TICKS(1200));
+    hal_input_event_t ev;
+    while (hal_input_poll(&ev)) {
+    }
+    power_on_seen = 0;
+    for (;;) {
+        int wake = power_on_seen;
+        while (hal_input_poll(&ev)) {
+            if (ev.kind == HAL_PWR_DOWN)
+                wake = 1;
+        }
+        if (wake) {
+            ESP_LOGW(TAG, "power-on detected while off: sending SendPowerOnCmd and restarting");
+            nrf_send_power_on();
+            uart_wait_tx_done(UART_NRF_PORT, pdMS_TO_TICKS(100));
+            vTaskDelay(pdMS_TO_TICKS(50));
+            esp_restart();
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 
@@ -295,12 +348,28 @@ int hal_input_poll(hal_input_event_t *ev)
 /* Every verified frame comes through here, whether or not the capture is still logging. */
 static void consume(const fw_nrf_frame_t *f)
 {
+    if (fw_nrf_is_power_on_event(f))
+        power_on_seen = 1;
     fw_nrf_key_t key;
     if (fw_nrf_parse_key(f, &key) == 0) {
+        uint32_t now_k = hal_clock_monotonic_ms();
+        /* When the unit wakes from a power-button hold, the nRF continues sending FW_NRF_KEY_HELD
+         * for key 0 until the user lifts their finger. Swallow a key-0 hold that started in the
+         * first 2.5 s after boot so turning the unit ON does not immediately trigger a 2 s power-off. */
+        if (key.index == 0) {
+            if (key.event == FW_NRF_KEY_HELD && !key_state.held[0] && now_k < 2500)
+                boot_pwr_swallow = 1;
+            if (boot_pwr_swallow) {
+                if (key.event != FW_NRF_KEY_HELD || now_k >= 6000)
+                    boot_pwr_swallow = 0;
+                goto after_key_feed;
+            }
+        }
         fw_nrf_edge_t edges[2];
-        push_edges(edges, fw_nrf_keys_feed(&key_state, &key, hal_clock_monotonic_ms(), edges));
+        push_edges(edges, fw_nrf_keys_feed(&key_state, &key, now_k, edges));
         /* No return: the bring-up log below still names the frame. */
     }
+after_key_feed:;
     fw_nrf_baro_t b;
     if (fw_nrf_parse_baro(f, &b) == 0) {
         int32_t pa = fw_nrf_baro_pa(&b);
@@ -535,12 +604,26 @@ static uint32_t listen_at(uint32_t baud, uint32_t ms, int keep)
     size_t acc_len = 0;
     TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(ms);
     uint32_t bytes = 0;
+    static int wake_retries;
+    static uint32_t last_wake_ms;
 
     while ((int32_t)(xTaskGetTickCount() - deadline) < 0) {
         uint8_t chunk[128];
         int n = uart_read_bytes(UART_NRF_PORT, chunk, sizeof chunk, pdMS_TO_TICKS(200));
+        uint32_t now_l = hal_clock_monotonic_ms();
         fw_nrf_edge_t lost[FW_NRF_KEYS];
-        push_edges(lost, fw_nrf_keys_tick(&key_state, hal_clock_monotonic_ms(), lost));
+        push_edges(lost, fw_nrf_keys_tick(&key_state, now_l, lost));
+        if (pending_gnss_mode >= 0) {
+            int gm = pending_gnss_mode;
+            pending_gnss_mode = -1;
+            hal_nrf_gnss_power((uint8_t)gm);
+        }
+        if (baro_count == 0 && wake_retries < 5 && now_l - last_wake_ms >= 1000) {
+            wake_retries++;
+            last_wake_ms = now_l;
+            nrf_send_power_on();
+            hal_nrf_gnss_power(FW_NRF_GNSS_ON);
+        }
         if (n <= 0)
             continue;
         bytes += (uint32_t)n;
@@ -574,7 +657,7 @@ static uint32_t listen_at(uint32_t baud, uint32_t ms, int keep)
 static void nrf_task(void *arg)
 {
     (void)arg;
-    if (uart_driver_install(UART_NRF_PORT, RX_RING, 0, 0, NULL, 0) != ESP_OK) {
+    if (uart_driver_install(UART_NRF_PORT, RX_RING, 256, 0, NULL, 0) != ESP_OK) {
         ESP_LOGE(TAG, "uart driver install failed");
         vTaskDelete(NULL);
         return;
@@ -588,7 +671,7 @@ static void nrf_task(void *arg)
         .source_clk = UART_SCLK_DEFAULT,
     };
     uart_param_config(UART_NRF_PORT, &boot);
-    /* TX is GPIO 42; the only outbound frame is SendPowerOffCmd in hal_power_off() (Q38). */
+    /* TX is GPIO 42; sends SendPowerOnCmd, GNSS power on/off/reset, and SendPowerOffCmd (Q38). */
     if (uart_set_pin(UART_NRF_PORT, PIN_UART_NRF_TX, PIN_UART_NRF_RX, UART_PIN_NO_CHANGE,
                      UART_PIN_NO_CHANGE) != ESP_OK) {
         ESP_LOGE(TAG, "uart_set_pin failed");
@@ -596,6 +679,8 @@ static void nrf_task(void *arg)
         return;
     }
     nrf_uart_up = 1;
+    nrf_send_power_on();
+    hal_nrf_gnss_power(FW_NRF_GNSS_ON);
     ESP_LOGI(TAG, "listening on port %d, RX GPIO %d; %d candidate baud rates, %" PRIu32 " s each",
              UART_NRF_PORT, PIN_UART_NRF_RX, NCANDIDATES, (uint32_t)(SEARCH_MS / 1000));
 

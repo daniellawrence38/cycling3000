@@ -30,6 +30,12 @@ typedef struct {
     uint32_t pair_until; /* simulated 60 s pairing window when hooks are absent */
     int dirty;
     int had_input;
+    int touch_down;
+    int touch_dragged;
+    int touch_ate;
+    int tap_pending;
+    int16_t touch_x0, touch_y0, touch_last_y;
+    int16_t tap_x, tap_y;
     lv_obj_t *scr;
     lv_group_t *grp;
 } ui_app_t;
@@ -274,6 +280,19 @@ static void summary_from_view(void)
 
 /* ------------------------------------------------------------------ rendering */
 static void on_click(lv_event_t *e);
+static void on_foot_left(lv_event_t *e);
+static void on_foot_right(lv_event_t *e);
+
+static void add_foot_hit(lv_obj_t *scr, int x, int y, int w, int h, lv_event_cb_t cb)
+{
+    lv_obj_t *o = lv_obj_create(scr);
+    lv_obj_remove_style_all(o);
+    lv_obj_set_scrollable(o, false);
+    lv_obj_set_clickable(o, true);
+    lv_obj_set_pos(o, x, y);
+    lv_obj_set_size(o, w, h);
+    lv_obj_add_event_cb(o, cb, LV_EVENT_CLICKED, NULL);
+}
 
 void ui_app_render(void)
 {
@@ -290,6 +309,15 @@ void ui_app_render(void)
         ui_build(id, scr, &U.m);
         int ride_page = id == SCR_MAIN || id == SCR_WORKOUT || id == SCR_CLIMB || id == SCR_NAV || id == SCR_EMPTY;
         if (ride_page && U.m.v.state == CC_RS_RECORDING) ui_overlays(scr, &U.m);
+        /* Footer touch targets (BACK / MENU on the left, OPEN / CHANGE / LOAD / DONE / ... on the right).
+         * Placed on scr in ui_app_render rather than ui_footer so ui_focus_group indices and layout lint
+         * stay unchanged. SCR_PAUSED already creates both targets in scr_paused, and SCR_READY creates
+         * the right START target in scr_ready. */
+        if (!ride_page && id != SCR_ALERTS && id != SCR_PAUSED) {
+            add_foot_hit(scr, 0, 282, 108, 38, on_foot_left);
+            if (id != SCR_READY && id != SCR_HEART_RATE)
+                add_foot_hit(scr, 132, 282, 108, 38, on_foot_right);
+        }
     }
     uint32_t n = lv_group_get_obj_count(g);
     for (uint32_t i = 0; i < n; i++) {
@@ -540,9 +568,41 @@ static void gestures(void)
     }
 }
 
+static int is_scrollable_list(ui_screen_id_t s)
+{
+    return s == SCR_MENU || s == SCR_SETTINGS || s == SCR_WORKOUTS || s == SCR_ROUTES || s == SCR_HISTORY;
+}
+
+static void foot_press(cc_btn_t b)
+{
+    U.tap_pending = 0;
+    if (U.touch_dragged) return;
+    U.had_input = 1;
+    U.last_input_ms = U.now;
+    U.dirty = 1;
+    if (U.blank) { U.blank = 0; return; }
+    cc_on_button(U.now, b, 1);
+    cc_on_button(U.now, b, 0);
+    gestures();
+}
+
+static void on_foot_left(lv_event_t *e)
+{
+    (void)e;
+    foot_press(CC_BTN_L);
+}
+
+static void on_foot_right(lv_event_t *e)
+{
+    (void)e;
+    foot_press(CC_BTN_R);
+}
+
 static void on_click(lv_event_t *e)
 {
     int idx = (int)(uintptr_t)lv_event_get_user_data(e);
+    U.tap_pending = 0;
+    if (U.touch_dragged) return;
     U.had_input = 1;
     U.last_input_ms = U.now;
     U.dirty = 1;
@@ -560,9 +620,150 @@ static void on_click(lv_event_t *e)
     int has_back = s == SCR_WORKOUT_DETAIL || s == SCR_ADD_SENSOR || s == SCR_POWER_METER || s == SCR_PROFILE ||
                    s == SCR_ROUTE_DETAIL || s == SCR_CONFIRM || s == SCR_HEART_RATE || s == SCR_PHONE;
     if (has_back && idx == 0) { back(); return; }
-    U.m.focus = idx - has_back + (s == SCR_MENU || s == SCR_WORKOUTS || s == SCR_ROUTES || s == SCR_HISTORY || s == SCR_SETTINGS ? U.m.scroll : 0);
+    U.m.focus = idx - has_back + (is_scrollable_list(s) ? U.m.scroll : 0);
     if (s == SCR_CONFIRM) U.m.focus = idx == 1 ? 0 : 1; /* safe button is first in the order */
     activate();
+}
+
+/* Fallback coordinate dispatcher if a screen rebuild during a tap cleared LVGL's active press object. */
+static void tap_xy(int16_t x, int16_t y)
+{
+    U.had_input = 1;
+    U.last_input_ms = U.now;
+    U.dirty = 1;
+    if (U.blank) { U.blank = 0; return; }
+    const cc_view_t *v = cc_view();
+    if (v->state == CC_RS_RECORDING) return;
+    if (y >= 282) {
+        if (x < 108) foot_press(CC_BTN_L);
+        else if (x >= 132) foot_press(CC_BTN_R);
+        return;
+    }
+    if (v->state == CC_RS_PAUSED) return;
+    if (v->state == CC_RS_PAUSE_MENU) {
+        if (y >= 58 && y < 58 + 3 * 46) cc_cmd_pause_menu_select(U.now, (y - 58) / 46);
+        return;
+    }
+    if (v->state == CC_RS_CONFIRM_DISCARD) {
+        if (y >= 168 && y < 222) cc_cmd_confirm_select(U.now, CC_CF_DISCARD);
+        else if (y >= 226 && y < 280) cc_cmd_confirm_select(U.now, CC_CF_KEEP);
+        return;
+    }
+    if (v->state == CC_RS_SUMMARY) return;
+    ui_screen_id_t s = ui_app_top();
+    int has_back = s == SCR_WORKOUT_DETAIL || s == SCR_ADD_SENSOR || s == SCR_POWER_METER || s == SCR_PROFILE ||
+                   s == SCR_ROUTE_DETAIL || s == SCR_CONFIRM || s == SCR_HEART_RATE || s == SCR_PHONE;
+    if (has_back && x < 56 && y >= 22 && y < 66) { back(); return; }
+    int has_kebab = s == SCR_POWER_METER || s == SCR_HEART_RATE || (s == SCR_PHONE && U.m.phone == UI_PHONE_CONNECTED);
+    if (has_kebab && x >= 184 && y >= 22 && y < 66) { U.m.focus = 1; activate(); return; }
+    if (is_scrollable_list(s) || s == SCR_SENSORS) {
+        if (y >= 58 && y < 282) {
+            int idx = (y - 58) / 46 + (is_scrollable_list(s) ? U.m.scroll : 0);
+            if (idx >= 0 && idx < list_len(s)) { U.m.focus = idx; activate(); }
+        }
+        return;
+    }
+    if (s == SCR_ADD_SENSOR && y >= 150 && y < 150 + 3 * 46) {
+        int idx = (y - 150) / 46;
+        if (idx < U.m.n_scan) { U.m.focus = idx; activate(); }
+        return;
+    }
+    if (s == SCR_PROFILE && y >= 170 && y < 234) {
+        int col = (x - 4) / 58;
+        if (col >= 0 && col < 4) { U.m.focus = col; activate(); }
+        return;
+    }
+    if (s == SCR_CONFIRM) {
+        if (y >= 168 && y < 222) { U.m.focus = 1; activate(); }
+        else if (y >= 226 && y < 280) { U.m.focus = 0; activate(); }
+        return;
+    }
+    if ((s == SCR_WORKOUT_DETAIL || s == SCR_ROUTE_DETAIL || s == SCR_POWER_METER) && y >= 225 && y < 280) {
+        U.m.focus = 0;
+        activate();
+        return;
+    }
+    if (s == SCR_PHONE && U.m.phone == UI_PHONE_NOT_PAIRED && y >= 150 && y < 204) {
+        U.m.focus = 0;
+        activate();
+    }
+}
+
+void ui_app_touch(int down, int16_t x, int16_t y)
+{
+    if (down) {
+        U.last_input_ms = U.now;
+        if (!U.touch_down) {
+            U.touch_down = 1;
+            U.touch_dragged = 0;
+            U.touch_ate = 0;
+            U.tap_pending = 0;
+            U.touch_x0 = x;
+            U.touch_y0 = y;
+            U.touch_last_y = y;
+            if (U.blank) {
+                U.blank = 0;
+                U.dirty = 1;
+                U.touch_ate = 1;
+                U.touch_dragged = 1;
+            }
+            return;
+        }
+        if (U.touch_ate) return;
+        int dx = (int)x - (int)U.touch_x0;
+        int dy0 = (int)y - (int)U.touch_y0;
+        if (dx < -18 || dx > 18 || dy0 < -18 || dy0 > 18)
+            U.touch_dragged = 1;
+        ui_screen_id_t s = ui_app_visible();
+        if (cc_view()->state == CC_RS_READY && is_scrollable_list(s)) {
+            int n = list_len(s);
+            int max_sc = n > 5 ? n - 5 : 0;
+            int dy = (int)y - (int)U.touch_last_y;
+            if (dy <= -28 || dy >= 28) {
+                int step = dy <= -28 ? 1 : -1;
+                int next_sc = U.m.scroll + step;
+                if (next_sc < 0) next_sc = 0;
+                if (next_sc > max_sc) next_sc = max_sc;
+                U.touch_last_y = y;
+                U.touch_dragged = 1;
+                if (next_sc != U.m.scroll) {
+                    U.m.scroll = next_sc;
+                    if (U.m.focus < U.m.scroll) U.m.focus = U.m.scroll;
+                    if (U.m.focus >= U.m.scroll + 5) U.m.focus = U.m.scroll + 4;
+                    U.dirty = 1;
+                }
+            }
+        }
+    } else if (U.touch_down) {
+        U.touch_down = 0;
+        if (U.touch_ate) return;
+        const cc_view_t *v = cc_view();
+        int dx = (int)x - (int)U.touch_x0;
+        int dy = (int)y - (int)U.touch_y0;
+        int adx = dx < 0 ? -dx : dx;
+        int ady = dy < 0 ? -dy : dy;
+        if (v->state == CC_RS_RECORDING && adx >= 40 && adx > ady) {
+            int n = v->ring_n ? v->ring_n : 1;
+            U.m.page = dx < 0 ? (U.m.page + 1) % n : (U.m.page + n - 1) % n;
+            U.had_input = 1;
+            U.dirty = 1;
+            return;
+        }
+        if (!U.touch_dragged) {
+            U.tap_pending = 1;
+            U.tap_x = x;
+            U.tap_y = y;
+        }
+    }
+}
+
+void ui_app_post_touch(void)
+{
+    if (U.tap_pending) {
+        U.tap_pending = 0;
+        if (!U.touch_dragged)
+            tap_xy(U.tap_x, U.tap_y);
+    }
 }
 
 void ui_app_init(hal_fs_t *fs, uint32_t now_ms, const ui_app_hooks_t *hooks)
@@ -619,7 +820,10 @@ void ui_app_step(uint32_t now_ms)
             if (U.cal_t > 0 && --U.cal_t == 0) U.m.cal = UI_CAL_DONE;
             if (U.m.phone == UI_PHONE_PAIRING && now_ms >= U.pair_until) U.m.phone = UI_PHONE_NOT_PAIRED;
         }
-        U.dirty = 1;
+        /* Do not rebuild and delete U.scr on the 1-second boundary while a finger is touching the
+         * panel, or LVGL loses the pressed object mid-tap. */
+        if (!U.touch_down)
+            U.dirty = 1;
     }
     cc_tick(now_ms); /* commands issued by the UI this step show in the view now */
     fill_model();

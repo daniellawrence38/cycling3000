@@ -43,6 +43,31 @@ int fw_nrf_build_power_off(uint8_t out[FW_NRF_POWER_OFF_FRAME_LEN])
                               FW_NRF_POWER_OFF_FRAME_LEN);
 }
 
+int fw_nrf_build_power_on(uint8_t out[FW_NRF_CMD_FRAME_LEN])
+{
+    /* SendPowerOnCmd at 0x42055c00: kind 2, id 16, payload at 0x3c375e58. */
+    static const uint8_t payload[8] = {0xE2, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00};
+    return fw_nrf_build_frame(FW_NRF_KIND_CMD, FW_NRF_ID_SENSOR, payload, sizeof payload, out,
+                              FW_NRF_CMD_FRAME_LEN);
+}
+
+int fw_nrf_build_gnss_power(uint8_t out[FW_NRF_CMD_FRAME_LEN], uint8_t mode)
+{
+    /* 0x42155f84..0x42155fac: kind 2, id 16, payload at 0x3c6d73d4..0x3c6d73e4 (mode 0/1/2). */
+    if (mode > FW_NRF_GNSS_RESET)
+        return -1;
+    const uint8_t payload[8] = {0xE2, 0x02, 0x07, 0x00, 0x00, mode, 0x00, 0x00};
+    return fw_nrf_build_frame(FW_NRF_KIND_CMD, FW_NRF_ID_SENSOR, payload, sizeof payload, out,
+                              FW_NRF_CMD_FRAME_LEN);
+}
+
+int fw_nrf_is_power_on_event(const fw_nrf_frame_t *f)
+{
+    if (!f || f->id != FW_NRF_ID_SENSOR || f->plen < 6)
+        return 0;
+    return f->payload[0] == 0xE2 && f->payload[1] == 0x02 && (f->payload[5] == 0x05 || f->payload[5] == 0x06);
+}
+
 int fw_nrf_take_frame(const uint8_t *buf, size_t len, fw_nrf_frame_t *out)
 {
     if (len < FW_NRF_OVERHEAD)

@@ -2,7 +2,10 @@
  * (docs/NRF-PROTOCOL.md). No ESP-IDF dependency; host-tested by core/tests/test_nrf_proto.c against
  * frames copied byte for byte from real captures.
  *
- * The only outbound frame the firmware ever sends is SendPowerOffCmd (fw_nrf_build_power_off, Q38). */
+ * Outbound commands sent to the nRF co-processor on kind 2, id 16:
+ *   - SendPowerOffCmd (0x42055bac): e2 02 00 00 00 00 00 00
+ *   - SendPowerOnCmd  (0x42055c00): e2 02 00 00 00 01 00 00
+ *   - GNSS power/reset (0x42155f84..0x42155fac): e2 02 07 00 00 <00=off|01=on|02=reset> 00 00 */
 #ifndef FW_NRF_PROTO_H
 #define FW_NRF_PROTO_H
 #include <stddef.h>
@@ -16,6 +19,11 @@
 #define FW_NRF_KIND_QUERY 1
 #define FW_NRF_KIND_CMD 2
 #define FW_NRF_POWER_OFF_FRAME_LEN 16
+#define FW_NRF_CMD_FRAME_LEN 16
+
+#define FW_NRF_GNSS_OFF 0
+#define FW_NRF_GNSS_ON 1
+#define FW_NRF_GNSS_RESET 2
 
 typedef struct {
     uint8_t kind;           /* 1..5 */
@@ -34,6 +42,17 @@ int fw_nrf_build_frame(uint8_t kind, uint8_t id, const uint8_t *payload, size_t 
 /* Builds the 16-byte SendPowerOffCmd frame (0x42055bac: kind 2, id 16, payload e2 02 00 00 00 00 00 00,
  * Q38). Returns FW_NRF_POWER_OFF_FRAME_LEN (16). */
 int fw_nrf_build_power_off(uint8_t out[FW_NRF_POWER_OFF_FRAME_LEN]);
+
+/* Builds the 16-byte SendPowerOnCmd frame (0x42055c00: kind 2, id 16, payload e2 02 00 00 00 01 00 00). */
+int fw_nrf_build_power_on(uint8_t out[FW_NRF_CMD_FRAME_LEN]);
+
+/* Builds the 16-byte GNSS power/reset frame (0x42155f84..0x42155fac: kind 2, id 16,
+ * payload e2 02 07 00 00 <mode> 00 00, where mode is FW_NRF_GNSS_OFF/ON/RESET). */
+int fw_nrf_build_gnss_power(uint8_t out[FW_NRF_CMD_FRAME_LEN], uint8_t mode);
+
+/* Returns 1 if f is the nRF power-on event (id 16, sub-tag 0xE2 0x02, payload[5] == 5 or 6, matching
+ * ArmSendPowerOnSysEvent at 0x420560f4 and confirmed in outputs/nrf-capture-2.txt). */
+int fw_nrf_is_power_on_event(const fw_nrf_frame_t *f);
 
 /* Tries to take one frame from the front of buf.
  * Returns the bytes consumed (> 0) and fills *out; FW_NRF_MORE if the frame is not complete yet;
