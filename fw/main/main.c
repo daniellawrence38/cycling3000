@@ -259,8 +259,20 @@ static void core_task(void *arg)
             if (ie.kind <= HAL_PWR_UP)
                 ESP_LOGI(TAG, "button: %s", NAME[ie.kind]);
 #endif
-            if (hal_nrf_charge_only())
-                continue; /* off and charging: the screen is dark; the nRF answers the power key itself */
+            /* Off and charging: the screen is dark and the buttons do nothing; holding power makes
+               the nRF send its manual power-on event itself (seen 300 ms into the hold). The hold
+               that switched the unit on is then swallowed until power is released, or it would
+               carry straight on into a power-off. */
+            static int swallow_pwr;
+            if (hal_nrf_charge_only()) {
+                swallow_pwr = 1;
+                continue;
+            }
+            if (swallow_pwr && (ie.kind == HAL_PWR_DOWN || ie.kind == HAL_PWR_UP)) {
+                if (ie.kind == HAL_PWR_UP)
+                    swallow_pwr = 0;
+                continue;
+            }
             if (ie.kind == HAL_PWR_DOWN)
                 /* The nRF reports a power hold only once it is already a long press, and about
                    1.5 s after its first "held" frame it cuts or restarts the ESP by itself
