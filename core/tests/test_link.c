@@ -319,6 +319,32 @@ static void test_put_chunks_512_and_4000(void)
     TEST_ASSERT_EQUAL_HEX8(CC_ST_BAD_ARG, st());
 }
 
+/* Power-off aborts an upload in progress: the file is closed, the .tmp removed, and the session gone. */
+static void test_abort_open_put(void)
+{
+    cc_link_abort(&lk); /* nothing open: harmless */
+    static uint8_t m[64];
+    m[0] = 0x11; m[1] = 1; m[2] = 1;
+    memcpy(m + 3, w1 + 4, 8);
+    cc_put_u32(m + 11, (uint32_t)w1n);
+    cc_put_u32(m + 15, cc_crc32(w1, w1n));
+    call(m, 19);
+    TEST_ASSERT_EQUAL_HEX8(CC_ST_OK, st());
+    TEST_ASSERT_TRUE(lk.put_open);
+    char tmp[64];
+    cc_object_path(tmp, sizeof tmp, w1 + 4, 0);
+    TEST_ASSERT_TRUE(memfs_exists(fs, tmp));
+    cc_link_abort(&lk);
+    TEST_ASSERT_FALSE(lk.put_open);
+    TEST_ASSERT_FALSE(memfs_exists(fs, tmp));
+    m[0] = 0x12; m[1] = 2;
+    cc_put_u32(m + 2, 0);
+    memcpy(m + 6, w1, 16);
+    call(m, 6 + 16);
+    TEST_ASSERT_EQUAL_HEX8(CC_ST_NO_SESSION, st());
+    cc_link_abort(&lk); /* twice: still harmless */
+}
+
 static void make_ride(uint32_t id, uint32_t size, int uploaded)
 {
     static uint8_t data[9000];
@@ -792,6 +818,7 @@ int main(void)
     RUN_TEST(test_reassembly_drops);
     RUN_TEST(test_each_request);
     RUN_TEST(test_put_chunks_512_and_4000);
+    RUN_TEST(test_abort_open_put);
     RUN_TEST(test_atomic_commit_fault_at_each_write);
     RUN_TEST(test_retention);
     RUN_TEST(test_full_io_and_reserved_id);

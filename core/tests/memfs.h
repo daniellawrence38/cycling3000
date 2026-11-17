@@ -19,6 +19,7 @@ void memfs_cut_after_bytes(hal_fs_t *fs, int64_t bytes);
 void memfs_fail_writes_from(hal_fs_t *fs, int64_t nth);
 void memfs_power_cycle(hal_fs_t *fs);                   /* apply the cut: truncate to synced sizes */
 int memfs_exists(hal_fs_t *fs, const char *path);
+int memfs_open_handles(hal_fs_t *fs);                    /* handles open now */
 int64_t memfs_file_size(hal_fs_t *fs, const char *path);
 /* Direct access for tests: returns a pointer to the file bytes, or NULL. */
 const uint8_t *memfs_data(hal_fs_t *fs, const char *path, uint32_t *len);

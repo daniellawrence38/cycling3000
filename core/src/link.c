@@ -160,6 +160,8 @@ void cc_link_tick(cc_link_t *l, uint32_t now_ms)
         close_put(l, 1);
 }
 
+void cc_link_abort(cc_link_t *l) { close_put(l, 1); }
+
 void cc_link_event_state(cc_link_t *l, int state, int batt)
 {
     uint8_t m[4] = {CC_EV_STATE, 0, (uint8_t)state, (uint8_t)(batt < 0 ? 0 : batt)};

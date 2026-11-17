@@ -323,6 +323,14 @@ void memfs_power_cycle(hal_fs_t *fs)
 
 int memfs_exists(hal_fs_t *fs, const char *path) { return find(M(fs), path) >= 0; }
 
+int memfs_open_handles(hal_fs_t *fs)
+{
+    int n = 0;
+    for (int i = 0; i < MAX_OPEN; i++)
+        n += M(fs)->open[i].used != 0;
+    return n;
+}
+
 int64_t memfs_file_size(hal_fs_t *fs, const char *path)
 {
     int f = find(M(fs), path);

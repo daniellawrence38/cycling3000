@@ -462,6 +462,15 @@ static void power_off(uint32_t now_ms)
     if (S.state == CC_RS_RECORDING || S.state == CC_RS_PAUSED || S.state == CC_RS_PAUSE_MENU ||
         S.state == CC_RS_CONFIRM_DISCARD)
         do_finish(now_ms, 0);
+    /* A finish that failed (a storage error) leaves the ride's .part open in the writer. The power is
+       about to go, and the vendor closes its files before it sends SendPowerOffCmd (RE-FINDINGS-2 2.4),
+       so close it here: the .part stays and is recovered at the next boot, as after any failed finish.
+       Without this it is the one file still open when the power drops. */
+    if (S.fit.open) {
+        S.fs->fsync(S.fs, S.fit.f);
+        S.fs->close(S.fs, S.fit.f);
+        S.fit.open = 0;
+    }
     S.state = CC_RS_READY;
     save_settings();
     S.power_off = 1;

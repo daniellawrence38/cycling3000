@@ -207,6 +207,33 @@ static void test_files_after_finish_discard(void)
     TEST_ASSERT_FALSE(memfs_exists(fs, p));
 }
 
+/* Power-off leaves no file open, whether the finish works or fails (fw/main/main.c then aborts the
+ * link's upload session and sends SendPowerOffCmd; the vendor closes its files first, too). */
+static void test_power_off_closes_files(void)
+{
+    cc_set_utc(now, 1793000000u);
+    apply(EV_START);
+    tick_to(now + 30000);
+    TEST_ASSERT_TRUE(memfs_open_handles(fs) > 0); /* the ride's .part */
+    apply(EV_PH);
+    TEST_ASSERT_TRUE(V()->power_off_request);
+    TEST_ASSERT_EQUAL_INT(0, memfs_open_handles(fs));
+
+    /* The finish fails on a storage error: the .part stays for recovery, closed. */
+    cc_power_off_cancel();
+    tick_to(now + 2000);
+    apply(EV_START);
+    uint32_t id = V()->ride_id;
+    tick_to(now + 30000);
+    memfs_fail_writes_from(fs, 1);
+    apply(EV_PH);
+    TEST_ASSERT_TRUE(V()->power_off_request);
+    TEST_ASSERT_EQUAL_INT(0, memfs_open_handles(fs));
+    char p[64];
+    snprintf(p, sizeof p, "rides/%u.fit.part", id);
+    TEST_ASSERT_TRUE(memfs_exists(fs, p));
+}
+
 /* Hold detection and the hold bar */
 static void test_hold_bar(void)
 {
@@ -460,6 +487,7 @@ int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_power_off_cancel);
+    RUN_TEST(test_power_off_closes_files);
     RUN_TEST(test_page_ring);
     RUN_TEST(test_state_table);
     RUN_TEST(test_files_after_finish_discard);

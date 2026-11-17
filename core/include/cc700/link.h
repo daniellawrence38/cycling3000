@@ -106,6 +106,10 @@ void cc_link_set_mtu(cc_link_t *l, uint16_t att_mtu);
 void cc_link_rx(cc_link_t *l, const uint8_t *pkt, size_t len, uint32_t now_ms);
 /* Expires an idle PUT session (15 s). Call at least once a second. */
 void cc_link_tick(cc_link_t *l, uint32_t now_ms);
+/* Aborts an open PUT session now, as the idle expiry does: closes its file and removes the .tmp. The
+ * one file the link server can hold open between packets; the unit calls this before it powers off
+ * (fw/main/main.c), so no file is open when the power goes. Harmless when no session is open. */
+void cc_link_abort(cc_link_t *l);
 /* Handles one complete message and writes the response message (opcode, req_id, status, ...) to out.
  * Returns the response length (0 for none). Exposed for tests. */
 size_t cc_link_handle(cc_link_t *l, const uint8_t *msg, size_t len, uint32_t now_ms, uint8_t *out);
