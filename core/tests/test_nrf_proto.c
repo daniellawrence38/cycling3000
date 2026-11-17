@@ -451,6 +451,473 @@ static void test_build_frame_and_power_off(void)
     const uint8_t p_code4_ev[8] = {0xe2, 0x02, 0x00, 0x00, 0xff, 0x04, 0x00, 0xff};
     fev.payload = p_code4_ev;
     TEST_ASSERT_EQUAL(0, fw_nrf_is_power_on_event(&fev));
+
+    /* SendQuerySlaveModeCmd (0x42055ca8): kind 2, id 1 (0x01), payload 24 01 ff ff 00 ff ff ff (the
+     * constant at 0x3c375e70). Its CRC was computed independently, under WSL:
+     *
+     *   python3 -c 'import binascii
+     *   hdr = bytes([0xa5, 0x0c, 0x6f, 0xf1, 0x02, 0x01]); payload = bytes([0x24, 0x01, 0xff, 0xff, 0x00, 0xff, 0xff, 0xff])
+     *   c = binascii.crc_hqx(hdr + payload, 0) ...'
+     *   -> crc 0x2d41  a5 0c 6f f1 02 01 24 01 ff ff 00 ff ff ff 41 2d   (check value 0x31c3) */
+    static const uint8_t QUERY[16] = {0xa5, 0x0c, 0x6f, 0xf1, 0x02, 0x01, 0x24, 0x01,
+                                      0xff, 0xff, 0x00, 0xff, 0xff, 0xff, 0x41, 0x2d};
+    uint8_t q[FW_NRF_CMD_FRAME_LEN];
+    TEST_ASSERT_EQUAL(16, fw_nrf_build_query_slave_mode(q));
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(QUERY, q, 16);
+    TEST_ASSERT_EQUAL(16, fw_nrf_take_frame(q, sizeof q, &f));
+    TEST_ASSERT_EQUAL(2, f.kind);
+    TEST_ASSERT_EQUAL(1, f.id);
+    /* Our own query is not mistaken for the reply: its payload[5] is 0xff, a mode that keeps the
+       vendor querying, and that is what the parser reports. */
+    TEST_ASSERT_EQUAL(0xff, fw_nrf_parse_slave_mode(&f));
+}
+
+/* ------------------------------------------------------------------ messages around power */
+static fw_nrf_frame_t mk(uint8_t kind, uint8_t id, const uint8_t *p, size_t n)
+{
+    fw_nrf_frame_t f = {.kind = kind, .id = id, .payload = p, .plen = n};
+    return f;
+}
+
+/* From the captures. */
+static const uint8_t P_BATT2[8] = {0x52, 0xff, 0xff, 0xff, 0x94, 0x0d, 0x02, 0xff}; /* capture 2, 3476 mV 2 % */
+static const uint8_t P_CHARGE[8] = {0xf0, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+static const uint8_t P_EV5[8] = {0xe2, 0x02, 0x00, 0x00, 0xff, 0x05, 0x00, 0xff};   /* capture 2 #427 */
+static const uint8_t P_VERSION[10] = {0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x04, 0x11}; /* #428 */
+static const uint8_t P_BARO2[8] = {0xf1, 0x03, 0xf9, 0x0b, 0x23, 0x4e, 0x99, 0x00};  /* #429 */
+/* Made up: never seen, because nothing has ever sent the query. Only bytes 0, 1 and 5 are the vendor's
+   (0x42050fa4 / 0x4214f030); the others are filler. */
+static const uint8_t P_SLAVE_APP[8] = {0x24, 0x01, 0xff, 0xff, 0x00, 0x01, 0xff, 0xff};
+static const uint8_t P_SLAVE_BOOT[8] = {0x24, 0x01, 0xff, 0xff, 0x00, 0x00, 0xff, 0xff};
+static const uint8_t P_SLAVE_BUSY[8] = {0x24, 0x01, 0xff, 0xff, 0x00, 0x02, 0xff, 0xff};
+static const uint8_t P_EV4[8] = {0xe2, 0x02, 0x00, 0x00, 0xff, 0x04, 0x00, 0xff};
+static const uint8_t P_EV6[8] = {0xe2, 0x02, 0x00, 0x00, 0xff, 0x06, 0x00, 0xff};
+
+static void test_power_messages(void)
+{
+    fw_nrf_frame_t f;
+    /* Charge state: f0 02 00 ..., the very frame of both captures with the cable in (raw #6098 of 4
+       November is F_IDLE). 0 is "Chargeing" on the vendor's factory screen. */
+    TEST_ASSERT_EQUAL(16, fw_nrf_take_frame(F_IDLE, 16, &f));
+    TEST_ASSERT_EQUAL(1, fw_nrf_parse_charge(&f));
+    uint8_t nc[8] = {0xf0, 0x02, 0x01, 0, 0, 0, 0, 0};
+    f = mk(4, 16, nc, 8);
+    TEST_ASSERT_EQUAL(0, fw_nrf_parse_charge(&f)); /* "No Charge": the vendor's text, never seen */
+    f = mk(4, 0, P_CHARGE, 8);
+    TEST_ASSERT_EQUAL(-1, fw_nrf_parse_charge(&f));
+    f = mk(4, 16, P_BARO2, 8);
+    TEST_ASSERT_EQUAL(-1, fw_nrf_parse_charge(&f));
+
+    /* Power event codes; the device byte is not looked at, as in the vendor's handler. */
+    f = mk(4, 16, P_EV5, 8);
+    TEST_ASSERT_EQUAL(5, fw_nrf_power_event_code(&f));
+    f = mk(4, 16, P_EV4, 8);
+    TEST_ASSERT_EQUAL(4, fw_nrf_power_event_code(&f));
+    TEST_ASSERT_EQUAL(0, fw_nrf_is_power_on_event(&f));
+    f = mk(4, 16, P_EV6, 8);
+    TEST_ASSERT_EQUAL(1, fw_nrf_is_power_on_event(&f));
+    f = mk(4, 1, P_EV5, 8);
+    TEST_ASSERT_EQUAL(-1, fw_nrf_power_event_code(&f));
+    f = mk(4, 16, P_CHARGE, 8);
+    TEST_ASSERT_EQUAL(-1, fw_nrf_power_event_code(&f));
+
+    /* Slave mode. */
+    f = mk(4, 1, P_SLAVE_APP, 8);
+    TEST_ASSERT_EQUAL(FW_NRF_SLAVE_APP, fw_nrf_parse_slave_mode(&f));
+    f = mk(4, 1, P_SLAVE_BOOT, 8);
+    TEST_ASSERT_EQUAL(FW_NRF_SLAVE_BOOTLOADER, fw_nrf_parse_slave_mode(&f));
+    f = mk(4, 16, P_SLAVE_APP, 8);
+    TEST_ASSERT_EQUAL(-1, fw_nrf_parse_slave_mode(&f));
+    f = mk(4, 1, P_VERSION, 10);
+    TEST_ASSERT_EQUAL(-1, fw_nrf_parse_slave_mode(&f));
+
+    /* The power-on version message decodes as 1.704. */
+    fw_nrf_version_t v;
+    TEST_ASSERT_EQUAL(0, fw_nrf_parse_version(&f, &v));
+    TEST_ASSERT_EQUAL(1, v.major);
+    TEST_ASSERT_EQUAL(7, v.minor);
+    TEST_ASSERT_EQUAL(4, v.patch);
+    f = mk(4, 1, P_VERSION, 9);
+    TEST_ASSERT_EQUAL(-1, fw_nrf_parse_version(&f, &v));
+}
+
+/* ------------------------------------------------------------------ the boot handshake */
+typedef struct {
+    int query, power_on, gnss_on;
+    uint32_t last_query_ms, last_power_on_ms, gnss_on_ms;
+    uint32_t min_query_gap, min_power_on_gap;
+} txlog_t;
+
+static void txlog_init(txlog_t *l)
+{
+    memset(l, 0, sizeof *l);
+    l->min_query_gap = l->min_power_on_gap = 0xFFFFFFFFu;
+}
+
+static void count(txlog_t *l, int tx, uint32_t t)
+{
+    switch (tx) {
+    case FW_NRF_HS_TX_QUERY:
+        if (l->query && t - l->last_query_ms < l->min_query_gap)
+            l->min_query_gap = t - l->last_query_ms;
+        l->query++;
+        l->last_query_ms = t;
+        break;
+    case FW_NRF_HS_TX_POWER_ON:
+        if (l->power_on && t - l->last_power_on_ms < l->min_power_on_gap)
+            l->min_power_on_gap = t - l->last_power_on_ms;
+        l->power_on++;
+        l->last_power_on_ms = t;
+        break;
+    case FW_NRF_HS_TX_GNSS_ON:
+        l->gnss_on++;
+        l->gnss_on_ms = t;
+        break;
+    default:
+        TEST_ASSERT_EQUAL(FW_NRF_HS_TX_NONE, tx);
+    }
+}
+
+/* Runs the handshake in 10 ms steps from t0 to t1 (as the nRF task's read loop would), feeding a frame
+ * from the given set every 300 ms -- the nRF's own heartbeat rate in capture 2. */
+static void run(fw_nrf_hs_t *hs, uint32_t t0, uint32_t t1, const fw_nrf_frame_t *beat, size_t nbeat, txlog_t *l)
+{
+    for (uint32_t t = t0; t != t1; t += 10) {
+        if (nbeat && (t - t0) % 300 == 0)
+            for (size_t i = 0; i < nbeat; i++)
+                count(l, fw_nrf_hs_step(hs, t, &beat[i]), t);
+        count(l, fw_nrf_hs_step(hs, t, NULL), t);
+    }
+}
+
+static void feed1(fw_nrf_hs_t *hs, uint32_t t, fw_nrf_frame_t f, txlog_t *l) { count(l, fw_nrf_hs_step(hs, t, &f), t); }
+
+/* The ordinary case: the nRF answers, confirms power-on with its event, and the GNSS gets one power-on. */
+static void test_handshake_normal(void)
+{
+    fw_nrf_hs_t hs;
+    txlog_t l;
+    txlog_init(&l);
+    fw_nrf_hs_init(&hs, 1000);
+    fw_nrf_frame_t beat[2] = {mk(4, 0, P_BATT2, 8), mk(4, 16, P_CHARGE, 8)};
+    run(&hs, 1000, 1700, beat, 2, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_QUERY, hs.state);
+    TEST_ASSERT_EQUAL(4, l.query); /* 1000, 1200, 1400, 1600 */
+    TEST_ASSERT_EQUAL(200, l.min_query_gap);
+    TEST_ASSERT_EQUAL(0, l.power_on);
+    /* The reply says "in application": power-on goes out at once, in the same call. */
+    feed1(&hs, 1700, mk(4, 1, P_SLAVE_APP, 8), &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_POWER_ON, hs.state);
+    TEST_ASSERT_EQUAL(1, l.power_on);
+    run(&hs, 1710, 2000, beat, 2, &l);
+    TEST_ASSERT_EQUAL(3, l.power_on); /* 1700, 1800, 1900 */
+    TEST_ASSERT_EQUAL(100, l.min_power_on_gap);
+    TEST_ASSERT_EQUAL(4, l.query);    /* no more queries once answered */
+    /* The power event, then the version message and the first barometer frame, as in capture 2. */
+    feed1(&hs, 2000, mk(4, 16, P_EV5, 8), &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_RUNNING, hs.state);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_ON_MANUAL, hs.on);
+    TEST_ASSERT_EQUAL(1, l.gnss_on); /* the rail is the nRF's, so it is asked for only now */
+    TEST_ASSERT_EQUAL(3, l.power_on);
+    feed1(&hs, 2000, mk(4, 1, P_VERSION, 10), &l);
+    feed1(&hs, 2000, mk(4, 16, P_BARO2, 8), &l);
+    /* An hour of ordinary traffic, more events and more slave replies: nothing more is sent. */
+    fw_nrf_frame_t later[4] = {mk(4, 16, P_BARO2, 8), mk(4, 16, P_EV5, 8), mk(4, 1, P_SLAVE_APP, 8),
+                               mk(4, 1, P_SLAVE_BOOT, 8)};
+    run(&hs, 2010, 2010 + 3600000u, later, 4, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_RUNNING, hs.state);
+    TEST_ASSERT_EQUAL(4, l.query);
+    TEST_ASSERT_EQUAL(3, l.power_on);
+    TEST_ASSERT_EQUAL(1, l.gnss_on);
+}
+
+/* Capture 2: the nRF in its "off" state, sending only the battery and f0 02 every 300 ms, and in this
+ * test also never answering the power-on. The handshake must give up after 5 s, send nothing more, and
+ * still follow the rider's power key into RUNNING without sending anything but the one GNSS power-on. */
+static void test_handshake_off_state(void)
+{
+    fw_nrf_hs_t hs;
+    txlog_t l;
+    txlog_init(&l);
+    fw_nrf_hs_init(&hs, 0);
+    fw_nrf_frame_t beat[2] = {mk(4, 0, P_BATT2, 8), mk(4, 16, P_CHARGE, 8)};
+    run(&hs, 0, 300, beat, 2, &l);
+    feed1(&hs, 300, mk(4, 1, P_SLAVE_APP, 8), &l);
+    run(&hs, 300, 300 + 5000, beat, 2, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_POWER_ON, hs.state);
+    run(&hs, 5300, 5310, beat, 2, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_FAILED, hs.state);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_FAIL_NO_POWER_EVENT, hs.fail);
+    TEST_ASSERT_EQUAL(50, l.power_on); /* 5 s at 100 ms, and not one more */
+    TEST_ASSERT_EQUAL(100, l.min_power_on_gap);
+    int q = l.query;
+    TEST_ASSERT_EQUAL(2, q); /* at 0 and 200 */
+    /* The rest of capture 2's 64 s of "off": nothing is sent. */
+    run(&hs, 5310, 64380, beat, 2, &l);
+    TEST_ASSERT_EQUAL(50, l.power_on);
+    TEST_ASSERT_EQUAL(q, l.query);
+    TEST_ASSERT_EQUAL(0, l.gnss_on);
+    /* The power key held and released, then the power event and the sensors (64379..64679 ms). */
+    feed1(&hs, 64380, mk(4, 16, K_PWR_HELD, 8), &l);
+    feed1(&hs, 64680, mk(4, 16, K_PWR_HELD, 8), &l);
+    feed1(&hs, 64680, mk(4, 16, K_PWR_END, 8), &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_FAILED, hs.state);
+    feed1(&hs, 64680, mk(4, 16, P_EV5, 8), &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_RUNNING, hs.state);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_ON_MANUAL, hs.on);
+    TEST_ASSERT_EQUAL(1, l.gnss_on);
+    fw_nrf_frame_t on[3] = {mk(4, 16, P_BARO2, 8), mk(4, 0, P_BATT2, 8), mk(4, 16, P_CHARGE, 8)};
+    run(&hs, 64690, 64690 + 600000u, on, 3, &l);
+    TEST_ASSERT_EQUAL(50, l.power_on);
+    TEST_ASSERT_EQUAL(q, l.query);
+    TEST_ASSERT_EQUAL(1, l.gnss_on);
+}
+
+/* The nRF talks but never answers the query: 50 queries over 10 s, then silence for good. */
+static void test_handshake_no_reply(void)
+{
+    fw_nrf_hs_t hs;
+    txlog_t l;
+    txlog_init(&l);
+    fw_nrf_hs_init(&hs, 0);
+    fw_nrf_frame_t beat[2] = {mk(4, 0, P_BATT2, 8), mk(4, 16, P_CHARGE, 8)};
+    run(&hs, 0, 10000, beat, 2, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_QUERY, hs.state);
+    TEST_ASSERT_EQUAL(50, l.query);
+    run(&hs, 10000, 10000 + 3600000u, beat, 2, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_FAILED, hs.state);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_FAIL_NO_REPLY, hs.fail);
+    TEST_ASSERT_EQUAL(50, l.query);
+    TEST_ASSERT_EQUAL(0, l.power_on);
+    TEST_ASSERT_EQUAL(0, l.gnss_on);
+    /* A late reply does not restart anything: power-on is never sent without an answered query in time. */
+    feed1(&hs, 3700000u, mk(4, 1, P_SLAVE_APP, 8), &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_FAILED, hs.state);
+    /* A reply with a mode of 2 or more keeps the vendor querying, and keeps ours querying too. */
+    fw_nrf_hs_init(&hs, 0);
+    txlog_init(&l);
+    run(&hs, 0, 1000, beat, 2, &l);
+    feed1(&hs, 1000, mk(4, 1, P_SLAVE_BUSY, 8), &l);
+    run(&hs, 1000, 2000, beat, 2, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_QUERY, hs.state);
+    TEST_ASSERT_EQUAL(10, l.query);
+}
+
+/* A silent link: not one frame is sent into it. */
+static void test_handshake_silent_link(void)
+{
+    fw_nrf_hs_t hs;
+    txlog_t l;
+    txlog_init(&l);
+    fw_nrf_hs_init(&hs, 500);
+    run(&hs, 500, 500 + 60000u, NULL, 0, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_FAILED, hs.state);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_FAIL_NO_REPLY, hs.fail);
+    TEST_ASSERT_EQUAL(0, l.query + l.power_on + l.gnss_on);
+}
+
+/* Bootloader: stop at once and for good, whatever arrives afterwards. */
+static void test_handshake_bootloader(void)
+{
+    fw_nrf_hs_t hs;
+    txlog_t l;
+    txlog_init(&l);
+    fw_nrf_hs_init(&hs, 0);
+    fw_nrf_frame_t beat[1] = {mk(4, 0, P_BATT2, 8)};
+    run(&hs, 0, 500, beat, 1, &l);
+    TEST_ASSERT_EQUAL(3, l.query);
+    feed1(&hs, 500, mk(4, 1, P_SLAVE_BOOT, 8), &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_FAILED, hs.state);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_FAIL_BOOTLOADER, hs.fail);
+    fw_nrf_frame_t later[3] = {mk(4, 1, P_SLAVE_APP, 8), mk(4, 16, P_EV5, 8), mk(4, 16, P_BARO2, 8)};
+    run(&hs, 500, 500 + 600000u, later, 3, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_FAILED, hs.state);
+    TEST_ASSERT_EQUAL(3, l.query);
+    TEST_ASSERT_EQUAL(0, l.power_on + l.gnss_on);
+}
+
+/* The 4 November case: the sensors already stream when the firmware boots, and (in this test) no event
+ * answers the power-on. One second of power-on, then the sensors are the confirmation. */
+static void test_handshake_sensors_without_event(void)
+{
+    fw_nrf_hs_t hs;
+    txlog_t l;
+    txlog_init(&l);
+    fw_nrf_hs_init(&hs, 0);
+    fw_nrf_frame_t beat[2] = {mk(4, 16, P_BARO2, 8), mk(4, 0, P_BATT2, 8)};
+    run(&hs, 0, 200, beat, 2, &l);
+    feed1(&hs, 200, mk(4, 1, P_SLAVE_APP, 8), &l);
+    run(&hs, 200, 1200, beat, 2, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_POWER_ON, hs.state);
+    run(&hs, 1200, 1210, beat, 2, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_RUNNING, hs.state);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_ON_SENSORS, hs.on);
+    TEST_ASSERT_EQUAL(10, l.power_on); /* 200 .. 1100 */
+    TEST_ASSERT_EQUAL(1, l.gnss_on);
+    run(&hs, 1210, 61210, beat, 2, &l);
+    TEST_ASSERT_EQUAL(10, l.power_on);
+    TEST_ASSERT_EQUAL(1, l.gnss_on);
+}
+
+/* Code 4, woken by the charger: power-on stops (the vendor's loop ends on it too), but the GNSS waits for
+ * evidence that the sensor side is on. */
+static void test_handshake_charger(void)
+{
+    fw_nrf_hs_t hs;
+    txlog_t l;
+    txlog_init(&l);
+    fw_nrf_hs_init(&hs, 0);
+    fw_nrf_frame_t beat[2] = {mk(4, 0, P_BATT2, 8), mk(4, 16, P_CHARGE, 8)};
+    run(&hs, 0, 300, beat, 2, &l);
+    feed1(&hs, 300, mk(4, 1, P_SLAVE_APP, 8), &l);
+    run(&hs, 300, 600, beat, 2, &l);
+    feed1(&hs, 600, mk(4, 16, P_EV4, 8), &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_RUNNING, hs.state);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_ON_CHARGER, hs.on);
+    int p = l.power_on;
+    TEST_ASSERT_EQUAL(3, p);
+    run(&hs, 600, 600 + 600000u, beat, 2, &l);
+    TEST_ASSERT_EQUAL(p, l.power_on);
+    TEST_ASSERT_EQUAL(0, l.gnss_on);
+    feed1(&hs, 700000u, mk(4, 16, P_BARO2, 8), &l);
+    TEST_ASSERT_EQUAL(1, l.gnss_on);
+    run(&hs, 700010u, 760010u, beat, 2, &l);
+    TEST_ASSERT_EQUAL(1, l.gnss_on);
+}
+
+/* Stopped for a power-off: nothing more, in any state, from any frame; and the clock may wrap. */
+static void test_handshake_stop_and_wrap(void)
+{
+    fw_nrf_hs_t hs;
+    txlog_t l;
+    txlog_init(&l);
+    uint32_t t0 = 0xFFFFF000u; /* 4 s before the millisecond counter wraps */
+    fw_nrf_hs_init(&hs, t0);
+    fw_nrf_frame_t beat[1] = {mk(4, 0, P_BATT2, 8)};
+    run(&hs, t0, t0 + 10000u, beat, 1, &l);
+    TEST_ASSERT_EQUAL(50, l.query); /* the wrap changes nothing */
+    TEST_ASSERT_EQUAL(FW_NRF_HS_QUERY, hs.state);
+    run(&hs, t0 + 10000u, t0 + 10010u, beat, 1, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_FAILED, hs.state);
+
+    fw_nrf_hs_init(&hs, 0);
+    txlog_init(&l);
+    run(&hs, 0, 100, beat, 1, &l);
+    feed1(&hs, 100, mk(4, 1, P_SLAVE_APP, 8), &l);
+    TEST_ASSERT_EQUAL(1, l.power_on);
+    fw_nrf_hs_stop(&hs);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_FAILED, hs.state);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_FAIL_STOPPED, hs.fail);
+    fw_nrf_frame_t later[3] = {mk(4, 1, P_SLAVE_APP, 8), mk(4, 16, P_EV5, 8), mk(4, 16, P_BARO2, 8)};
+    run(&hs, 110, 60110, later, 3, &l);
+    TEST_ASSERT_EQUAL(1, l.power_on);
+    TEST_ASSERT_EQUAL(0, l.gnss_on);
+}
+
+/* ------------------------------------------------------------------ the wake decision */
+static int wake(fw_nrf_wake_t *w, const uint8_t *p, uint32_t t)
+{
+    fw_nrf_frame_t f = mk(4, 16, p, 8);
+    return fw_nrf_wake_feed(w, &f, t);
+}
+
+static void test_wake_needs_a_fresh_press(void)
+{
+    fw_nrf_wake_t w;
+    /* Power-off sent at 10000 ms during the 2 s hold: the last key-0 frame before it was HELD. */
+    fw_nrf_wake_init(&w, FW_NRF_KEY_HELD, 9900);
+    /* The same hold goes on. The HELD repeats pause for 1.5 s (longer than FW_NRF_KEY_LOST_MS, after
+       which the key decoder would have released the button) and then resume: none of it wakes. */
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_NONE, wake(&w, K_PWR_HELD, 10200));
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_NONE, wake(&w, K_PWR_HELD, 11700));
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_NONE, wake(&w, K_PWR_HELD, 12000));
+    /* Other buttons never wake. */
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_NONE, wake(&w, K_LEFT_CLICK, 12100));
+    /* A power-on event before the hold has ended belongs to it. */
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_EVENT_IGNORED, wake(&w, P_EV5, 12200));
+    /* The release, then -- as in capture 2 -- the nRF's power-on event in the same tick: not a wake. */
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_RELEASED, wake(&w, K_PWR_END, 12300));
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_EVENT_IGNORED, wake(&w, P_EV5, 12300));
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_EVENT_IGNORED, wake(&w, P_EV6, 12300 + FW_NRF_WAKE_SAME_HOLD_MS));
+    /* A second release is not a press. */
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_NONE, wake(&w, K_PWR_END, 12400));
+    /* Charger wake: reported, never a wake. */
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_CHARGER, wake(&w, P_EV4, 13000));
+    /* A new press: a hold's first HELD frame wakes... */
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_KEY, wake(&w, K_PWR_HELD, 20000));
+    /* ...and so does a click. */
+    fw_nrf_wake_init(&w, FW_NRF_KEY_HELD, 9900);
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_RELEASED, wake(&w, K_PWR_END, 10100));
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_KEY, wake(&w, K_PWR_CLICK, 30000));
+}
+
+static void test_wake_other_paths(void)
+{
+    fw_nrf_wake_t w;
+    /* The hold had already ended when the power-off was sent: the next press wakes. */
+    fw_nrf_wake_init(&w, FW_NRF_KEY_HOLD_END, 9990);
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_KEY, wake(&w, K_PWR_CLICK, 15000));
+    /* Same, and the hold's own power event arrives just after the send: still that hold's. */
+    fw_nrf_wake_init(&w, FW_NRF_KEY_HOLD_END, 9990);
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_EVENT_IGNORED, wake(&w, P_EV5, 10010));
+    /* A manual power-on event well after the release wakes. */
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_EVENT, wake(&w, P_EV5, 9990 + FW_NRF_WAKE_SAME_HOLD_MS + 1));
+    /* A lost HOLD_END: the first click only ends the hold, the second wakes. */
+    fw_nrf_wake_init(&w, FW_NRF_KEY_HELD, 9900);
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_RELEASED, wake(&w, K_PWR_CLICK, 40000));
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_KEY, wake(&w, K_PWR_CLICK, 41000));
+    /* No key-0 frame at all before the send (cannot happen from a hold, but is handled): not released. */
+    fw_nrf_wake_init(&w, 0, 0);
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_NONE, wake(&w, K_PWR_HELD, 100));
+    /* Non-key, non-event frames are nothing. */
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_NONE, wake(&w, P_BARO2, 200));
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_NONE, wake(&w, P_CHARGE, 200));
+    /* Across the millisecond wrap. */
+    fw_nrf_wake_init(&w, FW_NRF_KEY_HOLD_END, 0xFFFFFF00u);
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_EVENT_IGNORED, wake(&w, P_EV5, 0x00000010u));
+    TEST_ASSERT_EQUAL(FW_NRF_WAKE_EVENT, wake(&w, P_EV5, 0x00000200u));
+}
+
+/* ------------------------------------------------------------------ the GNSS watchdog */
+static void test_gnss_watchdog(void)
+{
+    fw_gnss_wd_t w;
+    fw_gnss_wd_init(&w);
+    /* Not armed (GNSS power-on not sent yet): never a reset. */
+    for (uint32_t t = 0; t < 60000; t += 100)
+        TEST_ASSERT_EQUAL(FW_GNSS_WD_NONE, fw_gnss_wd_tick(&w, t));
+    fw_gnss_wd_arm(&w, 60000);
+    /* A talking receiver is never reset. */
+    for (uint32_t t = 60000; t < 120000; t += 100) {
+        fw_gnss_wd_bytes(&w, t);
+        TEST_ASSERT_EQUAL(FW_GNSS_WD_NONE, fw_gnss_wd_tick(&w, t + 50));
+    }
+    /* Silence from 119900: a reset at 5.1 s, then no sooner than every 5.1 s, three in all, then one
+       "gave up", then nothing, however long the silence lasts. */
+    int resets = 0, gave_up = 0;
+    uint32_t at[4] = {0};
+    for (uint32_t t = 120000; t < 120000 + 3600000u; t += 100) {
+        int r = fw_gnss_wd_tick(&w, t);
+        if (r == FW_GNSS_WD_RESET)
+            at[resets++] = t;
+        else if (r == FW_GNSS_WD_GAVE_UP)
+            gave_up++;
+    }
+    TEST_ASSERT_EQUAL(FW_GNSS_WD_MAX_RESETS, resets);
+    TEST_ASSERT_EQUAL(1, gave_up);
+    TEST_ASSERT_EQUAL_UINT32(119900u + 5100u, at[0]);
+    TEST_ASSERT_EQUAL_UINT32(at[0] + 5100u, at[1]);
+    TEST_ASSERT_EQUAL_UINT32(at[1] + 5100u, at[2]);
+    /* The cap is per boot: bytes and a new silence do not give the resets back. */
+    fw_gnss_wd_bytes(&w, 4000000u);
+    for (uint32_t t = 4000000u; t < 4100000u; t += 100)
+        TEST_ASSERT_EQUAL(FW_GNSS_WD_NONE, fw_gnss_wd_tick(&w, t));
+    /* Just under and at the threshold, across the wrap; arming twice does not restart the count. */
+    fw_gnss_wd_init(&w);
+    fw_gnss_wd_arm(&w, 0xFFFFF000u);
+    fw_gnss_wd_arm(&w, 0xFFFFF800u);
+    TEST_ASSERT_EQUAL(FW_GNSS_WD_NONE, fw_gnss_wd_tick(&w, 0xFFFFF000u + 5099u));
+    TEST_ASSERT_EQUAL(FW_GNSS_WD_RESET, fw_gnss_wd_tick(&w, 0xFFFFF000u + 5100u));
 }
 
 int main(void)
@@ -469,5 +936,17 @@ int main(void)
     RUN_TEST(test_keys_never_stick);
     RUN_TEST(test_stream_resynchronises);
     RUN_TEST(test_build_frame_and_power_off);
+    RUN_TEST(test_power_messages);
+    RUN_TEST(test_handshake_normal);
+    RUN_TEST(test_handshake_off_state);
+    RUN_TEST(test_handshake_no_reply);
+    RUN_TEST(test_handshake_silent_link);
+    RUN_TEST(test_handshake_bootloader);
+    RUN_TEST(test_handshake_sensors_without_event);
+    RUN_TEST(test_handshake_charger);
+    RUN_TEST(test_handshake_stop_and_wrap);
+    RUN_TEST(test_wake_needs_a_fresh_press);
+    RUN_TEST(test_wake_other_paths);
+    RUN_TEST(test_gnss_watchdog);
     return UNITY_END();
 }

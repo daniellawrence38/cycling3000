@@ -61,11 +61,279 @@ int fw_nrf_build_gnss_power(uint8_t out[FW_NRF_CMD_FRAME_LEN], uint8_t mode)
                               FW_NRF_CMD_FRAME_LEN);
 }
 
+int fw_nrf_build_query_slave_mode(uint8_t out[FW_NRF_CMD_FRAME_LEN])
+{
+    /* SendQuerySlaveModeCmd at 0x42055ca8: builder called with (2, 1, ...), payload at 0x3c375e70. */
+    static const uint8_t payload[8] = {0x24, 0x01, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0xFF};
+    return fw_nrf_build_frame(FW_NRF_KIND_CMD, FW_NRF_ID_SLAVE, payload, sizeof payload, out,
+                              FW_NRF_CMD_FRAME_LEN);
+}
+
+int fw_nrf_power_event_code(const fw_nrf_frame_t *f)
+{
+    if (!f || f->id != FW_NRF_ID_SENSOR || f->plen < 6 || f->payload[0] != 0xE2 || f->payload[1] != 0x02)
+        return -1;
+    return f->payload[5];
+}
+
 int fw_nrf_is_power_on_event(const fw_nrf_frame_t *f)
 {
-    if (!f || f->id != FW_NRF_ID_SENSOR || f->plen < 6)
-        return 0;
-    return f->payload[0] == 0xE2 && f->payload[1] == 0x02 && (f->payload[5] == 0x05 || f->payload[5] == 0x06);
+    int c = fw_nrf_power_event_code(f);
+    return c == FW_NRF_PWR_EV_MANUAL || c == FW_NRF_PWR_EV_MANUAL2;
+}
+
+int fw_nrf_parse_slave_mode(const fw_nrf_frame_t *f)
+{
+    /* The vendor reads payload[5] only when payload[1] == 1 (0x4214f030), and passes 8 bytes on. */
+    if (!f || f->id != FW_NRF_ID_SLAVE || f->plen < 6 || f->payload[0] != FW_NRF_SUB_SLAVE || f->payload[1] != 0x01)
+        return -1;
+    return f->payload[5];
+}
+
+int fw_nrf_parse_version(const fw_nrf_frame_t *f, fw_nrf_version_t *out)
+{
+    if (!f || f->id != FW_NRF_ID_SLAVE || f->plen < 10 || f->payload[0] != 0x01)
+        return -1;
+    out->major = (uint8_t)(f->payload[9] / 10);
+    out->minor = (uint8_t)(f->payload[9] % 10);
+    out->patch = f->payload[8];
+    return 0;
+}
+
+int fw_nrf_parse_charge(const fw_nrf_frame_t *f)
+{
+    if (!f || f->id != FW_NRF_ID_SENSOR || f->plen < 3 || f->payload[0] != FW_NRF_SUB_CHARGE || f->payload[1] != 0x02)
+        return -1;
+    return f->payload[2] == 0 ? 1 : 0;
+}
+
+/* ---------------------------------------------------------------- the boot handshake */
+static int is_sensor_stream(const fw_nrf_frame_t *f)
+{
+    /* Any id 16 / 0xF1 sensor message: barometer, light, accelerometer, temperature. None arrived in
+       the 64 s of the nRF's "off" state in capture 2; they started with its power-on event. */
+    return f->id == FW_NRF_ID_SENSOR && f->plen >= 2 && f->payload[0] == FW_NRF_SUB_SENSOR;
+}
+
+static void hs_enter(fw_nrf_hs_t *hs, fw_nrf_hs_state_t s, uint32_t now_ms)
+{
+    hs->state = s;
+    hs->state_ms = now_ms;
+    hs->sent_any = 0;
+    hs->ev_in_state = 0;
+}
+
+static void hs_fail(fw_nrf_hs_t *hs, fw_nrf_hs_fail_t why, uint32_t now_ms)
+{
+    hs->fail = why;
+    hs_enter(hs, FW_NRF_HS_FAILED, now_ms);
+}
+
+void fw_nrf_hs_init(fw_nrf_hs_t *hs, uint32_t now_ms)
+{
+    *hs = (fw_nrf_hs_t){0};
+    hs->slave_mode = -1;
+    hs->init_ms = now_ms;
+    hs_enter(hs, FW_NRF_HS_QUERY, now_ms);
+}
+
+void fw_nrf_hs_stop(fw_nrf_hs_t *hs)
+{
+    hs_fail(hs, FW_NRF_HS_FAIL_STOPPED, hs->state_ms);
+}
+
+/* Due when nothing has been sent in this state yet, or the period has passed since the last send. */
+static int hs_due(const fw_nrf_hs_t *hs, uint32_t now_ms, uint32_t period)
+{
+    return !hs->sent_any || now_ms - hs->last_tx_ms >= period;
+}
+
+static int hs_send(fw_nrf_hs_t *hs, uint32_t now_ms, int what)
+{
+    hs->sent_any = 1;
+    hs->last_tx_ms = now_ms;
+    if (what == FW_NRF_HS_TX_QUERY)
+        hs->queries++;
+    else if (what == FW_NRF_HS_TX_POWER_ON)
+        hs->power_ons++;
+    else if (what == FW_NRF_HS_TX_GNSS_ON)
+        hs->gnss_on = 1;
+    return what;
+}
+
+int fw_nrf_hs_step(fw_nrf_hs_t *hs, uint32_t now_ms, const fw_nrf_frame_t *f)
+{
+    int ev = -1;
+    if (f) {
+        hs->heard = 1;
+        if (is_sensor_stream(f))
+            hs->sensors = 1;
+        ev = fw_nrf_power_event_code(f);
+        if (ev == FW_NRF_PWR_EV_MANUAL || ev == FW_NRF_PWR_EV_MANUAL2)
+            hs->manual = 1;
+        int mode = fw_nrf_parse_slave_mode(f);
+        if (mode >= 0)
+            hs->slave_mode = (int16_t)mode;
+        if (hs->state == FW_NRF_HS_QUERY && mode == FW_NRF_SLAVE_APP) {
+            hs_enter(hs, FW_NRF_HS_POWER_ON, now_ms);
+        } else if (hs->state == FW_NRF_HS_QUERY && mode == FW_NRF_SLAVE_BOOTLOADER) {
+            /* The vendor starts a co-processor firmware upgrade here (0x421546bc). Ours sends
+               nothing more, ever: Q38. */
+            hs_fail(hs, FW_NRF_HS_FAIL_BOOTLOADER, now_ms);
+        }
+        if (hs->state == FW_NRF_HS_POWER_ON &&
+            (ev == FW_NRF_PWR_EV_CHARGER || ev == FW_NRF_PWR_EV_MANUAL || ev == FW_NRF_PWR_EV_MANUAL2))
+            hs->ev_in_state = (uint8_t)ev;
+    }
+
+    switch (hs->state) {
+    case FW_NRF_HS_QUERY:
+        if (now_ms - hs->init_ms >= FW_NRF_HS_QUERY_MAX_MS) {
+            hs_fail(hs, FW_NRF_HS_FAIL_NO_REPLY, now_ms);
+            return FW_NRF_HS_TX_NONE;
+        }
+        if (hs->heard && hs_due(hs, now_ms, FW_NRF_HS_QUERY_PERIOD_MS))
+            return hs_send(hs, now_ms, FW_NRF_HS_TX_QUERY);
+        return FW_NRF_HS_TX_NONE;
+
+    case FW_NRF_HS_POWER_ON:
+        if (hs->ev_in_state) {
+            hs->on = hs->ev_in_state == FW_NRF_PWR_EV_CHARGER ? FW_NRF_HS_ON_CHARGER : FW_NRF_HS_ON_MANUAL;
+            hs_enter(hs, FW_NRF_HS_RUNNING, now_ms);
+            break; /* to RUNNING below, in this same call */
+        }
+        if (hs->sensors && hs->sent_any && now_ms - hs->state_ms >= FW_NRF_HS_SENSOR_GRACE_MS) {
+            hs->on = FW_NRF_HS_ON_SENSORS;
+            hs_enter(hs, FW_NRF_HS_RUNNING, now_ms);
+            break;
+        }
+        if (now_ms - hs->state_ms >= FW_NRF_HS_POWER_ON_MAX_MS) {
+            hs_fail(hs, FW_NRF_HS_FAIL_NO_POWER_EVENT, now_ms);
+            return FW_NRF_HS_TX_NONE;
+        }
+        if (hs_due(hs, now_ms, FW_NRF_HS_POWER_ON_PERIOD_MS))
+            return hs_send(hs, now_ms, FW_NRF_HS_TX_POWER_ON);
+        return FW_NRF_HS_TX_NONE;
+
+    case FW_NRF_HS_FAILED:
+        /* Receive-only. Positive evidence that the nRF's sensor side is on brings it to RUNNING with no
+           frame sent, except after a bootloader answer or a power-off. */
+        if (hs->fail == FW_NRF_HS_FAIL_NO_REPLY || hs->fail == FW_NRF_HS_FAIL_NO_POWER_EVENT) {
+            if (hs->manual || hs->sensors) {
+                hs->on = hs->manual ? FW_NRF_HS_ON_MANUAL : FW_NRF_HS_ON_SENSORS;
+                hs_enter(hs, FW_NRF_HS_RUNNING, now_ms);
+                break;
+            }
+        }
+        return FW_NRF_HS_TX_NONE;
+
+    case FW_NRF_HS_RUNNING:
+        break;
+    }
+
+    /* RUNNING. A charger wake alone does not switch the sensor side on (the vendor goes to its
+       charging screen, state 8), so GNSS power waits for a manual event or sensor frames. */
+    if (hs->state == FW_NRF_HS_RUNNING && !hs->gnss_on && (hs->manual || hs->sensors))
+        return hs_send(hs, now_ms, FW_NRF_HS_TX_GNSS_ON);
+    return FW_NRF_HS_TX_NONE;
+}
+
+const char *fw_nrf_hs_state_name(fw_nrf_hs_state_t s)
+{
+    switch (s) {
+    case FW_NRF_HS_QUERY: return "QUERY";
+    case FW_NRF_HS_POWER_ON: return "POWER_ON";
+    case FW_NRF_HS_RUNNING: return "RUNNING";
+    case FW_NRF_HS_FAILED: return "FAILED";
+    }
+    return "?";
+}
+
+const char *fw_nrf_hs_fail_name(fw_nrf_hs_fail_t f)
+{
+    switch (f) {
+    case FW_NRF_HS_FAIL_NONE: return "none";
+    case FW_NRF_HS_FAIL_NO_REPLY: return "no slave-mode reply";
+    case FW_NRF_HS_FAIL_BOOTLOADER: return "nRF in its bootloader";
+    case FW_NRF_HS_FAIL_NO_POWER_EVENT: return "no power event and no sensors";
+    case FW_NRF_HS_FAIL_STOPPED: return "stopped for power-off";
+    }
+    return "?";
+}
+
+const char *fw_nrf_hs_on_name(fw_nrf_hs_on_t o)
+{
+    switch (o) {
+    case FW_NRF_HS_ON_NONE: return "none";
+    case FW_NRF_HS_ON_MANUAL: return "manual power-on event";
+    case FW_NRF_HS_ON_CHARGER: return "charger wake event (code 4)";
+    case FW_NRF_HS_ON_SENSORS: return "sensor frames, no event";
+    }
+    return "?";
+}
+
+/* ---------------------------------------------------------------- power-off and the wake decision */
+void fw_nrf_wake_init(fw_nrf_wake_t *w, uint8_t last_key0_event, uint32_t last_key0_ms)
+{
+    w->released = last_key0_event == FW_NRF_KEY_HOLD_END || last_key0_event == FW_NRF_KEY_CLICK;
+    w->released_ms = last_key0_ms;
+}
+
+int fw_nrf_wake_feed(fw_nrf_wake_t *w, const fw_nrf_frame_t *f, uint32_t now_ms)
+{
+    int ev = fw_nrf_power_event_code(f);
+    if (ev == FW_NRF_PWR_EV_CHARGER)
+        return FW_NRF_WAKE_CHARGER;
+    if (ev == FW_NRF_PWR_EV_MANUAL || ev == FW_NRF_PWR_EV_MANUAL2) {
+        if (w->released && now_ms - w->released_ms > FW_NRF_WAKE_SAME_HOLD_MS)
+            return FW_NRF_WAKE_EVENT;
+        return FW_NRF_WAKE_EVENT_IGNORED;
+    }
+    fw_nrf_key_t k;
+    if (fw_nrf_parse_key(f, &k) != 0 || k.index != 0)
+        return FW_NRF_WAKE_NONE;
+    if (!w->released) {
+        /* Still the hold that asked for the power-off. HELD repeats never wake, however long the gap
+           between them: only an explicit end of the hold counts. */
+        if (k.event == FW_NRF_KEY_HOLD_END || k.event == FW_NRF_KEY_CLICK) {
+            w->released = 1;
+            w->released_ms = now_ms;
+            return FW_NRF_WAKE_RELEASED;
+        }
+        return FW_NRF_WAKE_NONE;
+    }
+    if (k.event == FW_NRF_KEY_HELD || k.event == FW_NRF_KEY_CLICK)
+        return FW_NRF_WAKE_KEY;
+    return FW_NRF_WAKE_NONE;
+}
+
+/* ---------------------------------------------------------------- the GNSS silence watchdog */
+void fw_gnss_wd_init(fw_gnss_wd_t *w) { *w = (fw_gnss_wd_t){0}; }
+
+void fw_gnss_wd_arm(fw_gnss_wd_t *w, uint32_t now_ms)
+{
+    if (w->armed)
+        return;
+    w->armed = 1;
+    w->quiet_since_ms = now_ms;
+}
+
+void fw_gnss_wd_bytes(fw_gnss_wd_t *w, uint32_t now_ms) { w->quiet_since_ms = now_ms; }
+
+int fw_gnss_wd_tick(fw_gnss_wd_t *w, uint32_t now_ms)
+{
+    if (!w->armed || now_ms - w->quiet_since_ms < FW_GNSS_WD_SILENCE_MS)
+        return FW_GNSS_WD_NONE;
+    if (w->resets < FW_GNSS_WD_MAX_RESETS) {
+        w->resets++;
+        w->quiet_since_ms = now_ms; /* the next one no sooner than FW_GNSS_WD_SILENCE_MS from now */
+        return FW_GNSS_WD_RESET;
+    }
+    if (!w->gave_up) {
+        w->gave_up = 1;
+        return FW_GNSS_WD_GAVE_UP;
+    }
+    return FW_GNSS_WD_NONE;
 }
 
 int fw_nrf_take_frame(const uint8_t *buf, size_t len, fw_nrf_frame_t *out)
