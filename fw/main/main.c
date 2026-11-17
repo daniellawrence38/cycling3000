@@ -187,9 +187,6 @@ static void core_task(void *arg)
 #if FS_EMMC_MODE == 2
     struct hal_fs *fs = fw_fs_sdmmc();
 #else
-#if FS_EMMC_MODE == 1
-    fw_emmc_probe();
-#endif
     struct hal_fs *fs = fw_fs_null();
     ESP_LOGW(TAG, "storage is the null stub (FS_EMMC_MODE %d): nothing is saved, and the STORAGE ERROR "
                   "banner is expected", FS_EMMC_MODE);
@@ -238,6 +235,18 @@ static void core_task(void *arg)
                 cc_on_button(now, (cc_btn_t)(ie.kind / 2), (ie.kind % 2) == 0);
         }
         fw_sensors_tick(now);
+#if FS_EMMC_MODE == 1
+        /* The read-only eMMC probe, at 10 s and again at 40 s after boot, not at boot. The first
+           capture of it started 2.6 s in and missed it: the PC's serial port is not listening for
+           the first seconds after a reset. Reading twice costs nothing and writes nothing, and two
+           identical reports are a small check in themselves. The core task stops for about a
+           second each time. */
+        static int probe_runs;
+        if (probe_runs < 2 && now >= (probe_runs ? 40000u : 10000u)) {
+            probe_runs++;
+            fw_emmc_probe();
+        }
+#endif
         if ((int32_t)(now - next_tick) >= 0) {
             next_tick += 100;
             int32_t pa = hal_baro_read_pa();
