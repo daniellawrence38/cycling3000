@@ -150,16 +150,18 @@ static void test_core_records_ride(void)
     TEST_ASSERT_EQUAL_INT(0, cc_cmd_start(now));
     cc_tick(now);
     for (int i = 0; i < 10; i++) sec_hr(120);
-    for (int i = 0; i < 3; i++) sec_hr(0); /* the strap is silent: three gaps */
+    /* The strap is silent for 4 s. The first empty second repeats the last bin (V§6.4: the last
+       sample is under CC_POWER_STALE_MS old), exactly as the FIT record does; the other three are gaps. */
+    for (int i = 0; i < 4; i++) sec_hr(0);
     for (int i = 0; i < 5; i++) sec_hr(130);
     int n = H()->n;
-    TEST_ASSERT_TRUE(n >= 17 && n <= 19); /* the second START fell in may or may not have a bin */
+    TEST_ASSERT_TRUE(n >= 18 && n <= 20); /* the second START fell in may or may not have a bin */
     TEST_ASSERT_EQUAL_INT(130, cc_hrhist_at(H(), 0));
     TEST_ASSERT_EQUAL_INT(130, cc_hrhist_at(H(), 4));
     TEST_ASSERT_EQUAL_INT(-1, cc_hrhist_at(H(), 5));
     TEST_ASSERT_EQUAL_INT(-1, cc_hrhist_at(H(), 7));
-    TEST_ASSERT_EQUAL_INT(120, cc_hrhist_at(H(), 8));
-    TEST_ASSERT_EQUAL_INT(120, cc_hrhist_at(H(), 17));
+    TEST_ASSERT_EQUAL_INT(120, cc_hrhist_at(H(), 8)); /* the carried second */
+    TEST_ASSERT_EQUAL_INT(120, cc_hrhist_at(H(), 18));
     /* The newest entry is the value the HEART RATE field shows */
     TEST_ASSERT_TRUE(cc_view()->hr_ok);
     TEST_ASSERT_EQUAL_INT(cc_view()->hr, cc_hrhist_at(H(), 0));
