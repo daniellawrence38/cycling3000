@@ -230,6 +230,20 @@ int app_walk(const char *dir, int perf)
     step();
     expect(ui_app_top() == SCR_READY, "touch footer BACK returns to Ready");
 
+    /* A stuck touch (rain, a wet glove) on a stopped screen holds the once-a-second redraw back for
+     * at most 1.5 s, then the screen redraws even though the panel still reports a finger. The
+     * release is on the status bar, where a tap does nothing. */
+    redraw();
+    ui_app_touch(1, 120, 10);
+    run_ms(1200);
+    expect(!ui_app_dirty(), "a touch held 1.2 s on Ready holds the redraw back");
+    run_ms(500);
+    expect(ui_app_dirty(), "a touch held past 1.5 s on Ready no longer holds the redraw back");
+    ui_app_touch(0, 120, 10);
+    ui_app_post_touch();
+    step();
+    expect(ui_app_top() == SCR_READY, "releasing the stuck touch on the status bar does nothing");
+
     /* Load the workout and the route through the menus, with buttons only */
     press(CC_BTN_L, 100);
     expect(ui_app_top() == SCR_MENU, "left opens the Menu");
@@ -284,6 +298,22 @@ int app_walk(const char *dir, int perf)
     expect(cc_view()->banner.id == CC_AL_LAP, "right short is a lap: LAP banner");
     shot("lap_banner");
     ride_for(60);
+
+    /* While recording a stuck touch never holds the redraw back (the timer, speed and power must keep
+     * moving), and a horizontal swipe does not change the page (spec 4: touch has no job while
+     * riding). The redraw check can pass for another reason, such as a banner, so it is a floor. */
+    redraw();
+    ui_app_touch(1, 200, 150);
+    ride_for(2);
+    expect(ui_app_dirty(), "a touch held while recording does not freeze the ride page");
+    int page_before = m->page;
+    ui_app_touch(1, 120, 150);
+    ui_app_touch(1, 40, 150);
+    ui_app_touch(0, 40, 150);
+    ui_app_post_touch();
+    ride_for(1);
+    expect(m->page == page_before && cc_view()->state == CC_RS_RECORDING,
+           "a swipe while recording does not change the page");
 
     /* Manual pause, the pause menu moved with the power key only, Finish and save */
     cc_on_button(sim_now, CC_BTN_R, 1);

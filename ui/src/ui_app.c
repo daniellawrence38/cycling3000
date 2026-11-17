@@ -31,6 +31,8 @@ typedef struct {
     int dirty;
     int had_input;
     int touch_down;
+    uint32_t touch_since; /* U.now when the current touch began */
+    int redraw_owed;      /* a once-a-second redraw was held back by a touch */
     int touch_dragged;
     int touch_ate;
     int tap_pending;
@@ -41,6 +43,9 @@ typedef struct {
 } ui_app_t;
 
 static ui_app_t U;
+
+/* Longest a touch may hold back the once-a-second redraw outside a ride (ui_app_step). */
+#define UI_TOUCH_REDRAW_HOLD_MS 1500u
 static cc_route_t *rt_ui; /* allocated once on first use (208 KB: PSRAM on the unit) */
 static uint8_t *obj_buf;  /* allocated once on first use (131 KB: PSRAM on the unit) */
 static int rt_ui_ok;
@@ -695,6 +700,7 @@ void ui_app_touch(int down, int16_t x, int16_t y)
         U.last_input_ms = U.now;
         if (!U.touch_down) {
             U.touch_down = 1;
+            U.touch_since = U.now;
             U.touch_dragged = 0;
             U.touch_ate = 0;
             U.tap_pending = 0;
@@ -737,18 +743,11 @@ void ui_app_touch(int down, int16_t x, int16_t y)
     } else if (U.touch_down) {
         U.touch_down = 0;
         if (U.touch_ate) return;
-        const cc_view_t *v = cc_view();
-        int dx = (int)x - (int)U.touch_x0;
-        int dy = (int)y - (int)U.touch_y0;
-        int adx = dx < 0 ? -dx : dx;
-        int ady = dy < 0 ? -dy : dy;
-        if (v->state == CC_RS_RECORDING && adx >= 40 && adx > ady) {
-            int n = v->ring_n ? v->ring_n : 1;
-            U.m.page = dx < 0 ? (U.m.page + 1) % n : (U.m.page + n - 1) % n;
-            U.had_input = 1;
-            U.dirty = 1;
-            return;
-        }
+        /* No swipe page change while recording. Spec 4 gives touch no job while riding ("Not
+           required"; the left button changes the page) and lists touch only for the pause menu and
+           Confirm while paused. A page that changes under a wet glove or a raindrop is worse than one
+           that cannot be swiped, so a horizontal drag here does nothing, and a tap is ignored by
+           tap_xy while recording. */
         if (!U.touch_dragged) {
             U.tap_pending = 1;
             U.tap_x = x;
@@ -820,10 +819,22 @@ void ui_app_step(uint32_t now_ms)
             if (U.cal_t > 0 && --U.cal_t == 0) U.m.cal = UI_CAL_DONE;
             if (U.m.phone == UI_PHONE_PAIRING && now_ms >= U.pair_until) U.m.phone = UI_PHONE_NOT_PAIRED;
         }
-        /* Do not rebuild and delete U.scr on the 1-second boundary while a finger is touching the
-         * panel, or LVGL loses the pressed object mid-tap. */
-        if (!U.touch_down)
+        U.redraw_owed = 1;
+    }
+    /* The once-a-second redraw is what moves the timer, speed and power on screen. It is held back
+     * while a finger is on the panel, because rebuilding U.scr mid-tap makes LVGL lose the pressed
+     * object. But a phantom touch (rain, a wet glove, a panel that reports "down" for ever) must not
+     * freeze the display, so the hold-back is limited:
+     *   - never while a ride is recording or paused: those screens carry live numbers and touch has
+     *     no job on them except the pause menu and Confirm, whose taps tap_xy recovers by position;
+     *   - elsewhere, for at most UI_TOUCH_REDRAW_HOLD_MS of continuous touch, which is longer than
+     *     any real tap or list drag. */
+    if (U.redraw_owed) {
+        int riding = v->state == CC_RS_RECORDING || v->state == CC_RS_PAUSED;
+        if (!U.touch_down || riding || now_ms - U.touch_since >= UI_TOUCH_REDRAW_HOLD_MS) {
+            U.redraw_owed = 0;
             U.dirty = 1;
+        }
     }
     cc_tick(now_ms); /* commands issued by the UI this step show in the view now */
     fill_model();
