@@ -184,8 +184,8 @@ static void core_task(void *arg)
 {
     (void)arg;
     uint32_t now = hal_clock_monotonic_ms();
-    int rec = cc_init(fw_fs_null(), now);
-    ESP_LOGI(TAG, "core started (init %d); storage on fs_null until bring-up step 1", rec);
+    int rec = cc_init(fw_fs_sdmmc(), now);
+    ESP_LOGI(TAG, "core started (recovered %d)", rec);
     cc_link_host_t host;
     cc_link_host_bind(&host);
     cc_link_init(&link_srv, cc_fs(), &host, link_tx, NULL, 23);

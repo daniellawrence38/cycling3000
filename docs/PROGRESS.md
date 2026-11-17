@@ -813,3 +813,13 @@ Daniel flashed `ad7beee` and reported:
        `SCR_SETTINGS`, `SCR_WORKOUTS`, `SCR_ROUTES`, `SCR_HISTORY`), horizontal swipe page switching
        while recording, drag click-suppression, and coordinate fallback tap dispatch (`ui_app_post_touch()`);
        and `ui_app_step()` suppresses the 1 s screen rebuild while `U.touch_down` is active.
+  4. **Storage error ("Ride may not be saved"):**
+     - *Cause*: `fw/main/main.c` was still wired to `fw_fs_null()` pending Daniel's decision on Bring-up
+       Step 1. Daniel chose to mount the 4 GB eMMC directly at `/sdcard/CC700/`.
+     - *Fix* (`fw/main/hal_fs_esp.c`, `fw/main/main.c`, `fw/sdkconfig.defaults`, `fw/main/CMakeLists.txt`):
+       Implemented `fw_fs_sdmmc()` using the stock `MidVFSMount` parameters (SDMMC slot 1, 4-bit bus,
+       20 MHz, `CLK=13, CMD=14, D0=16, D1=17, D2=18, D3=15`, internal pull-ups enabled,
+       `format_if_mount_failed = false`, `allocation_unit_size = 16384`), enabled `CONFIG_FATFS_LFN_HEAP=y`
+       for `.fit.part` / `.meta.tmp` / `settings_a.bin`, and sandboxed all `hal_fs_t` paths strictly
+       under `/sdcard/CC700/` so stock directories on `/sdcard` are untouched. Falls back to
+       `fw_fs_null()` if the mount fails.

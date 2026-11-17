@@ -51,3 +51,7 @@ CONFIG_LV_USE_CLIB_SPRINTF=y
 CONFIG_LV_USE_FONT_COMPRESSED=y
 CONFIG_LV_DEF_REFR_PERIOD=33
 CONFIG_LV_USE_LOG=n
+
+# FatFS on the 4 GB eMMC: long file names are required for .fit.part, .meta.tmp, and settings_a.bin.
+CONFIG_FATFS_LFN_HEAP=y
+CONFIG_FATFS_MAX_LFN=255
