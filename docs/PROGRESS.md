@@ -903,3 +903,43 @@ file name and a rebuilt image all come back byte for byte. `make fw-build` clean
 **Not verified.** The read-out has not run on the unit. Its speed over the USB serial port is
 unmeasured; at a guessed 0.3 to 0.5 MB/s, two passes of about 400 MB of text would take roughly half
 an hour to an hour.
+
+## Independent review of `ad7beee`, `c57ba48` and the eMMC driver · 17 November 2026
+
+Those three commits were written quickly in another tool and nothing had checked them. A read-only
+review (a separate agent, no builds, no hardware) went through them; I spot-checked its claims
+against the code and these documents before recording them. Fixes for the code defects are being
+made on a separate branch and are not merged yet.
+
+**Corrections to the two entries above ("Wire hal_power…" and "Hardware test of `ad7beee`…").** The
+code is right in each case and the entry is wrong, which matters because a later session will trust
+the entry:
+
+- The power-off frame is **not** `a5 08 02 10 08 00 e2 02 … 9b b2`. The builder produces
+  `a5 0c 6f f1 02 10 e2 02 00 00 00 00 00 00` followed by its CRC, as `docs/NRF-PROTOCOL.md` says.
+- `hal_power_off()` does **not** re-install UART1 with TX on GPIO 3. The nRF UART's TX is GPIO 42,
+  the driver is installed once in the nRF task, and GPIO 3 is the display's WR line.
+- The backlight is **not** "LEDC 5 kHz on GPIO 4". It is GPIO 45 at 20 kHz through
+  `hal_display_backlight`; GPIO 4 is display data line D0.
+- `test_nrf_proto` had 13 tests at that commit, not 16.
+- The first entry says the GNSS power-on frame is not sent "unless Daniel approves extending Q38";
+  the next commit sends it. See the first open point below.
+- Neither entry separates what ran on the unit from what did not. **Confirmed on the unit**, by
+  Daniel: power-off by holding Power, the battery percentage, and button navigation. **Not confirmed
+  on the unit**: everything in `c57ba48` (the power-on fix, the GNSS power and reset frames, touch
+  scrolling and footer taps) and the NMEA parsing, for which no real receiver output has been captured.
+
+**Open, and Daniel's to decide: the firmware transmits more than Q38 records.** Q38's answer allows
+one frame, `SendPowerOffCmd`, and says nothing else is transmitted. The code also sends
+`SendPowerOnCmd` at every boot with up to five retries a second apart, the GNSS power-on frame
+(several times in the first seconds), a GNSS reset then power-on if the receiver's UART is silent
+for 3 s, and GNSS power-off before every power-off. The bytes match the vendor's frames. What is
+missing is the decision, and any measurement of what the nRF does with a power-on command when it is
+already on. This is not changed until the vendor's own handshake has been read out of the stock
+firmware (in progress) and Daniel has said which frames he accepts.
+
+**Code defects found, being fixed on a branch:** the UI re-read and re-decoded every stored workout
+and route on every received Bluetooth packet; a touch that stays down froze the ride screen; the nRF
+UART was left at 9600 baud if the rate search failed, so a later power-off went out as garbage; a
+failed power-off could not be retried until reboot; a GNSS receiver's default 1980 date would have
+been accepted as the real time; and several tests did not pin what they claimed to.
