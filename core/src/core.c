@@ -467,6 +467,8 @@ static void power_off(uint32_t now_ms)
     S.power_off = 1;
 }
 
+void cc_power_off_cancel(void) { S.power_off = 0; }
+
 static void pause_menu_activate(uint32_t now_ms, int row)
 {
     switch (row) {

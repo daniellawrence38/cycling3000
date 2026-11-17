@@ -11,6 +11,7 @@
  * that writes flash. */
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "board_pins.h"
@@ -43,6 +44,7 @@ static cc_link_t link_srv;
 static volatile uint16_t pending_mtu;
 static volatile int phone_state = -1; /* -1 nothing new, 0 disconnected, 1 connected */
 static uint32_t last_saved_seq;
+static uint32_t lib_seen; /* link_srv.lib_changes at the last list refresh */
 static int last_backlight_pct = -1;
 static int power_off_sent;
 
@@ -234,14 +236,20 @@ static void core_task(void *arg)
                 link_srv.ev_state = -1; /* first EVENT_STATE after connect */
             phone_state = -1;
         }
-        int rx_any = 0;
         fw_pkt_t p;
-        while (fw_link_take(&p)) {
+        while (fw_link_take(&p))
             cc_link_rx(&link_srv, p.data, p.len, now);
-            rx_any = 1;
-        }
-        if (rx_any && !cc_ride_active())
+        /* Refresh the Workouts, Routes and History lists only when the phone has changed what they
+           show (link.h, lib_changes), not after every batch of packets. A refresh reads and decodes
+           every stored workout and route (up to 131 KB each) and every ride's metadata; done per
+           packet batch it ran once per chunk of a route upload, on this task, which also owns the
+           link, LVGL and the buttons. During a ride the phone cannot change the library (protocol 4
+           answers BUSY), and leaving the counter unmatched means the refresh happens once the ride
+           ends; ui_app_step refreshes on the return to Ready as well. */
+        if (link_srv.lib_changes != lib_seen && !cc_ride_active()) {
+            lib_seen = link_srv.lib_changes;
             ui_app_refresh_lists();
+        }
         hal_input_event_t ie;
         while (hal_input_poll(&ie)) {
 #if NRF_DECODE_LOG
@@ -289,9 +297,22 @@ static void core_task(void *arg)
             last_saved_seq = v->saved_seq;
             apply_backlight();
             if (v->power_off_request && !power_off_sent) {
-                power_off_sent = 1;
+                /* hal_power_off blanks the backlight behind apply_backlight's back, so the next
+                   apply_backlight must set it again whatever it last set. */
                 last_backlight_pct = -1;
-                hal_power_off();
+                int rc = hal_power_off();
+                if (rc == HAL_POWER_OFF_SENT) {
+                    /* Written, and the power is expected to drop: never send it twice. */
+                    power_off_sent = 1;
+                } else {
+                    /* Still on. The latch stays open and the core's request is cleared, so the
+                       screen comes back on the next tick and the rider's next 2 s hold tries again.
+                       Latching here was the old behaviour: one failed attempt and power-off did
+                       nothing until a reboot. */
+                    ESP_LOGE(TAG, "power-off %s; the unit stays on",
+                             rc == HAL_POWER_OFF_UNCONFIRMED ? "sent but not confirmed" : "not sent");
+                    cc_power_off_cancel();
+                }
             }
         }
         if (ui_app_dirty())

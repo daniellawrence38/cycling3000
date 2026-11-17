@@ -381,49 +381,64 @@ static void test_build_frame_and_power_off(void)
         TEST_ASSERT_EQUAL_UINT8_ARRAY(all[i], built, 16);
     }
 
-    /* SendPowerOffCmd (0x42055bac, Q38): kind 2, id 16, payload e2 02 00 00 00 00 00 00. */
+    /* Every frame the firmware transmits, pinned whole: header, payload AND the two CRC bytes.
+     *
+     * Where the golden bytes come from. The header is the frame format (docs/NRF-PROTOCOL.md, "The
+     * frame"): a5, length = 8 + 4 = 0x0c, 6f, f1, kind 2 (command), id 16 (0x10). The payloads are
+     * docs/NRF-PROTOCOL.md, "The senders, exactly" (SendPowerOffCmd, SendPowerOnCmd) and "Additional
+     * outbound commands on id 16" (the three GNSS frames). The CRC bytes were NOT taken from the code
+     * under test: they were computed with Python's binascii.crc_hqx(data, 0), which is CRC-16/XMODEM,
+     * the checksum the vendor's routine at 0x4222137c is (NRF-PROTOCOL.md, "The checksum"), under WSL:
+     *
+     *   python3 -c 'import binascii; hdr = bytes([0xa5, 0x0c, 0x6f, 0xf1, 0x02, 0x10]); ...
+     *               c = binascii.crc_hqx(hdr + payload, 0)'   (low byte first on the wire)
+     *
+     *   SendPowerOffCmd  a5 0c 6f f1 02 10 e2 02 00 00 00 00 00 00 f8 1a  crc 0x1af8
+     *   SendPowerOnCmd   a5 0c 6f f1 02 10 e2 02 00 00 00 01 00 00 c8 2d  crc 0x2dc8
+     *   GNSS off         a5 0c 6f f1 02 10 e2 02 07 00 00 00 00 00 b9 d2  crc 0xd2b9
+     *   GNSS on          a5 0c 6f f1 02 10 e2 02 07 00 00 01 00 00 89 e5  crc 0xe589
+     *   GNSS reset       a5 0c 6f f1 02 10 e2 02 07 00 00 02 00 00 d9 bc  crc 0xbcd9
+     *
+     * and crc_hqx(b"123456789", 0) gave 0x31c3, the published CRC-16/XMODEM check value. So a change
+     * to the builder, the CRC or a payload constant fails here even if the parser changes with it. */
+    static const uint8_t POWER_OFF[16] = {0xa5, 0x0c, 0x6f, 0xf1, 0x02, 0x10, 0xe2, 0x02,
+                                          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf8, 0x1a};
+    static const uint8_t POWER_ON[16] = {0xa5, 0x0c, 0x6f, 0xf1, 0x02, 0x10, 0xe2, 0x02,
+                                         0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0xc8, 0x2d};
+    static const uint8_t GNSS[3][16] = {
+        {0xa5, 0x0c, 0x6f, 0xf1, 0x02, 0x10, 0xe2, 0x02, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0xb9, 0xd2},
+        {0xa5, 0x0c, 0x6f, 0xf1, 0x02, 0x10, 0xe2, 0x02, 0x07, 0x00, 0x00, 0x01, 0x00, 0x00, 0x89, 0xe5},
+        {0xa5, 0x0c, 0x6f, 0xf1, 0x02, 0x10, 0xe2, 0x02, 0x07, 0x00, 0x00, 0x02, 0x00, 0x00, 0xd9, 0xbc},
+    };
+
+    /* SendPowerOffCmd (0x42055bac, Q38) */
     uint8_t po[FW_NRF_POWER_OFF_FRAME_LEN];
     TEST_ASSERT_EQUAL(16, fw_nrf_build_power_off(po));
-    static const uint8_t want_hdr_pay[14] = {0xa5, 0x0c, 0x6f, 0xf1, 0x02, 0x10,
-                                             0xe2, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    TEST_ASSERT_EQUAL_UINT8_ARRAY(want_hdr_pay, po, 14);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(POWER_OFF, po, 16);
     fw_nrf_frame_t f;
-    TEST_ASSERT_EQUAL(16, fw_nrf_take_frame(po, sizeof po, &f));
-    TEST_ASSERT_EQUAL(2, f.kind);
-    TEST_ASSERT_EQUAL(16, f.id);
+    TEST_ASSERT_EQUAL(16, fw_nrf_take_frame(po, sizeof po, &f)); /* and our own parser accepts it */
     TEST_ASSERT_EQUAL(8, f.plen);
-    TEST_ASSERT_EQUAL_UINT8_ARRAY(want_hdr_pay + 6, f.payload, 8);
 
     /* Bounds: invalid kind, oversized payload, short output buffer or NULL pointers are refused. */
-    TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(0, 16, want_hdr_pay + 6, 8, po, sizeof po));
-    TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(6, 16, want_hdr_pay + 6, 8, po, sizeof po));
-    TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(2, 16, want_hdr_pay + 6, 8, po, 15));
+    TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(0, 16, POWER_OFF + 6, 8, po, sizeof po));
+    TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(6, 16, POWER_OFF + 6, 8, po, sizeof po));
+    TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(2, 16, POWER_OFF + 6, 8, po, 15));
     TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(2, 16, NULL, 1, po, sizeof po));
     uint8_t big[140] = {0};
     TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(2, 16, big, 129, big, sizeof big));
 
-    /* SendPowerOnCmd (0x42055c00): kind 2, id 16, payload e2 02 00 00 00 01 00 00. */
+    /* SendPowerOnCmd (0x42055c00) */
     uint8_t pon[FW_NRF_CMD_FRAME_LEN];
     TEST_ASSERT_EQUAL(16, fw_nrf_build_power_on(pon));
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(POWER_ON, pon, 16);
     TEST_ASSERT_EQUAL(16, fw_nrf_take_frame(pon, sizeof pon, &f));
-    TEST_ASSERT_EQUAL(2, f.kind);
-    TEST_ASSERT_EQUAL(16, f.id);
-    TEST_ASSERT_EQUAL(0xE2, f.payload[0]);
-    TEST_ASSERT_EQUAL(0x02, f.payload[1]);
-    TEST_ASSERT_EQUAL(0x00, f.payload[2]);
-    TEST_ASSERT_EQUAL(0x01, f.payload[5]);
 
-    /* GNSS power/reset (0x42155f84..0x42155fac): kind 2, id 16, payload e2 02 07 00 00 <0..2> 00 00. */
+    /* GNSS power off, on and reset (0x42155f84, 0x42155f98, 0x42155fac) */
     for (uint8_t m = 0; m <= 2; m++) {
         uint8_t gp[FW_NRF_CMD_FRAME_LEN];
         TEST_ASSERT_EQUAL(16, fw_nrf_build_gnss_power(gp, m));
+        TEST_ASSERT_EQUAL_HEX8_ARRAY(GNSS[m], gp, 16);
         TEST_ASSERT_EQUAL(16, fw_nrf_take_frame(gp, sizeof gp, &f));
-        TEST_ASSERT_EQUAL(2, f.kind);
-        TEST_ASSERT_EQUAL(16, f.id);
-        TEST_ASSERT_EQUAL(0xE2, f.payload[0]);
-        TEST_ASSERT_EQUAL(0x02, f.payload[1]);
-        TEST_ASSERT_EQUAL(0x07, f.payload[2]);
-        TEST_ASSERT_EQUAL(m, f.payload[5]);
     }
     TEST_ASSERT_EQUAL(-1, fw_nrf_build_gnss_power(pon, 3));
 
@@ -431,8 +446,10 @@ static void test_build_frame_and_power_off(void)
     const uint8_t p_on_ev[8] = {0xe2, 0x02, 0x00, 0x00, 0xff, 0x05, 0x00, 0xff};
     fw_nrf_frame_t fev = {.kind = 4, .id = 16, .payload = p_on_ev, .plen = 8};
     TEST_ASSERT_EQUAL(1, fw_nrf_is_power_on_event(&fev));
-    const uint8_t p_chg_ev[8] = {0xe2, 0x02, 0x00, 0x00, 0xff, 0x04, 0x00, 0xff};
-    fev.payload = p_chg_ev;
+    /* Event code 4: the documents say only "code 4, the other event" (NRF-PROTOCOL.md); what it
+       means has not been seen or decoded. It is not a power-on event, which is all this asserts. */
+    const uint8_t p_code4_ev[8] = {0xe2, 0x02, 0x00, 0x00, 0xff, 0x04, 0x00, 0xff};
+    fev.payload = p_code4_ev;
     TEST_ASSERT_EQUAL(0, fw_nrf_is_power_on_event(&fev));
 }
 

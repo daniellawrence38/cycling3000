@@ -4,7 +4,9 @@
  *
  * No ESP-IDF dependency; host-tested by core/tests/test_nmea.c. Every sentence must carry a valid
  * NMEA XOR checksum (*XX). GGA supplies altitude, satellite count and HDOP; RMC supplies position,
- * speed (knots to m/s), course and UTC timestamp, and emits one hal_gnss_fix_t per RMC sentence. */
+ * speed (knots to m/s), course and UTC timestamp, and emits one hal_gnss_fix_t per RMC sentence.
+ * utc_seconds is 0 unless the receiver has shown a fix (RMC status A, or any GGA with quality above 0
+ * since start-up) and the year is 2025 to 2040, so a receiver's default date never becomes the time. */
 #ifndef FW_NMEA_H
 #define FW_NMEA_H
 #include <stddef.h>
@@ -23,6 +25,9 @@ typedef struct {
     uint16_t hdop_x10;
     uint8_t sats;
     float last_course_deg;
+    /* A GGA with fix quality above 0 has been seen: the receiver's time is from the satellites, so
+       a later void RMC (a tunnel) still carries real UTC. See fw_nmea_line. */
+    int fix_seen;
 } fw_nmea_t;
 
 void fw_nmea_init(fw_nmea_t *st);

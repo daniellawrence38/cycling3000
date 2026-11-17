@@ -12,9 +12,26 @@ static const char GGA_PERTH[] =
     "$GNGGA,013000.00,3157.6300,S,11550.5200,E,1,12,0.8,48.5,M,-30.0,M,,*73\r\n";
 static const char RMC_PERTH[] =
     "$GNRMC,013000.00,A,3157.6300,S,11550.5200,E,10.00,182.5,171126,,,A*50\r\n";
-/* Void fix that still carries valid UTC date and time (spec 10.6: UTC before a position fix). */
+/* Void fix that carries a plausible UTC date and time. Spec 10.6 would allow learning UTC from it;
+ * nmea.c deliberately does not until the receiver has shown a fix (see fw_nmea_line). */
 static const char RMC_VOID[] =
     "$GNRMC,013005.00,V,,,,,,,171126,,,N*66\r\n";
+/* A GGA with fix quality 0 (no fix): it must not count as evidence of a fix. */
+static const char GGA_NOFIX[] =
+    "$GNGGA,013004.00,,,,,0,00,99.9,,M,,M,,*47\r\n";
+/* A receiver's GPS-epoch default date, 6 January 1980, sent as ddmmyy "060180", which the two-digit
+ * year reads as 2080. Once void, once (as a receiver with a bad almanac might) with status A. */
+static const char RMC_1980_VOID[] =
+    "$GNRMC,000012.00,V,,,,,,,060180,,,N*6F\r\n";
+static const char RMC_1980_A[] =
+    "$GNRMC,000012.00,A,3157.6300,S,11550.5200,E,0.00,0.0,060180,,,A*63\r\n";
+/* The edges of the accepted years: 2040 is in, 2041 is out. */
+static const char RMC_2040[] =
+    "$GNRMC,013000.00,A,3157.6300,S,11550.5200,E,10.00,182.5,171140,,,A*50\r\n";
+static const char RMC_2041[] =
+    "$GNRMC,013000.00,A,3157.6300,S,11550.5200,E,10.00,182.5,171141,,,A*51\r\n";
+/* Every checksum above was computed outside the code under test, with Python under WSL:
+ *   functools.reduce(lambda a, c: a ^ ord(c), body, 0) over the text between '$' and '*'. */
 
 static void test_valid_gga_and_rmc_produce_fix(void)
 {
@@ -35,14 +52,53 @@ static void test_valid_gga_and_rmc_produce_fix(void)
     TEST_ASSERT_EQUAL_UINT32(1794879000u, fix.utc_seconds);
 }
 
-static void test_void_rmc_reports_utc_without_fix(void)
+/* A void RMC with a plausible date gives no UTC before the receiver has shown a fix, a GGA without a
+ * fix does not change that, and after a GGA with a fix the same sentence does give UTC (a tunnel). */
+static void test_void_rmc_utc_only_after_a_fix(void)
 {
     fw_nmea_t st;
     hal_gnss_fix_t fix;
     fw_nmea_init(&st);
     TEST_ASSERT_EQUAL(1, fw_nmea_line(&st, RMC_VOID, &fix));
     TEST_ASSERT_EQUAL(0, fix.valid);
-    TEST_ASSERT_EQUAL_UINT32(1794879005u, fix.utc_seconds);
+    TEST_ASSERT_EQUAL_UINT32(0u, fix.utc_seconds);
+    TEST_ASSERT_EQUAL(0, fw_nmea_line(&st, GGA_NOFIX, &fix));
+    TEST_ASSERT_EQUAL(1, fw_nmea_line(&st, RMC_VOID, &fix));
+    TEST_ASSERT_EQUAL_UINT32(0u, fix.utc_seconds);
+    TEST_ASSERT_EQUAL(0, fw_nmea_line(&st, GGA_PERTH, &fix)); /* quality 1 */
+    TEST_ASSERT_EQUAL(1, fw_nmea_line(&st, RMC_VOID, &fix));
+    TEST_ASSERT_EQUAL(0, fix.valid);
+    TEST_ASSERT_EQUAL_UINT32(1794879005u, fix.utc_seconds); /* 2026-11-17 01:30:05 UTC */
+}
+
+/* The GPS-epoch default date never becomes the time: not void, not with status A, not after a fix. */
+static void test_1980_default_date_rejected(void)
+{
+    fw_nmea_t st;
+    hal_gnss_fix_t fix;
+    fw_nmea_init(&st);
+    TEST_ASSERT_EQUAL(1, fw_nmea_line(&st, RMC_1980_VOID, &fix));
+    TEST_ASSERT_EQUAL_UINT32(0u, fix.utc_seconds);
+    TEST_ASSERT_EQUAL(1, fw_nmea_line(&st, RMC_1980_A, &fix));
+    TEST_ASSERT_EQUAL(1, fix.valid); /* the position is still used; only the date is refused */
+    TEST_ASSERT_EQUAL_UINT32(0u, fix.utc_seconds);
+    TEST_ASSERT_EQUAL(0, fw_nmea_line(&st, GGA_PERTH, &fix));
+    TEST_ASSERT_EQUAL(1, fw_nmea_line(&st, RMC_1980_VOID, &fix));
+    TEST_ASSERT_EQUAL_UINT32(0u, fix.utc_seconds);
+}
+
+/* Status A with a real date is accepted from the first sentence, up to and including 2040. */
+static void test_utc_accepted_with_fix_and_year_bounds(void)
+{
+    fw_nmea_t st;
+    hal_gnss_fix_t fix;
+    fw_nmea_init(&st);
+    TEST_ASSERT_EQUAL(1, fw_nmea_line(&st, RMC_PERTH, &fix));
+    TEST_ASSERT_EQUAL_UINT32(1794879000u, fix.utc_seconds); /* 2026-11-17 01:30:00 UTC */
+    TEST_ASSERT_EQUAL(1, fw_nmea_line(&st, RMC_2040, &fix));
+    TEST_ASSERT_EQUAL_UINT32(2236728600u, fix.utc_seconds); /* 2040-11-17 01:30:00 UTC */
+    TEST_ASSERT_EQUAL(1, fw_nmea_line(&st, RMC_2041, &fix));
+    TEST_ASSERT_EQUAL_UINT32(0u, fix.utc_seconds);
 }
 
 static void test_checksum_and_malformed_rejected(void)
@@ -83,7 +139,9 @@ int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_valid_gga_and_rmc_produce_fix);
-    RUN_TEST(test_void_rmc_reports_utc_without_fix);
+    RUN_TEST(test_void_rmc_utc_only_after_a_fix);
+    RUN_TEST(test_1980_default_date_rejected);
+    RUN_TEST(test_utc_accepted_with_fix_and_year_bounds);
     RUN_TEST(test_checksum_and_malformed_rejected);
     RUN_TEST(test_byte_stream_with_noise_and_pair_lines);
     return UNITY_END();

@@ -58,9 +58,25 @@
  * That part runs for as long as the unit is on. The capture logging around it is bring-up scaffolding:
  * it runs for MAX_WINDOWS windows after boot and then goes quiet, while the decode carries on.
  *
- * RECEIVE ONLY. Nothing here ever writes to the port. A passive sniff cannot upset a co-processor
- * that is also holding the ANT+ radio and, on the evidence so far, the buttons; sending it a guessed
- * frame could.
+ * WHAT IT TRANSMITS. This started as a receive-only listener; since Q38 it sends command frames on TX
+ * GPIO 42, all kind 2, id 16, 16 bytes, built by nrf_proto.c and pinned byte for byte, CRC included,
+ * in core/tests/test_nrf_proto.c. Nothing else is ever written to the port. Exactly:
+ *
+ *   SendPowerOnCmd (e2 02 00 00 00 01 00 00), from nrf_send_power_on():
+ *     - nrf_task, once, as soon as the UART is up at boot;
+ *     - listen_at, again every second or more while no barometer reading has arrived, up to 5 times;
+ *     - hal_power_off, after the power-off frame, when a power-button press or a power-on event
+ *       arrives while the rail is still up, just before esp_restart().
+ *   GNSS power (e2 02 07 00 00 <mode> 00 00, mode 0 off, 1 on, 2 reset), from hal_nrf_gnss_power():
+ *     - nrf_task, "on", at boot right after the power-on frame, and listen_at with each power-on retry;
+ *     - hal_gnss_init (hal_gnss_esp.c), "on"; and hal_gnss_poll, "reset" then "on" 200 ms later, if
+ *       no byte has arrived from the receiver 3 s after init. These run on the core task. A call made
+ *       before the UART is up is held in pending_gnss_mode and sent from listen_at;
+ *     - hal_power_off, "off", just before the power-off frame.
+ *   SendPowerOffCmd (e2 02 00 00 00 00 00 00): hal_power_off() only, on the rider's power-off request.
+ *
+ * The rate is whatever the receive side is set to: 115200 at boot, the search candidate during the
+ * search, the locked rate after it, and 115200 again if the search finds nothing.
  *
  * This runs in its own low-priority task on core 0. The core task owns the core, the link and LVGL
  * and must not be made to wait on a serial line that may be silent for thirteen seconds at a time.
@@ -203,6 +219,9 @@ static volatile int pending_gnss_mode = -1;
 static int boot_pwr_swallow;
 #define BATT_STALE_MS 5000
 #define LIGHT_STALE_MS 2000
+/* How long hal_power_off waits for the power to drop after a frame it cannot confirm. A guess: the
+   time from the frame to the rail dropping has never been measured. */
+#define POWER_OFF_UNCONFIRMED_WAIT_MS 3000
 
 static void nrf_send_power_on(void)
 {
@@ -270,20 +289,39 @@ int hal_power_ambient_lux(void)
     return (int)v;
 }
 
-void hal_power_off(void)
+int hal_power_off(void)
 {
     hal_display_backlight(0);
     if (!nrf_uart_up) {
-        ESP_LOGW(TAG, "hal_power_off: nRF UART not up");
-        return;
+        ESP_LOGW(TAG, "hal_power_off: nRF UART not up; nothing sent");
+        return HAL_POWER_OFF_NOT_SENT;
     }
     hal_nrf_gnss_power(FW_NRF_GNSS_OFF);
     uint8_t frame[FW_NRF_POWER_OFF_FRAME_LEN];
     int n = fw_nrf_build_power_off(frame);
-    if (n > 0) {
-        ESP_LOGW(TAG, "sending SendPowerOffCmd (%d bytes) to nRF", n);
-        uart_write_bytes(UART_NRF_PORT, frame, (size_t)n);
-        uart_wait_tx_done(UART_NRF_PORT, pdMS_TO_TICKS(200));
+    if (n <= 0)
+        return HAL_POWER_OFF_NOT_SENT;
+    ESP_LOGW(TAG, "sending SendPowerOffCmd (%d bytes) to nRF", n);
+    /* uart_write_bytes returns the bytes queued, or -1. Anything short of the whole frame is not a
+       power-off request the nRF can accept (its CRC covers every byte), so it counts as not sent. */
+    if (uart_write_bytes(UART_NRF_PORT, frame, (size_t)n) != n) {
+        ESP_LOGE(TAG, "hal_power_off: the frame was not queued in full");
+        return HAL_POWER_OFF_NOT_SENT;
+    }
+    uart_wait_tx_done(UART_NRF_PORT, pdMS_TO_TICKS(200));
+    /* Waiting below for a wake is only safe when the link is known to work. Both ways out of that
+       wait are messages from the nRF (a power-button press, a power-on event), so they need a
+       receive path that has decoded frames at the port's rate. If the baud search never found a
+       valid frame (locked_baud is 0: still searching, or given up and back at 115200), nothing can
+       confirm that the nRF took the frame, and nothing could ever end the wait: the unit would sit
+       on a dark screen, unresponsive, until the battery died. So give
+       the power a few seconds to drop, which it will on battery if the nRF did take the frame, and
+       otherwise hand the unit back to the caller, which turns the screen back on. */
+    if (!locked_baud) {
+        vTaskDelay(pdMS_TO_TICKS(POWER_OFF_UNCONFIRMED_WAIT_MS));
+        ESP_LOGE(TAG, "hal_power_off: no frame has ever been received from the nRF, so the power-off "
+                      "frame is unconfirmed and no wake could be seen; the unit stays on");
+        return HAL_POWER_OFF_UNCONFIRMED;
     }
     /* Wait for the user to finish releasing the power button from the power-off hold, then drain any
      * queued edges. If the nRF cuts the 3.3 V rail (battery mode), execution stops here. If the 3.3 V
@@ -584,9 +622,37 @@ static int take_frame(const uint8_t *acc, size_t len, int keep)
     return used;
 }
 
-/* Listens at one baud rate for ms. Returns how many valid frames arrived. */
-static uint32_t listen_at(uint32_t baud, uint32_t ms, int keep)
+/* The rate the port is set to now; 0 before the first set_baud() or after one failed. */
+static uint32_t port_baud;
+
+/* Sets the port to baud, and does nothing if it is already there.
+ *
+ * WHY ONCE PER RATE. uart_param_config is not a cheap "set the divider". In ESP-IDF v5.5.6
+ * (components/esp_driver_uart/src/uart.c, uart_param_config) it runs, among other things:
+ *
+ *     uart_hal_init(&(uart_context[uart_num].hal), uart_num);
+ *     ...
+ *     success = uart_hal_set_baudrate(&(uart_context[uart_num].hal), uart_config->baud_rate, sclk_freq);
+ *     ...
+ *     UART_EXIT_CRITICAL(&(uart_context[uart_num].spinlock));
+ *     uart_hal_rxfifo_rst(&(uart_context[uart_num].hal));
+ *     uart_hal_txfifo_rst(&(uart_context[uart_num].hal));
+ *
+ * So every call re-initialises the port and empties both hardware FIFOs. Bytes the driver has already
+ * moved into the TX FIFO are thrown away: a command frame written just before (the power-on frame and
+ * the GNSS frame at boot, a wake retry, a GNSS frame from the core task) can go out cut short, which
+ * the nRF's CRC check then rejects. Received bytes in the RX FIFO are lost as well. The listener used
+ * to call it at the start of every listen window, every 30 s for as long as the unit was on.
+ *
+ * Now it runs only when the rate actually changes: during the search, and once more if the search
+ * gives up and the port goes back to 115200 (nrf_task). Once the rate is locked the port is never
+ * reconfigured again. Before changing rate it waits for anything
+ * still being sent to finish, so a frame queued at the old rate is not truncated. */
+static int set_baud(uint32_t baud)
 {
+    if (baud == port_baud)
+        return 0;
+    uart_wait_tx_done(UART_NRF_PORT, pdMS_TO_TICKS(50));
     uart_config_t cfg = {
         .baud_rate = (int)baud,
         .data_bits = UART_DATA_8_BITS,
@@ -595,9 +661,21 @@ static uint32_t listen_at(uint32_t baud, uint32_t ms, int keep)
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_DEFAULT,
     };
-    if (uart_param_config(UART_NRF_PORT, &cfg) != ESP_OK)
-        return 0;
+    if (uart_param_config(UART_NRF_PORT, &cfg) != ESP_OK) {
+        port_baud = 0; /* unknown state: the next call tries again */
+        return -1;
+    }
+    port_baud = baud;
+    /* Whatever is in the ring was received at the old rate and is noise at the new one. */
     uart_flush_input(UART_NRF_PORT);
+    return 0;
+}
+
+/* Listens at one baud rate for ms. Returns how many valid frames arrived. */
+static uint32_t listen_at(uint32_t baud, uint32_t ms, int keep)
+{
+    if (set_baud(baud) != 0)
+        return 0;
 
     uint32_t before = frame_count;
     static uint8_t acc[ACC_MAX]; /* static: this task has a modest stack */
@@ -662,15 +740,9 @@ static void nrf_task(void *arg)
         vTaskDelete(NULL);
         return;
     }
-    uart_config_t boot = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT,
-    };
-    uart_param_config(UART_NRF_PORT, &boot);
+    /* 115200 before anything is sent: it is the first candidate, so the search's first listen_at
+       finds the port already there and does not reset the FIFO under the frames sent just below. */
+    set_baud(115200);
     /* TX is GPIO 42; sends SendPowerOnCmd, GNSS power on/off/reset, and SendPowerOffCmd (Q38). */
     if (uart_set_pin(UART_NRF_PORT, PIN_UART_NRF_TX, PIN_UART_NRF_RX, UART_PIN_NO_CHANGE,
                      UART_PIN_NO_CHANGE) != ESP_OK) {
@@ -696,6 +768,15 @@ static void nrf_task(void *arg)
         ESP_LOGW(TAG, "no valid frame at any candidate rate. Either the nRF stays silent until it is "
                       "spoken to, or the rate is not a standard one, or GPIO %d is not its TX line.",
                  PIN_UART_NRF_RX);
+        /* The search leaves the port at its last candidate, 9600. nrf_uart_up stays set, so anything
+           sent after this (the power-off frame, a GNSS power frame from the core task) would go out
+           at 9600 and reach the nRF as noise. Put the port back on 115200, the rate seen on the unit
+           in all three captures, so a frame sent from here on is at least the right one at the
+           right rate. hal_power_off() still treats the link as unconfirmed (locked_baud is 0). */
+        if (set_baud(115200) == 0)
+            ESP_LOGW(TAG, "nRF UART set back to 115200 for transmitting; nothing more will be received");
+        else
+            ESP_LOGE(TAG, "nRF UART could not be set back to 115200");
         vTaskDelete(NULL);
         return;
     }
