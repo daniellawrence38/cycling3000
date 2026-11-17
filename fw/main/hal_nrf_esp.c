@@ -203,6 +203,9 @@ static volatile int pending_gnss_mode = -1;
 static int boot_pwr_swallow;
 #define BATT_STALE_MS 5000
 #define LIGHT_STALE_MS 2000
+/* How long hal_power_off waits for the power to drop after a frame it cannot confirm. A guess: the
+   time from the frame to the rail dropping has never been measured. */
+#define POWER_OFF_UNCONFIRMED_WAIT_MS 3000
 
 static void nrf_send_power_on(void)
 {
@@ -290,6 +293,20 @@ int hal_power_off(void)
         return HAL_POWER_OFF_NOT_SENT;
     }
     uart_wait_tx_done(UART_NRF_PORT, pdMS_TO_TICKS(200));
+    /* Waiting below for a wake is only safe when the link is known to work. Both ways out of that
+       wait are messages from the nRF (a power-button press, a power-on event), so they need a
+       receive path that has decoded frames at the port's rate. If the baud search never found a
+       valid frame (locked_baud is 0: still searching, or given up and back at 115200), nothing can
+       confirm that the nRF took the frame, and nothing could ever end the wait: the unit would sit
+       on a dark screen, unresponsive, until the battery died. So give
+       the power a few seconds to drop, which it will on battery if the nRF did take the frame, and
+       otherwise hand the unit back to the caller, which turns the screen back on. */
+    if (!locked_baud) {
+        vTaskDelay(pdMS_TO_TICKS(POWER_OFF_UNCONFIRMED_WAIT_MS));
+        ESP_LOGE(TAG, "hal_power_off: no frame has ever been received from the nRF, so the power-off "
+                      "frame is unconfirmed and no wake could be seen; the unit stays on");
+        return HAL_POWER_OFF_UNCONFIRMED;
+    }
     /* Wait for the user to finish releasing the power button from the power-off hold, then drain any
      * queued edges. If the nRF cuts the 3.3 V rail (battery mode), execution stops here. If the 3.3 V
      * rail stays up (USB charge mode, stock ArmStateProcess State 8/9 FUN_420561ec), wait for the next
@@ -611,8 +628,9 @@ static uint32_t port_baud;
  * the nRF's CRC check then rejects. Received bytes in the RX FIFO are lost as well. The listener used
  * to call it at the start of every listen window, every 30 s for as long as the unit was on.
  *
- * Now it runs only when the rate actually changes, which is during the search; once the rate is
- * locked the port is never reconfigured again. Before changing rate it waits for anything
+ * Now it runs only when the rate actually changes: during the search, and once more if the search
+ * gives up and the port goes back to 115200 (nrf_task). Once the rate is locked the port is never
+ * reconfigured again. Before changing rate it waits for anything
  * still being sent to finish, so a frame queued at the old rate is not truncated. */
 static int set_baud(uint32_t baud)
 {
@@ -734,6 +752,15 @@ static void nrf_task(void *arg)
         ESP_LOGW(TAG, "no valid frame at any candidate rate. Either the nRF stays silent until it is "
                       "spoken to, or the rate is not a standard one, or GPIO %d is not its TX line.",
                  PIN_UART_NRF_RX);
+        /* The search leaves the port at its last candidate, 9600. nrf_uart_up stays set, so anything
+           sent after this (the power-off frame, a GNSS power frame from the core task) would go out
+           at 9600 and reach the nRF as noise. Put the port back on 115200, the rate seen on the unit
+           in all three captures, so a frame sent from here on is at least the right one at the
+           right rate. hal_power_off() still treats the link as unconfirmed (locked_baud is 0). */
+        if (set_baud(115200) == 0)
+            ESP_LOGW(TAG, "nRF UART set back to 115200 for transmitting; nothing more will be received");
+        else
+            ESP_LOGE(TAG, "nRF UART could not be set back to 115200");
         vTaskDelete(NULL);
         return;
     }
