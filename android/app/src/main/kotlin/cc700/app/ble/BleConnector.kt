@@ -102,7 +102,7 @@ class CcBleManager(ctx: Context) : BleManager(ctx) {
         Log.i(TAG, "connecting (bond=$bond, phone bond state ${device.bondState})")
         connect(device).useAutoConnect(false).retry(3, 200).timeout(15_000).await()
         if (bond) {
-            createBond().enqueue()
+            createBondInsecure().enqueue() // createBond() is deprecated in 2.9 in its favour; same request
             val until = System.currentTimeMillis() + 60_000
             while (device.bondState != BluetoothDevice.BOND_BONDED) {
                 if (System.currentTimeMillis() > until) throw java.io.IOException("not bonded within 60 s")
