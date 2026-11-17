@@ -128,8 +128,13 @@ void ui_status(lv_obj_t *r, const ui_model_t *m)
     if (v->hr_state == CC_SENS_OK) { ui_icon(r, &ic_heart_13, x, 5, C_STATUS); x += 22; }
     if (v->phone_connected) { ui_icon(r, &ic_phone_13, x, 5, C_STATUS); }
     char pct[8], clk[8];
+    /* No reading yet (or a stale one) is "--%", not 0 %: on the unit the nRF's battery message has
+       been seen arriving with USB in only, so an empty-looking battery on the road would be false. */
     int b = v->battery_pct < 0 ? 0 : v->battery_pct;
-    snprintf(pct, sizeof pct, "%d%%", b);
+    if (v->battery_pct < 0)
+        snprintf(pct, sizeof pct, "--%%");
+    else
+        snprintf(pct, sizeof pct, "%d%%", b);
     int pw = ui_text_w(&font_b600_11, 0, pct);
     ui_text(r, 232, 0, 0, 22, &font_b600_11, C_STATUS, LV_TEXT_ALIGN_RIGHT, 0, pct);
     int bx = 232 - pw - 3 - 16;
