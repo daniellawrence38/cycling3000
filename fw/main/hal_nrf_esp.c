@@ -216,6 +216,9 @@ static portMUX_TYPE pwr_mux = portMUX_INITIALIZER_UNLOCKED;
 static int bat_pct = -1;
 static uint16_t bat_mv;
 static uint32_t bat_ms;
+/* The last id 0 / 0x52 frame as received, parsed or not (nRF task writes, status log reads). */
+static uint8_t bat_raw[12], bat_raw_len;
+static volatile uint32_t bat_raw_n, bat_raw_ms;
 static int32_t light_val = -1;
 static uint32_t light_ms;
 static int charge_state = -1; /* fw_nrf_parse_charge: 1 charging, 0 not, -1 never seen */
@@ -633,6 +636,15 @@ after_key_feed:;
         }
         return;
     }
+    /* Every id 0 / 0x52 frame is counted and its payload kept for the status line, whether or not
+       it parses: on battery the percentage has been seen missing (Daniel, 17 November 2026), and the
+       raw bytes are what will say why. */
+    if (f->id == FW_NRF_ID_STATUS && f->plen >= 1 && f->payload[0] == FW_NRF_SUB_BATTERY) {
+        bat_raw_n++;
+        bat_raw_ms = hal_clock_monotonic_ms();
+        memcpy(bat_raw, f->payload, f->plen < sizeof bat_raw ? f->plen : sizeof bat_raw);
+        bat_raw_len = f->plen < sizeof bat_raw ? f->plen : sizeof bat_raw;
+    }
     fw_nrf_battery_t bat_msg;
     if (fw_nrf_parse_battery(f, &bat_msg) == 0) {
         uint32_t now = hal_clock_monotonic_ms();
@@ -1022,4 +1034,11 @@ void fw_nrf_status_log(const char *when)
              hs.queries, hs.power_ons, seen_slave_mode, seen_power_event, seen_power_event_ms,
              seen_ver ? "" : "(not seen) ", seen_ver_major, seen_ver_minor, seen_ver_patch,
              gnss_on_sent ? "sent" : "not sent", gnss_at, charge_state, power_off_active ? "active" : "not active");
+    char hex[3 * sizeof bat_raw + 2];
+    hexdump(hex, sizeof hex, bat_raw, bat_raw_len);
+    uint32_t now = hal_clock_monotonic_ms();
+    ESP_LOGW(TAG, "status %s: battery %d %% %u mV (reading %s); %" PRIu32 " battery frames, last %" PRIu32
+                  " ms ago: %s",
+             when, bat_pct, bat_mv, hal_power_battery_pct() < 0 ? "stale or none" : "fresh", bat_raw_n,
+             bat_raw_n ? now - bat_raw_ms : 0, bat_raw_n ? hex : "none");
 }
