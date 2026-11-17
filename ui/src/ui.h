@@ -196,6 +196,28 @@ void scr_settings(lv_obj_t *r, const ui_model_t *m);
 /* The ride-page overlays (banner, hold bar), drawn above any ride page. */
 void ui_overlays(lv_obj_t *r, const ui_model_t *m);
 
+/* ------------------------------------------------------------------ screen manager (ui_app.c) */
+typedef struct {
+    void (*pair_window)(int open_60s);
+    uint32_t (*passkey)(void);
+    int (*pairing)(void);
+    void (*erase_bond)(void);
+    int (*cal_start)(uint32_t now_ms);
+    ui_cal_state_t (*cal_state)(void);
+    void (*cal_ack)(void);
+} ui_app_hooks_t;
+
+void ui_app_init(hal_fs_t *fs, uint32_t now_ms, const ui_app_hooks_t *hooks);
+void ui_app_step(uint32_t now_ms);     /* drains gestures, updates screen-off and model; returns 1 on input */
+void ui_app_render(void);              /* builds and loads the visible LVGL screen */
+int ui_app_dirty(void);                /* 1 if input, state change or active hold wants an immediate render */
+int ui_app_take_input(void);           /* returns 1 and clears the flag when a button or tap was handled */
+int ui_app_blank(void);                /* 1 if the screen is blanked (power short press or screen-off timer) */
+ui_screen_id_t ui_app_top(void);       /* top of the stopped-state UI stack */
+ui_screen_id_t ui_app_visible(void);   /* the screen currently shown (ride state overrides the stack) */
+ui_model_t *ui_app_model(void);
+void ui_app_refresh_lists(void);       /* reloads workout, route and ride lists from the store */
+
 /* ------------------------------------------------------------------ scenarios (screenshot tool) */
 typedef struct { const char *board; const char *scenario; ui_screen_id_t id; void (*fill)(ui_model_t *m); } ui_scenario_t;
 extern const ui_scenario_t ui_scenarios[];

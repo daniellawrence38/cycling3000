@@ -24,4 +24,9 @@ uint32_t hal_nrf_frames(void);
 /* The barometer's own temperature in hundredths of a degree Celsius. Returns 0, or -1 when there is no
  * fresh barometer reading. hal_baro_read_pa() (hal_baro.h) is implemented on this link too. */
 int hal_nrf_baro_temp_c100(int16_t *out);
+
+/* The battery's millivolts from id 0 / 0x52. Returns 0, or -1 when there is no fresh battery reading.
+ * hal_power_battery_pct(), hal_power_ambient_lux() and hal_power_off() (hal_power.h) are implemented
+ * on this link too. */
+int hal_nrf_battery_mv(uint16_t *out);
 #endif

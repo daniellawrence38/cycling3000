@@ -526,3 +526,43 @@ hold detection expects: a click is a press and a release at once; the first "hel
 release, the button is released anyway, so it can never stick. `hal_input_poll` serves them from a
 queue. `test_keys_as_captured` replays the capture's own frames at their own times. The consequence
 for hold timing is Q40.
+
+---
+
+# All 21 callers of `0x4205062c`, and the light threshold table (17 November 2026)
+
+Decompiling every reference to the frame builder `0x4205062c` (`tools/re/gh.sh DecompileAt.java 0x4205062c`)
+and reading the constant tables in `ota_0` (`tools/re/rd.py`) accounts for the rest of the outbound
+protocol and resolves the room-light alternation seen in capture 2.
+
+## Why 600 and 2000 alternated in room light (`0x420511ac`, table at `0x3c36eb7c`)
+
+`FUN_420511ac` maps the uint32 in id 16 / `0xF1` / `0x04` through a 15-entry table of
+`(backlight_pct, value)` pairs at `0x3c36eb7c`:
+
+| Value | Backlight % | Value | Backlight % | Value | Backlight % |
+| --- | --- | --- | --- | --- | --- |
+| 0 | 1 % | 2000 | **10 %** | 65000 | 60 % |
+| 10 | 1 % | 3000 | 20 % | 80000 | 70 % |
+| 30 | 5 % | 6000 | 30 % | 90000 | 80 % |
+| 50 | 5 % | 9000 | 40 % | 100000 | 90 % |
+| 600 | **10 %** | 50000 | 50 % | 110000 | 100 % |
+
+Every number seen in capture 2 (`0, 10, 30, 50, 600, 2000, 6000, 9000`) is a column in this table, so
+the nRF itself quantises the reading to these 15 steps before sending it. And **both 600 and 2000 map
+to 10 %**, which matches the factory test screen (`LightLux: 600`, `ScreenLight: 10`) and explains why
+alternating between 600 and 2000 in room light never causes the stock backlight to hunt.
+`fw_nrf_light_backlight_pct` in `fw/main/nrf_proto.c` uses this table directly.
+
+## Additional outbound commands on id 16
+
+| Function(s) | kind | id | Payload (8 bytes) | What it does |
+| --- | --- | --- | --- | --- |
+| `0x42155f84` (`PTR_DAT_42141778` -> `0x3c6d73d4`) | 2 | 16 | `e2 02 07 00 00 00 00 00` | GNSS power off (`GpsPthreadMachine` callback) |
+| `0x42155f98` (`PTR_DAT_4214177c` -> `0x3c6d73dc`) | 2 | 16 | `e2 02 07 00 00 01 00 00` | GNSS power on (`GpsPthreadMachine` callback) |
+| `0x42155fac` (`PTR_DAT_42141780` -> `0x3c6d73e4`) | 2 | 16 | `e2 02 07 00 00 02 00 00` | GNSS hardware reset (`GpsHdRst:%d`, `0x421b8694`) |
+| `0x420510f4`, `0x42051138`, `0x4205117c`, `0x420559fc` | 2 | 16 | `e2 01 <tone> 00 00 00 00 00` | Buzzer (`tone` < `0x1C`; `0x18` / `0x19` for key clicks; 59 call sites across the UI and ride code) |
+
+So `0xE2 0x02` is the power/reset sub-tag (`payload[2] == 0x00` for the whole unit, `0x07` for the
+GNSS receiver), and `0xE2 0x01` is the buzzer. Our firmware sends only `SendPowerOffCmd`
+(`e2 02 00 00 00 00 00 00`, approved in Q38).

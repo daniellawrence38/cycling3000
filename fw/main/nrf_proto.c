@@ -14,6 +14,35 @@ uint16_t fw_nrf_crc16(const uint8_t *p, size_t n)
     return crc;
 }
 
+int fw_nrf_build_frame(uint8_t kind, uint8_t id, const uint8_t *payload, size_t plen, uint8_t *out, size_t cap)
+{
+    if (!out || kind < 1 || kind > 5 || plen + 4 > FW_NRF_MAX_LEN || (plen && !payload))
+        return -1;
+    size_t total = plen + FW_NRF_OVERHEAD;
+    if (cap < total)
+        return -1;
+    out[0] = FW_NRF_SYNC;
+    out[1] = (uint8_t)(plen + 4);
+    out[2] = FW_NRF_SYNC2;
+    out[3] = FW_NRF_DIR_OUT;
+    out[4] = kind;
+    out[5] = id;
+    for (size_t i = 0; i < plen; i++)
+        out[6 + i] = payload[i];
+    uint16_t crc = fw_nrf_crc16(out, total - 2);
+    out[total - 2] = (uint8_t)(crc & 0xFFu);
+    out[total - 1] = (uint8_t)(crc >> 8);
+    return (int)total;
+}
+
+int fw_nrf_build_power_off(uint8_t out[FW_NRF_POWER_OFF_FRAME_LEN])
+{
+    /* SendPowerOffCmd at 0x42055bac: kind 2, id 16, payload from immediate 0x02E2 then zeros. */
+    static const uint8_t payload[8] = {0xE2, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    return fw_nrf_build_frame(FW_NRF_KIND_CMD, FW_NRF_ID_SENSOR, payload, sizeof payload, out,
+                              FW_NRF_POWER_OFF_FRAME_LEN);
+}
+
 int fw_nrf_take_frame(const uint8_t *buf, size_t len, fw_nrf_frame_t *out)
 {
     if (len < FW_NRF_OVERHEAD)
@@ -104,7 +133,7 @@ int fw_nrf_parse_clock(const fw_nrf_frame_t *f, fw_nrf_clock_t *out)
 
 int fw_nrf_parse_battery(const fw_nrf_frame_t *f, fw_nrf_battery_t *out)
 {
-    if (f->id != FW_NRF_ID_STATUS || f->plen < 7 || f->payload[0] != FW_NRF_SUB_BATTERY)
+    if (f->id != FW_NRF_ID_STATUS || f->plen < 7 || f->payload[0] != FW_NRF_SUB_BATTERY || f->payload[6] > 100)
         return -1;
     out->millivolts = u16le(f->payload + 4);
     out->percent = f->payload[6];
@@ -119,6 +148,28 @@ int fw_nrf_parse_light(const fw_nrf_frame_t *f, fw_nrf_light_t *out)
     out->value = (uint32_t)p[2] | ((uint32_t)p[3] << 8) | ((uint32_t)p[4] << 16) | ((uint32_t)p[5] << 24);
     out->aux = u16le(p + 6);
     return 0;
+}
+
+int fw_nrf_light_backlight_pct(int32_t lux)
+{
+    if (lux < 0)
+        return 60; /* spec 10.1: without a light sensor, Auto is 60 % */
+    /* Stock firmware table at 0x3c36eb7c (15 pairs of {pct, value}):
+       (1, 0), (1, 10), (5, 30), (5, 50), (10, 600), (10, 2000), (20, 3000), (30, 6000),
+       (40, 9000), (50, 50000), (60, 65000), (70, 80000), (80, 90000), (90, 100000), (100, 110000).
+       Both 600 and 2000 map to 10 %, so the room-light alternation between 600 and 2000 in capture 2
+       keeps a steady 10 % backlight. */
+    static const struct {
+        int32_t max_lux;
+        uint8_t pct;
+    } tbl[] = {
+        {10, 1},     {50, 5},     {2000, 10},  {3000, 20},  {6000, 30},   {9000, 40},
+        {50000, 50}, {65000, 60}, {80000, 70}, {90000, 80}, {100000, 90},
+    };
+    for (size_t i = 0; i < sizeof tbl / sizeof tbl[0]; i++)
+        if (lux <= tbl[i].max_lux)
+            return tbl[i].pct;
+    return 100;
 }
 
 int fw_nrf_keys_feed(fw_nrf_keys_t *k, const fw_nrf_key_t *ev, uint32_t now_ms, fw_nrf_edge_t out[2])

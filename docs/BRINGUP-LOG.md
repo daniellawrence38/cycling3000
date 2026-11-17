@@ -732,3 +732,30 @@ a button is pressed.
 
 `app.bin` is 1,235,472 bytes of 8,192,000 (15 %), 29 sources compiling clean for xtensa with no
 warnings.
+
+## 17 November 2026 · Buttons confirmed, `hal_power`, full UI screen manager, and storage/GNSS decoded
+
+- **Buttons confirmed on the unit.** Daniel flashed `d052f53` and confirmed that the button input works
+  on hardware, and answered **yes to Q38** (`SendPowerOffCmd` may be sent to the nRF).
+- **`hal_power` implemented.** `fw_nrf_build_frame` and `fw_nrf_build_power_off` (`fw/main/nrf_proto.c`)
+  build the exact 16-byte `SendPowerOffCmd` frame (kind 2, id 16, payload `e2 02 00 00 00 00 00 00`,
+  CRC-16/XMODEM); `hal_power_off()` turns the backlight off and sends it on `UART_NRF_PORT` when
+  `cc_view()->power_off_request` is set (after holding power 2 s). `hal_power_battery_pct()` and
+  `hal_power_ambient_lux()` read the confirmed id 0 / `0x52` and id 16 / `0xF1` / `0x04` messages, and
+  `fw_nrf_light_backlight_pct()` maps the light sensor's banded reading through the stock firmware's
+  15-step threshold table at `0x3c36eb7c` (where both 600 and 2000 map to 10 %, resolving the
+  room-light alternation seen in capture 2).
+- **Screen manager shared with the firmware.** `ui/src/ui_app.c` holds the screen stack, focus,
+  blanking (power short-press on Ready and the stopped-state `screen_off` timer) and model population
+  for all 24 screens, allocating its route and object buffers once on first use (`calloc` into PSRAM on
+  the unit). `ui/sim/app.c` and `fw/main/main.c` both drive it.
+- **Storage and GNSS decoded from `ota_0` (`docs/STOCK-FIRMWARE-FINDINGS.md`).**
+  - **4 GB storage (`MidVFSMount` at `0x4200b9b0`):** 4-bit eMMC on SDMMC slot 1 at 20 MHz, internal
+    pull-ups enabled, mounted at `/sdcard` — **CLK GPIO 13, CMD GPIO 14, D0 GPIO 16, D1 GPIO 17, D2
+    GPIO 18, D3 GPIO 15**, matching the six remaining high pins from the RAM probe. Recorded in
+    `fw/main/board_pins.h`; not mounted until bring-up step 1 is decided.
+  - **GNSS (`AppDevInit` at `0x4200a5dc`, `FUN_421566c0`, `FUN_421b75f0`):** Airoha AM3352 family on
+    **UART0 (TX GPIO 1, RX GPIO 0) at 115200 baud** (`0x42000b8c` = `0x1c200`), speaking NMEA 0183 plus
+    `$PAIR`, with power and reset behind the nRF on kind 2, id 16 (`e2 02 07 00 00 00/01/02 00 00`).
+    `fw/main/nmea.c` and `fw/main/hal_gnss_esp.c` implement a receive-only NMEA listener on UART0 RX
+    GPIO 0.

@@ -698,3 +698,72 @@ before it); the nRF's long-press threshold is unmeasured (Q40).
 decides Q38's one remaining point, the power-off frame; without it the unit cannot be switched off.
 (3) Battery and light into `hal_power`. (4) Move the screen manager into the firmware so buttons and
 touch drive the real UI. (5) Storage pins and GNSS, read from the stock firmware with `tools/re`.
+
+## Power-off, `hal_power`, full 24-screen UI in firmware, and eMMC + GNSS from `ota_0` · 17 November 2026
+
+Daniel confirmed `d052f53`'s button input works on the unit, answered Q38 ("yes" to sending the
+`SendPowerOffCmd` frame to the nRF), and asked to run through items (2)–(5) above.
+
+**Stock firmware (`ota_0`) findings via `tools/re` (`docs/STOCK-FIRMWARE-FINDINGS.md`, `docs/NRF-PROTOCOL.md`).**
+
+- **4 GB separate storage (`MidVFSMount` at `0x4200b9b0`)**: Soldered eMMC on **SDMMC slot 1**
+  (`SDMMC_HOST_SLOT_1`), **4-bit bus**, **20 MHz** (`0x4e20` kHz), internal pull-ups enabled, mounted
+  at `/sdcard` with `max_files = 17`, `allocation_unit_size = 16384`. Exact pins from the stack
+  `sdmmc_slot_config_t`: **CLK = GPIO 13**, **CMD = GPIO 14**, **D0 = GPIO 16**, **D1 = GPIO 17**,
+  **D2 = GPIO 18**, **D3 = GPIO 15**, `CD = -1`, `WP = -1`. Those are the exact 6 remaining high-idling
+  pins seen in the RAM probe (`13=1 14=1 15=1 16=1 17=1 18=1`).
+- **GNSS receiver (`AppDevInit` at `0x4200a5dc`, `GpsPthreadMachine` at `0x42156850`, `FUN_421b75f0`)**:
+  **Airoha AM3352 / AG3352** (`GpsPthreadFullColdBoot_AM3352` at `0x4215672c`) on **UART0** (ESP port 0,
+  **TX = GPIO 1**, **RX = GPIO 0**), **115200 baud** (`0x42000b8c` = `0x1c200`), speaking standard
+  **NMEA 0183** (`GGA`, `RMC`, `GSA`, `GSV` across `GP`, `GN`, `GB`, `GL`, `GA`, `BD`) plus `$PAIR`
+  commands. GNSS power and hardware reset are controlled by the nRF co-processor on **kind 2, id 16**,
+  sub-tag `0xE2 0x02`, device `0x07` (`0x42155f84..0x42155fac`, payloads at `0x3c6d73d4..0x3c6d73e4`):
+  `e2 02 07 00 00 00 00 00` (off), `e2 02 07 00 00 01 00 00` (on), `e2 02 07 00 00 02 00 00` (reset).
+- **Ambient light lookup table (`FUN_420511ac` at `0x420511ac`, table at `0x3c36eb7c`)**: 15 pairs
+  mapping the nRF's `u32` light value to backlight percentage (`1%` at `<= 10`, `5%` at `30..50`,
+  `10%` at `600..2000`, `20%` at `3000`, `30%` at `6000`, `40%` at `9000`, up to `100%` at `110000`).
+  Both `600` and `2000` map to `10%`, which is why Capture 2 saw `600` and `2000` alternating in steady
+  room light.
+- **Buzzer (`0x420510f4..0x4205117c`)**: Also behind the nRF on kind 2, id 16 (`e2 01 <tone> 00...`).
+
+**What exists now.**
+
+1. **`SendPowerOffCmd` and `hal_power` (`fw/main/nrf_proto.c`, `fw/main/hal_nrf_esp.c`, `fw/main/hal_esp.c`)**:
+   - `fw_nrf_build_frame()` and `fw_nrf_build_power_off()` build the exact 16-byte power-off frame
+     (`a5 08 02 10 08 00 e2 02 00 00 00 00 00 00 9b b2`).
+   - `hal_power_off()` blanks the backlight, re-installs UART1 with a 256-byte TX ring and `TX = GPIO 3`
+     on demand, sends the power-off frame, waits up to 100 ms for `uart_wait_tx_done`, and parks.
+   - `hal_power_battery_pct()`, `hal_nrf_battery_mv()`, `hal_power_charging()`, and
+     `hal_power_ambient_lux()` expose the latest nRF battery and ambient-light readings;
+     `hal_power_backlight()` drives `PIN_LCD_BL` (GPIO 4) via a 10-bit LEDC PWM channel at 5 kHz, and
+     `fw_nrf_light_backlight_pct()` applies the stock 15-entry curve (with 60% fallback when `lux < 0`
+     per spec 10.1).
+2. **Full 24-screen UI manager in firmware (`ui/src/ui_app.c`, `ui/sim/app.c`, `fw/main/main.c`)**:
+   - Extracted the screen stack, modal dispatcher, touch gesture translator, button routing, and
+     stopped-state `screen_off` blanking timeout (`Never` / `30 s` / `1 min` / `5 min` in `CC_RS_READY`
+     or `CC_RS_SUMMARY`) into `ui/src/ui_app.c`, shared by `ccsim` and `fw/`.
+   - Large UI scratch buffers (`rt_ui` 208 KB, `obj_buf` 131 KB) are allocated once via `calloc` so
+     they land in PSRAM on ESP32-S3 rather than internal SRAM `.bss`.
+   - `fw/main/main.c` now drives all 24 screens, hooks sensor scan/pair/calibrate and BLE passkey/bond
+     actions into `ui_app_hooks_t`, updates the backlight every 10 Hz tick, and triggers `hal_power_off()`
+     when `v->power_off_request` is set (from a 2 s Power hold when not recording or from the Power Off
+     confirmation modal).
+3. **Receive-only GNSS NMEA driver (`fw/main/nmea.c`, `fw/main/hal_gnss_esp.c`, `core/tests/test_nmea.c`)**:
+   - Parses `$xxGGA` + `$xxRMC` sentences with XOR checksum validation, coordinate conversion to
+     `degrees * 1e7`, speed in knots to `m/s`, and civil-to-UTC timestamp conversion (`year >= 2025`),
+     listening on UART0 RX (`GPIO 0`, `115200 8N1`, `UART_PIN_NO_CHANGE` on TX). Does not transmit the
+     nRF GNSS power-on frame (`e2 02 07 00 00 01 00 00`) unless Daniel approves extending Q38.
+
+**Verified.** `make test` clean: reference vectors identical, 18 of 18 plain C + UI tests (`test_nmea`,
+`test_nrf_proto` 16 tests including re-encoding all 6 captured frames from 4 November byte-for-byte,
+`ui_lint`, `ui_walk`), 16 of 16 under ASan and UBSan, and 21 of 21 Python tests. `make fw-build` clean:
+0 warnings across all 33 project sources (`tools/fw_check.py`), `app.bin` 1,259,936 bytes (15 % of
+`ota_1`), and 0 flash/NVS/OTA write symbols in `cc700.elf`.
+
+**Not verified on hardware yet.**
+
+- Power-off on the unit (holding Power 2 s on the Ready screen, or Settings → System → Power Off).
+- Navigating the 24 screens on the unit via buttons and touch, battery % in the status bar, and LEDC
+  backlight dimming.
+- Whether the Airoha GNSS chip already streams NMEA on UART0 RX (`GPIO 0`) when the nRF wakes, or stays
+  powered down until the ESP sends `e2 02 07 00 00 01 00 00` to the nRF.

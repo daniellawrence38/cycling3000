@@ -200,6 +200,10 @@ static void test_battery_and_light_candidates(void)
     TEST_ASSERT_EQUAL(100, b.percent);
     fw_nrf_take_frame(F_CLOCK, 16, &f);
     TEST_ASSERT_EQUAL(-1, fw_nrf_parse_battery(&f, &b));
+    /* A percentage above 100 is not a battery reading. */
+    uint8_t bad_pct[8] = {0x52, 0xff, 0xff, 0xff, 0xc2, 0x10, 101, 0xff};
+    fw_nrf_frame_t fb = {.kind = 4, .id = 0, .payload = bad_pct, .plen = 8};
+    TEST_ASSERT_EQUAL(-1, fw_nrf_parse_battery(&fb, &b));
 
     fw_nrf_light_t l;
     fw_nrf_take_frame(F_04, 16, &f);
@@ -208,6 +212,19 @@ static void test_battery_and_light_candidates(void)
     TEST_ASSERT_EQUAL(1310, l.aux);
     fw_nrf_take_frame(F_BARO, 16, &f);
     TEST_ASSERT_EQUAL(-1, fw_nrf_parse_light(&f, &l));
+
+    /* Auto-backlight mapping from the stock table at 0x3c36eb7c, plus 60 % when absent (spec 10.1). */
+    TEST_ASSERT_EQUAL(60, fw_nrf_light_backlight_pct(-1));
+    TEST_ASSERT_EQUAL(1, fw_nrf_light_backlight_pct(0));
+    TEST_ASSERT_EQUAL(1, fw_nrf_light_backlight_pct(10));
+    TEST_ASSERT_EQUAL(5, fw_nrf_light_backlight_pct(30));
+    TEST_ASSERT_EQUAL(5, fw_nrf_light_backlight_pct(50));
+    TEST_ASSERT_EQUAL(10, fw_nrf_light_backlight_pct(600));
+    TEST_ASSERT_EQUAL(10, fw_nrf_light_backlight_pct(2000));
+    TEST_ASSERT_EQUAL(20, fw_nrf_light_backlight_pct(3000));
+    TEST_ASSERT_EQUAL(30, fw_nrf_light_backlight_pct(6000));
+    TEST_ASSERT_EQUAL(40, fw_nrf_light_backlight_pct(9000));
+    TEST_ASSERT_EQUAL(100, fw_nrf_light_backlight_pct(110000));
 }
 
 /* Key frames from outputs/nrf-capture-2.txt (17 November 2026), payloads as logged: power, left and
@@ -352,6 +369,40 @@ static void test_stream_resynchronises(void)
     }
 }
 
+static void test_build_frame_and_power_off(void)
+{
+    /* Building each captured frame from its decoded fields reproduces the wire bytes, CRC and all. */
+    const uint8_t *all[] = {F_ACCEL, F_BARO, F_CLOCK, F_IDLE, F_04, F_0A};
+    for (size_t i = 0; i < sizeof all / sizeof all[0]; i++) {
+        fw_nrf_frame_t f;
+        TEST_ASSERT_EQUAL(16, fw_nrf_take_frame(all[i], 16, &f));
+        uint8_t built[16];
+        TEST_ASSERT_EQUAL(16, fw_nrf_build_frame(f.kind, f.id, f.payload, f.plen, built, sizeof built));
+        TEST_ASSERT_EQUAL_UINT8_ARRAY(all[i], built, 16);
+    }
+
+    /* SendPowerOffCmd (0x42055bac, Q38): kind 2, id 16, payload e2 02 00 00 00 00 00 00. */
+    uint8_t po[FW_NRF_POWER_OFF_FRAME_LEN];
+    TEST_ASSERT_EQUAL(16, fw_nrf_build_power_off(po));
+    static const uint8_t want_hdr_pay[14] = {0xa5, 0x0c, 0x6f, 0xf1, 0x02, 0x10,
+                                             0xe2, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(want_hdr_pay, po, 14);
+    fw_nrf_frame_t f;
+    TEST_ASSERT_EQUAL(16, fw_nrf_take_frame(po, sizeof po, &f));
+    TEST_ASSERT_EQUAL(2, f.kind);
+    TEST_ASSERT_EQUAL(16, f.id);
+    TEST_ASSERT_EQUAL(8, f.plen);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(want_hdr_pay + 6, f.payload, 8);
+
+    /* Bounds: invalid kind, oversized payload, short output buffer or NULL pointers are refused. */
+    TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(0, 16, want_hdr_pay + 6, 8, po, sizeof po));
+    TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(6, 16, want_hdr_pay + 6, 8, po, sizeof po));
+    TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(2, 16, want_hdr_pay + 6, 8, po, 15));
+    TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(2, 16, NULL, 1, po, sizeof po));
+    uint8_t big[140] = {0};
+    TEST_ASSERT_EQUAL(-1, fw_nrf_build_frame(2, 16, big, 129, big, sizeof big));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -367,5 +418,6 @@ int main(void)
     RUN_TEST(test_keys_as_captured);
     RUN_TEST(test_keys_never_stick);
     RUN_TEST(test_stream_resynchronises);
+    RUN_TEST(test_build_frame_and_power_off);
     return UNITY_END();
 }

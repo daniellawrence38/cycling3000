@@ -1,8 +1,8 @@
 /* nrf_proto.h: the framing and the decoded sensor messages of the nRF co-processor link
  * (docs/NRF-PROTOCOL.md). No ESP-IDF dependency; host-tested by core/tests/test_nrf_proto.c against
- * frames copied byte for byte from a real capture (outputs/nrf-capture-2026-11-04.txt).
+ * frames copied byte for byte from real captures.
  *
- * Receive side only. Nothing here builds a frame, on purpose (Q38). */
+ * The only outbound frame the firmware ever sends is SendPowerOffCmd (fw_nrf_build_power_off, Q38). */
 #ifndef FW_NRF_PROTO_H
 #define FW_NRF_PROTO_H
 #include <stddef.h>
@@ -10,8 +10,12 @@
 
 #define FW_NRF_SYNC 0xA5
 #define FW_NRF_SYNC2 0x6F
+#define FW_NRF_DIR_OUT 0xF1
 #define FW_NRF_MAX_LEN 132 /* the stock parser rejects a length byte above this */
 #define FW_NRF_OVERHEAD 8  /* six header bytes and two of CRC */
+#define FW_NRF_KIND_QUERY 1
+#define FW_NRF_KIND_CMD 2
+#define FW_NRF_POWER_OFF_FRAME_LEN 16
 
 typedef struct {
     uint8_t kind;           /* 1..5 */
@@ -22,6 +26,14 @@ typedef struct {
 
 /* CRC-16/XMODEM: polynomial 0x1021, initial value 0, no reflection, no final XOR. */
 uint16_t fw_nrf_crc16(const uint8_t *p, size_t n);
+
+/* Builds one frame in out (needs plen + FW_NRF_OVERHEAD bytes), matching the stock builder at
+ * 0x4205062c byte for byte. Returns the frame length (plen + 8), or -1 if kind/plen/cap is invalid. */
+int fw_nrf_build_frame(uint8_t kind, uint8_t id, const uint8_t *payload, size_t plen, uint8_t *out, size_t cap);
+
+/* Builds the 16-byte SendPowerOffCmd frame (0x42055bac: kind 2, id 16, payload e2 02 00 00 00 00 00 00,
+ * Q38). Returns FW_NRF_POWER_OFF_FRAME_LEN (16). */
+int fw_nrf_build_power_off(uint8_t out[FW_NRF_POWER_OFF_FRAME_LEN]);
 
 /* Tries to take one frame from the front of buf.
  * Returns the bytes consumed (> 0) and fills *out; FW_NRF_MORE if the frame is not complete yet;
@@ -119,9 +131,9 @@ typedef struct {
 } fw_nrf_clock_t;
 int fw_nrf_parse_clock(const fw_nrf_frame_t *f, fw_nrf_clock_t *out);
 
-/* id 0, sub-tag 0x52: PROBABLY the battery. The vendor handler passes on payload[6] as a byte and
- * payload[4..5] as a uint16; on the wire they read 100 and 4290 with the unit on USB, which is what
- * a full cell's percentage and millivolts look like. Unverified until the unit is run off USB. */
+/* id 0, sub-tag 0x52: the battery. The vendor handler passes on payload[6] as a byte and
+ * payload[4..5] as a uint16. Confirmed on the unit (outputs/nrf-capture-2.txt): 3477 mV and 2 %
+ * rising on charge, and 4290 mV and 100 % when full. */
 #define FW_NRF_SUB_BATTERY 0x52
 typedef struct {
     uint16_t millivolts;
@@ -129,13 +141,18 @@ typedef struct {
 } fw_nrf_battery_t;
 int fw_nrf_parse_battery(const fw_nrf_frame_t *f, fw_nrf_battery_t *out);
 
-/* id 16, sub-tag 0xF1, sensor 0x04: PROBABLY the light sensor. The vendor handler runs the uint32 at
- * payload[2..5] through a threshold table to pick a level (0x420511ac), which is what a backlight
- * does with lux; 600 matches the factory screen's "Light lux". Unverified until the sensor is covered. */
+/* id 16, sub-tag 0xF1, sensor 0x04: the ambient light sensor. The vendor handler runs the uint32 at
+ * payload[2..5] through a threshold table to pick a level (0x420511ac). Confirmed on the unit
+ * (outputs/nrf-capture-2.txt): 0 to 30 covered, 600 in room light, 6000 to 9000 under a torch. */
 #define FW_NRF_SENSOR_LIGHT 0x04
 typedef struct {
     uint32_t value; /* payload[2..5] */
     uint16_t aux;   /* payload[6..7]; purpose unknown */
 } fw_nrf_light_t;
 int fw_nrf_parse_light(const fw_nrf_frame_t *f, fw_nrf_light_t *out);
+
+/* Maps the nRF light sensor's banded value to a backlight percentage (1..100) using the stock
+ * firmware's threshold table at 0x3c36eb7c (FUN_420511ac). Returns 60 when lux < 0 (no light sensor
+ * reading, spec 10.1). */
+int fw_nrf_light_backlight_pct(int32_t lux);
 #endif

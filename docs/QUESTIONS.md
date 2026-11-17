@@ -23,11 +23,11 @@ recommendation; the `Answer:` line is left empty for him. Provisional decisions 
 (START-HERE rule 5): research that *supports* a default says so and changes nothing.
 
 
-**Status, 17 November 2026.** Q36 is answered and implemented for the barometer. Q38 is narrowed:
-the buttons turn out to be on a message that needs no request, so the passive test is now expected to
-settle it, and on the same day it did: the buttons are an input now, and Q38 is down to one
-decision (may the firmware send the power-off frame). Q39 and Q40 are new. Open and needing Daniel:
-Q18, Q21, Q22, Q23, Q24, Q32, Q34, Q35, Q37, Q38, Q39, Q40. The paragraph below is the 4 November status, kept as written.
+**Status, 17 November 2026.** Q36 is answered and implemented for the barometer. Q38 is answered:
+the buttons arrived on a message that needs no request,Daniel confirmed the button edges work on the
+unit, and he approved sending the `SendPowerOffCmd` frame so the unit can power off. Q39 and Q40 are
+new. Open and needing Daniel: Q18, Q21, Q22, Q23, Q24, Q32, Q34, Q35, Q37, Q39, Q40. The paragraph
+below is the 4 November status, kept as written.
 
 **Status, 4 November 2026.** Answered: Q14, Q15, Q16, Q17, Q19, Q20, Q25, Q26, Q27, Q28, Q29, Q30,
 Q31 and Q33 — fourteen of the twenty-two. The eight still open all need Daniel, and none of them
@@ -289,7 +289,7 @@ held: touch is the only I2C device.
 What this changes: `hal_baro_read_pa` is implementable now, which closes the real hole behind Q19 --
 `total_ascent` can come from a barometer instead of GPS elevation.
 
-### Q38 · bring-up · open
+### Q38 · bring-up · answered 17 November 2026
 Question: None of the message ids the vendor's dispatcher forwards to the application -- 11, 17, 34,
 35, 40, 120 to 123 and 128 -- has ever appeared on the link, over 200,000 frames and more than an hour
 of listening. Only ids 0 and 16 arrive unprompted. Either those ids are responses to requests the
@@ -329,7 +329,10 @@ is now known exactly (kind 2, id 16, payload `e2 02 00 00 00 00 00 00`). That is
 this question asked for. It stays open for one decision only: whether our firmware may send that one
 frame. Until it can, the unit runs until the battery is flat, which is what happened between 4 and
 17 November.
-Answer:
+Answer: **Yes: the firmware may send `SendPowerOffCmd` (Daniel, 17 November 2026).** Buttons are
+confirmed on the unit, and `fw_nrf_build_power_off` builds the exact 16-byte `SendPowerOffCmd` frame
+(kind 2, id 16, payload `e2 02 00 00 00 00 00 00`, CRC-16/XMODEM `0x418F` little-endian `8f 41`) for
+`hal_power_off()`. Nothing else is transmitted on the nRF link.
 
 ### Q37 · bring-up · open
 Question: `fw/main/hal_touch_esp.c` reproduces the vendor's CST3240 sequence byte for byte, but

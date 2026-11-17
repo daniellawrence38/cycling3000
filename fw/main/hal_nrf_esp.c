@@ -76,9 +76,11 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "hal_baro.h"
-#include "hal_input.h"
 #include "hal_clock.h"
+#include "hal_display.h"
+#include "hal_input.h"
 #include "hal_nrf.h"
+#include "hal_power.h"
 #include "nrf_proto.h"
 
 static const char *TAG = "nrf";
@@ -186,6 +188,76 @@ int hal_nrf_baro_temp_c100(int16_t *out)
     return 0;
 }
 
+/* Battery (id 0 / 0x52, every ~300 ms) and ambient light (id 16 / 0xF1 / 0x04, every ~70 ms),
+ * confirmed on the unit in outputs/nrf-capture-2.txt. */
+static portMUX_TYPE pwr_mux = portMUX_INITIALIZER_UNLOCKED;
+static int bat_pct = -1;
+static uint16_t bat_mv;
+static uint32_t bat_ms;
+static int32_t light_val = -1;
+static uint32_t light_ms;
+static volatile int nrf_uart_up;
+#define BATT_STALE_MS 5000
+#define LIGHT_STALE_MS 2000
+
+int hal_power_battery_pct(void)
+{
+    int pct;
+    uint32_t at;
+    portENTER_CRITICAL(&pwr_mux);
+    pct = bat_pct;
+    at = bat_ms;
+    portEXIT_CRITICAL(&pwr_mux);
+    if (pct < 0 || hal_clock_monotonic_ms() - at > BATT_STALE_MS)
+        return -1;
+    return pct;
+}
+
+int hal_nrf_battery_mv(uint16_t *out)
+{
+    if (hal_power_battery_pct() < 0)
+        return -1;
+    portENTER_CRITICAL(&pwr_mux);
+    *out = bat_mv;
+    portEXIT_CRITICAL(&pwr_mux);
+    return 0;
+}
+
+int hal_power_charging(void)
+{
+    /* No charging bit has been identified in id 0 / 0x52 (payload[7] is 0xFF on USB at both 2 % and 100 %). */
+    return 0;
+}
+
+int hal_power_ambient_lux(void)
+{
+    int32_t v;
+    uint32_t at;
+    portENTER_CRITICAL(&pwr_mux);
+    v = light_val;
+    at = light_ms;
+    portEXIT_CRITICAL(&pwr_mux);
+    if (v < 0 || hal_clock_monotonic_ms() - at > LIGHT_STALE_MS)
+        return -1;
+    return (int)v;
+}
+
+void hal_power_off(void)
+{
+    hal_display_backlight(0);
+    if (!nrf_uart_up) {
+        ESP_LOGW(TAG, "hal_power_off: nRF UART not up");
+        return;
+    }
+    uint8_t frame[FW_NRF_POWER_OFF_FRAME_LEN];
+    int n = fw_nrf_build_power_off(frame);
+    if (n > 0) {
+        ESP_LOGW(TAG, "sending SendPowerOffCmd (%d bytes) to nRF", n);
+        uart_write_bytes(UART_NRF_PORT, frame, (size_t)n);
+        uart_wait_tx_done(UART_NRF_PORT, pdMS_TO_TICKS(200));
+    }
+}
+
 static void hexdump(char *out, size_t outsz, const uint8_t *p, size_t n)
 {
     size_t k = 0;
@@ -244,6 +316,24 @@ static void consume(const fw_nrf_frame_t *f)
                      frac < 0 ? -frac : frac);
         }
         return;
+    }
+    fw_nrf_battery_t bat_msg;
+    if (fw_nrf_parse_battery(f, &bat_msg) == 0) {
+        uint32_t now = hal_clock_monotonic_ms();
+        portENTER_CRITICAL(&pwr_mux);
+        bat_pct = bat_msg.percent;
+        bat_mv = bat_msg.millivolts;
+        bat_ms = now;
+        portEXIT_CRITICAL(&pwr_mux);
+    }
+    fw_nrf_light_t li_msg;
+    if (fw_nrf_parse_light(f, &li_msg) == 0) {
+        uint32_t now = hal_clock_monotonic_ms();
+        int32_t lv = li_msg.value > 0x7FFFFFFFu ? 0x7FFFFFFF : (int32_t)li_msg.value;
+        portENTER_CRITICAL(&pwr_mux);
+        light_val = lv;
+        light_ms = now;
+        portEXIT_CRITICAL(&pwr_mux);
     }
 #if NRF_DECODE_LOG
     /* Bring-up: say in words what the vendor's handlers say these messages are, so one capture with
@@ -498,13 +588,14 @@ static void nrf_task(void *arg)
         .source_clk = UART_SCLK_DEFAULT,
     };
     uart_param_config(UART_NRF_PORT, &boot);
-    /* TX is named because uart_set_pin wants a number, but nothing here writes to the port. */
+    /* TX is GPIO 42; the only outbound frame is SendPowerOffCmd in hal_power_off() (Q38). */
     if (uart_set_pin(UART_NRF_PORT, PIN_UART_NRF_TX, PIN_UART_NRF_RX, UART_PIN_NO_CHANGE,
                      UART_PIN_NO_CHANGE) != ESP_OK) {
         ESP_LOGE(TAG, "uart_set_pin failed");
         vTaskDelete(NULL);
         return;
     }
+    nrf_uart_up = 1;
     ESP_LOGI(TAG, "listening on port %d, RX GPIO %d; %d candidate baud rates, %" PRIu32 " s each",
              UART_NRF_PORT, PIN_UART_NRF_RX, NCANDIDATES, (uint32_t)(SEARCH_MS / 1000));
 

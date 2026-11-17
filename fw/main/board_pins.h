@@ -102,15 +102,33 @@
 #define TOUCH_LOG_PRESSES 1 /* log the first presses, raw and mapped, so the axes can be checked */
 #define BARO_LOG 1 /* log pressure every two seconds, for the height-change check during bring-up */
 #define NRF_DECODE_LOG 1 /* name key, battery, light and clock messages in the log, to confirm them */
+#define GNSS_LOG 1 /* log the first NMEA sentence and first fix on UART0 */
 
-/* UARTs.
- UART0 is most likely the GNSS (the image carries Airoha $PAIR command strings) and the
- * second is the nRF co-processor that carries ANT+ (its RX line showed a heartbeat every ~13 s
- * during the RAM probe). Which is which is Unverified. */
+/* UARTs. Read from AppDevInit (0x4200a5dc), FUN_421566c0 and MidCommInit (0x420452a4):
+ *   - UART0 (ESP port 0, TX 1 / RX 0, 115200 baud from literal 0x42000b8c) is the GNSS receiver
+ *     (Airoha AM3352 / AG3352 family, NMEA 0183 + $PAIR; power/reset via nRF id 16 sub-tag 0xE2 0x02
+ *     device 0x07). Unverified on hardware until NMEA sentences are captured on GPIO 0.
+ *   - UART1 (ESP port 2, TX 42 / RX 41, 115200 baud) is the nRF co-processor. Confirmed on hardware. */
 #define PIN_UART0_TX 1
 #define PIN_UART0_RX 0 /* also the ESP32 boot strapping pin */
+#define UART_GNSS_PORT 0
+#define UART_GNSS_BAUD 115200
 #define PIN_UART_NRF_TX 42
 #define PIN_UART_NRF_RX 41
 #define UART_NRF_PORT 2
+
+/* Separate 4 GB storage: soldered eMMC on SDMMC slot 1, 4-bit mode, 20 MHz, internal pull-ups enabled,
+ * mounted at /sdcard. Read from MidVFSMount at 0x4200b9b0 (sdmmc_slot_config_t overwritten onto the
+ * default struct from 0x3c36ed44) and corroborated by the RAM probe, where GPIO 13..18 were the six
+ * remaining pins idling high. Unverified on hardware; NOT mounted until bring-up step 1 (preserving
+ * the 4 GB storage) is decided by Daniel. */
+#define PIN_SDMMC_CLK 13
+#define PIN_SDMMC_CMD 14
+#define PIN_SDMMC_D0 16
+#define PIN_SDMMC_D1 17
+#define PIN_SDMMC_D2 18
+#define PIN_SDMMC_D3 15
+#define SDMMC_BUS_WIDTH 4
+#define SDMMC_MAX_FREQ_KHZ 20000
 
 #endif
