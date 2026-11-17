@@ -73,3 +73,50 @@ int fw_nrf_parse_accel(const fw_nrf_frame_t *f, fw_nrf_accel_t *out)
     out->z = (int16_t)u16le(f->payload + 6);
     return 0;
 }
+
+int fw_nrf_parse_key(const fw_nrf_frame_t *f, fw_nrf_key_t *out)
+{
+    if (f->id != FW_NRF_ID_SENSOR || f->plen < 7 || f->payload[0] != FW_NRF_SUB_KEY)
+        return -1;
+    out->index = f->payload[1];
+    out->extra = f->payload[5];
+    out->event = f->payload[6];
+    return 0;
+}
+
+int fw_nrf_parse_clock(const fw_nrf_frame_t *f, fw_nrf_clock_t *out)
+{
+    if (f->id != FW_NRF_ID_STATUS || f->plen < 8 || f->payload[0] != FW_NRF_SUB_CLOCK)
+        return -1;
+    const uint8_t *p = f->payload;
+    uint8_t day = p[5] & 0x1F;
+    /* The vendor's own limits, tightened where it is lax (it lets 60 seconds and 24 hours through). */
+    if (p[2] > 59 || p[3] > 59 || p[4] > 23 || day < 1 || p[6] > 11 || p[7] < 100 || p[7] > 138)
+        return -1;
+    out->second = p[2];
+    out->minute = p[3];
+    out->hour = p[4];
+    out->day = day;
+    out->month = (uint8_t)(p[6] + 1);
+    out->year = (uint16_t)(1900 + p[7]);
+    return 0;
+}
+
+int fw_nrf_parse_battery(const fw_nrf_frame_t *f, fw_nrf_battery_t *out)
+{
+    if (f->id != FW_NRF_ID_STATUS || f->plen < 7 || f->payload[0] != FW_NRF_SUB_BATTERY)
+        return -1;
+    out->millivolts = u16le(f->payload + 4);
+    out->percent = f->payload[6];
+    return 0;
+}
+
+int fw_nrf_parse_light(const fw_nrf_frame_t *f, fw_nrf_light_t *out)
+{
+    if (!is_sensor(f, FW_NRF_SENSOR_LIGHT))
+        return -1;
+    const uint8_t *p = f->payload;
+    out->value = (uint32_t)p[2] | ((uint32_t)p[3] << 8) | ((uint32_t)p[4] << 16) | ((uint32_t)p[5] << 24);
+    out->aux = u16le(p + 6);
+    return 0;
+}

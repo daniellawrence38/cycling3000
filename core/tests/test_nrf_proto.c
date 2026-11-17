@@ -160,6 +160,72 @@ static void test_accelerometer(void)
     TEST_ASSERT_EQUAL(-1, fw_nrf_parse_accel(&f, &a));
 }
 
+static void test_clock_decodes_the_capture_date(void)
+{
+    fw_nrf_frame_t f;
+    fw_nrf_clock_t c;
+    fw_nrf_take_frame(F_CLOCK, 16, &f);
+    TEST_ASSERT_EQUAL(0, fw_nrf_parse_clock(&f, &c));
+    /* The capture was taken on 4 November 2026: the frame says so, which is the check on the layout. */
+    TEST_ASSERT_EQUAL(2026, c.year);
+    TEST_ASSERT_EQUAL(11, c.month);
+    TEST_ASSERT_EQUAL(4, c.day);
+    TEST_ASSERT_EQUAL(9, c.hour);
+    TEST_ASSERT_EQUAL(0, c.minute);
+    TEST_ASSERT_EQUAL(9, c.second);
+    fw_nrf_take_frame(F_BARO, 16, &f);
+    TEST_ASSERT_EQUAL(-1, fw_nrf_parse_clock(&f, &c));
+    const uint8_t p[8] = {0x53, 0xff, 59, 59, 23, 31, 11, 126};
+    fw_nrf_frame_t g = {.kind = 4, .id = 0, .payload = p, .plen = 8};
+    TEST_ASSERT_EQUAL(0, fw_nrf_parse_clock(&g, &c));
+    static const struct { int at; uint8_t v; } bad[] = {{2, 60}, {3, 60}, {4, 24}, {5, 0}, {6, 12}, {7, 99}};
+    for (size_t i = 0; i < sizeof bad / sizeof bad[0]; i++) {
+        uint8_t q[8];
+        memcpy(q, p, 8);
+        q[bad[i].at] = bad[i].v;
+        g.payload = q;
+        TEST_ASSERT_EQUAL(-1, fw_nrf_parse_clock(&g, &c));
+    }
+}
+
+static void test_battery_and_light_candidates(void)
+{
+    static const uint8_t F_BATT[] = {0xa5, 0x0c, 0x6f, 0xf1, 0x04, 0x00, 0x52, 0xff,
+                                     0xff, 0xff, 0xc2, 0x10, 0x64, 0xff, 0xd7, 0x8e}; /* raw #6097 */
+    fw_nrf_frame_t f;
+    fw_nrf_battery_t b;
+    TEST_ASSERT_EQUAL(16, fw_nrf_take_frame(F_BATT, 16, &f));
+    TEST_ASSERT_EQUAL(0, fw_nrf_parse_battery(&f, &b));
+    TEST_ASSERT_EQUAL(4290, b.millivolts);
+    TEST_ASSERT_EQUAL(100, b.percent);
+    fw_nrf_take_frame(F_CLOCK, 16, &f);
+    TEST_ASSERT_EQUAL(-1, fw_nrf_parse_battery(&f, &b));
+
+    fw_nrf_light_t l;
+    fw_nrf_take_frame(F_04, 16, &f);
+    TEST_ASSERT_EQUAL(0, fw_nrf_parse_light(&f, &l));
+    TEST_ASSERT_EQUAL_UINT32(600u, l.value); /* the factory screen's "Light lux" on this unit */
+    TEST_ASSERT_EQUAL(1310, l.aux);
+    fw_nrf_take_frame(F_BARO, 16, &f);
+    TEST_ASSERT_EQUAL(-1, fw_nrf_parse_light(&f, &l));
+}
+
+static void test_key_event_layout(void)
+{
+    /* No key frame has been captured yet, so this pins only the vendor's field positions. */
+    const uint8_t p[8] = {0x49, 0x02, 0xAA, 0xBB, 0xCC, 0x07, 0x04, 0xDD};
+    fw_nrf_frame_t f = {.kind = 4, .id = 16, .payload = p, .plen = 8};
+    fw_nrf_key_t k;
+    TEST_ASSERT_EQUAL(0, fw_nrf_parse_key(&f, &k));
+    TEST_ASSERT_EQUAL(2, k.index);
+    TEST_ASSERT_EQUAL(4, k.event);
+    TEST_ASSERT_EQUAL(7, k.extra);
+    f.id = 0;
+    TEST_ASSERT_EQUAL(-1, fw_nrf_parse_key(&f, &k));
+    fw_nrf_take_frame(F_BARO, 16, &f);
+    TEST_ASSERT_EQUAL(-1, fw_nrf_parse_key(&f, &k));
+}
+
 /* The receive loop the firmware uses, fed in awkward chunk sizes with noise between the frames. */
 static void test_stream_resynchronises(void)
 {
@@ -214,6 +280,9 @@ int main(void)
     RUN_TEST(test_barometer);
     RUN_TEST(test_barometer_refuses_what_it_does_not_recognise);
     RUN_TEST(test_accelerometer);
+    RUN_TEST(test_clock_decodes_the_capture_date);
+    RUN_TEST(test_battery_and_light_candidates);
+    RUN_TEST(test_key_event_layout);
     RUN_TEST(test_stream_resynchronises);
     return UNITY_END();
 }

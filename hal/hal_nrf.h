@@ -1,4 +1,4 @@
-/* hal_nrf.h: the link to the nRF co-processor, which the stock firmware calls the "SPU".
+/* hal_nrf.h: the link to the nRF co-processor.
  *
  * This is where the on-board sensors live. The barometer, the light sensor, the battery gauge and the
  * IMU are NOT on the ESP32's I2C bus (Q36): every I2C transfer in the stock firmware belongs to the

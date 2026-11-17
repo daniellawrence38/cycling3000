@@ -23,6 +23,11 @@ recommendation; the `Answer:` line is left empty for him. Provisional decisions 
 (START-HERE rule 5): research that *supports* a default says so and changes nothing.
 
 
+**Status, 17 November 2026.** Q36 is answered and implemented for the barometer. Q38 is narrowed:
+the buttons turn out to be on a message that needs no request, so the passive test is now expected to
+settle it. Q39 is new and is Daniel's. Open and needing Daniel: Q18, Q21, Q22, Q23, Q24, Q32, Q34,
+Q35, Q37, Q38, Q39. The paragraph below is the 4 November status, kept as written.
+
 **Status, 4 November 2026.** Answered: Q14, Q15, Q16, Q17, Q19, Q20, Q25, Q26, Q27, Q28, Q29, Q30,
 Q31 and Q33 — fourteen of the twenty-two. The eight still open all need Daniel, and none of them
 blocks anything: **Q18** (what "LAP n" counts), **Q21**, **Q22**, **Q23** and **Q24** (preference and
@@ -269,8 +274,6 @@ been tried, because `total_ascent` without a barometer is the Q19 problem again 
 Why it matters: this is not one driver, it is the shape of the next work package. It also means the
 nRF link is on the critical path for ANT+ *and* for altitude, battery and the light sensor at once,
 so it is worth doing properly rather than four times.
-Answer:
-
 Answer: **Confirmed, and (b) is done as far as it can go without transmitting.** The link runs at
 **115200** baud and the frame format decoded from the binary is exactly right: over 200,000 frames
 across three captures, **not one CRC reject**, with every byte of the stream accounted for. The sensors
@@ -304,6 +307,18 @@ narrower target than id 16.
 Why it matters: this is the only remaining unknown on the link, and it gates the buttons, ANT+ and the
 Di2 gear display. It is also the first point in this project where the safe and the fast option differ,
 which is worth recording rather than deciding quietly.
+Research (17 November 2026, from the vendor's handlers decompiled with Ghidra; `docs/NRF-PROTOCOL.md`,
+"What the vendor's handlers say"): **the premise was partly wrong, in the direction that favours (c).**
+The buttons are not among the never-seen ids. The id 16 handler turns sub-tag `0x49` into a key event
+(index in payload byte 1, event code in byte 6) and passes it to `ArmSendBtnEvent`, with no request
+involved, and the first long capture's byte-0 range of `49-f1` shows that sub-tag does occur. So a
+passive capture with the buttons pressed should show them, and the listener now prints a `KEY` line
+for each. Two statements in the question are also corrected: `SendQuerySlaveModeCmd` is kind 2 on
+**id 1**, not kind 1 on id 16, and the senders' payloads are constants, so all four frames are known
+byte for byte. That makes a transmit possible; it does not make it agreed. The never-seen ids (11,
+17, 34, 35, 40, 120 to 123, 128) are still unexplained and are now most likely ANT+ traffic, which
+only exists with a paired sensor.
+Answer:
 
 ### Q37 · bring-up · open
 Question: `fw/main/hal_touch_esp.c` reproduces the vendor's CST3240 sequence byte for byte, but
@@ -318,6 +333,24 @@ unconditionally, as the vendor does, because a write to a chip that is not answe
 Why it matters: an infinite timeout inside a UI poll is the sort of thing that works on the bench for
 months and then hangs a rider's computer on a cold morning. The deviation is small, deliberate and
 recorded so that if touch misbehaves this is the first thing to look at.
+Answer:
+
+### Q39 · stock app and firmware · open
+Question: The vendor's phone app (OnelapFit) updates the unit's firmware from the vendor's server
+(`api/v1/app/device/firmware/checkVersion` and `.../upgrade` on `api-fitness.rfsvr.com`), and the nRF
+co-processor's own firmware is not in our flash backup. That image would answer the remaining link
+questions from the other side (what the nRF sends for ANT+, what it accepts) without transmitting
+anything to the nRF. Should we try to obtain it, and how? (`docs/STOCK-APP-FINDINGS.md`.)
+Options: (a) do not; rely on passive captures and the ESP32 side of the code; (b) Daniel captures the
+update download on his own phone or network, with his own account, and hands over the file; (c) call
+the vendor's update endpoint directly from this project.
+Default used: **(a)**. (c) is not something I will do unasked: it sends requests to the vendor's
+service on the project's behalf and would very likely need an account token, which START-HERE rule 2
+keeps out of my hands. (b) is clean if Daniel wants it, but it only works when the vendor offers an
+update, and applying an update would also replace the stock firmware in `ota_0` that the backup
+describes, so it should be captured and not installed.
+Why it matters: it decides whether ANT+ and the Di2 display (Q34) can be decoded offline or need
+live experiments. It is not on the path to a first recorded ride.
 Answer:
 
 ## Document errors

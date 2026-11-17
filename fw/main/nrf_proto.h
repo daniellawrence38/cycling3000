@@ -60,4 +60,53 @@ typedef struct {
 
 /* The accelerometer message. Returns 0 and fills *out, or -1. Not used by v1 (rule 4). */
 int fw_nrf_parse_accel(const fw_nrf_frame_t *f, fw_nrf_accel_t *out);
+
+/* The messages below are read out of the stock firmware's own handlers with Ghidra
+ * (docs/NRF-PROTOCOL.md, "What the vendor's handlers say"). The layouts are the vendor's; what has
+ * and has not been seen on the wire is said for each. */
+
+/* id 16, sub-tag 0x49: a key event. The vendor handler (0x42051200) copies payload[1] as the key
+ * index and payload[6] as the event code into the record its key queue reader logs as
+ * "Index:%d Evt:%d", and keeps payload[5] beside them. Index is below 5 in the reader; event 4 starts
+ * a long press there. NOT yet seen in a clean capture: the meaning of each index and event code is
+ * Unverified until buttons are pressed during one. */
+#define FW_NRF_SUB_KEY 0x49
+typedef struct {
+    uint8_t index; /* which key */
+    uint8_t event; /* the vendor's event code */
+    uint8_t extra; /* payload[5]; purpose unknown */
+} fw_nrf_key_t;
+int fw_nrf_parse_key(const fw_nrf_frame_t *f, fw_nrf_key_t *out);
+
+/* id 0, sub-tag 0x53: the nRF's calendar clock. The vendor handler (0x42050d78) reads seconds,
+ * minutes, hours, day of month (low five bits), month from 0 and year from 1900, and range-checks
+ * them. Seen on the wire: the 4 November 2026 capture decodes to 2026-11-04. Which time zone it keeps
+ * is Unverified. */
+#define FW_NRF_ID_STATUS 0
+#define FW_NRF_SUB_CLOCK 0x53
+typedef struct {
+    uint16_t year;
+    uint8_t month, day, hour, minute, second;
+} fw_nrf_clock_t;
+int fw_nrf_parse_clock(const fw_nrf_frame_t *f, fw_nrf_clock_t *out);
+
+/* id 0, sub-tag 0x52: PROBABLY the battery. The vendor handler passes on payload[6] as a byte and
+ * payload[4..5] as a uint16; on the wire they read 100 and 4290 with the unit on USB, which is what
+ * a full cell's percentage and millivolts look like. Unverified until the unit is run off USB. */
+#define FW_NRF_SUB_BATTERY 0x52
+typedef struct {
+    uint16_t millivolts;
+    uint8_t percent;
+} fw_nrf_battery_t;
+int fw_nrf_parse_battery(const fw_nrf_frame_t *f, fw_nrf_battery_t *out);
+
+/* id 16, sub-tag 0xF1, sensor 0x04: PROBABLY the light sensor. The vendor handler runs the uint32 at
+ * payload[2..5] through a threshold table to pick a level (0x420511ac), which is what a backlight
+ * does with lux; 600 matches the factory screen's "Light lux". Unverified until the sensor is covered. */
+#define FW_NRF_SENSOR_LIGHT 0x04
+typedef struct {
+    uint32_t value; /* payload[2..5] */
+    uint16_t aux;   /* payload[6..7]; purpose unknown */
+} fw_nrf_light_t;
+int fw_nrf_parse_light(const fw_nrf_frame_t *f, fw_nrf_light_t *out);
 #endif

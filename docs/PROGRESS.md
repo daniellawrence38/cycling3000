@@ -546,3 +546,116 @@ system interpreter has no pytest. `make fw-build` reports 29 sources compiling c
 warnings and an `app.bin` of about 1.24 MB in an 8 MB slot.
 
 Captures are kept in `outputs/`; `nrf-capture*.txt` in the root is now git-ignored.
+
+## Review, barometer and offline reverse-engineering tools · 17 November 2026
+
+Daniel asked for a review of the work so far, a trial of the "Reverse Engineer Anything" tool, and
+the next steps carried out. **I did not connect to the unit, open its serial port or flash anything**:
+every result below is from the host tests, the firmware build, the flash backup file and a copy of
+the vendor's phone app. The device steps this leaves for Daniel are at the end.
+
+**What exists now.**
+
+- **The barometer is implemented.** `fw/main/nrf_proto.c` (no ESP-IDF dependency) holds the link's
+  framing and the sensor decode; `hal_nrf_esp.c` keeps the newest pressure for `hal_baro_read_pa()`,
+  offers it for two seconds, and keeps decoding after the capture windows end instead of deleting its
+  task; the core task polls it every 100 ms into `cc_on_baro`. A pressure outside 300 to 1100 hPa is
+  refused, so a misread message gives no altitude instead of a wrong one (Q19's lesson).
+- **`tools/re/`**: a reproducible way to read the stock firmware. `esp_image_to_elf.py` turns the
+  backup's application into an Xtensa ELF (the image's own checksum and SHA-256 both pass, and the ELF
+  is re-read against the image byte for byte); Ghidra 12.2 analyses it once (about four minutes);
+  `gh.sh` with `DecompileAt.java` and `StringXrefs.java` then answers a question in under a minute.
+  This replaces the hand method the bring-up used, whose scripts were never committed.
+- **`docs/NRF-PROTOCOL.md` gained "What the vendor's handlers say"** and
+  **`docs/STOCK-APP-FINDINGS.md`** is new.
+
+**What the decompiler found** (all from the stock firmware's own code; detail and addresses in
+`docs/NRF-PROTOCOL.md`):
+
+- **The buttons are on the link, on a message that needs no request**: id 16, sub-tag `0x49`, key
+  index in payload byte 1 and event code in byte 6, handed to `ArmSendBtnEvent`. Q38 assumed they
+  might be behind ids that have to be asked for; they are not.
+- **The clock is a calendar clock**, and the 4 November capture decodes to 4 November 2026. That is a
+  confirmation from data already in hand: the layout came from the code, the date from the wire.
+- **Battery, probably**: id 0 sub-tag `0x52` carries 4290 and 100 (millivolts and percent) with the
+  unit on USB. **Light sensor, probably**: id 16 / `0xF1` / `0x04`, whose value the vendor maps through
+  a threshold table to a level. Both wait for one passive test each.
+- **The four power commands are known byte for byte.** Power off is kind 2, id 16, payload
+  `e2 02 00 00 00 00 00 00`. So `hal_power_off` is a known frame. Nothing has been transmitted and
+  the firmware has no transmit path; that is still Daniel's decision (Q38).
+- **Three written statements were wrong and are corrected in place**: `SendQuerySlaveModeCmd` is kind
+  2 on id 1 (not kind 1 on id 16); the senders' payloads are constants (not built from globals); and
+  the 3560-ish value on `0xF1`/`0x0a` is not what the battery path reads.
+
+**What the phone app found** (`docs/STOCK-APP-FINDINGS.md`): the app's bike-computer BLE service UUID
+is in the stock firmware image; the CC700 Pro is product id 390 in Magene's C606 family; "SPU" is the
+vendor's word for the product, not for the nRF co-processor, which our documents had wrong; firmware
+updates come from the vendor's server (Q39).
+
+**The REA trial: useful at the edges, not for the firmware.** REA 6.9.0 reads the flash backup's
+layout correctly and independently agrees with our findings (partition table, both app slots,
+`otadata`, bootloader IDF `423e6536`), and reads the APK's signature. It **refuses the firmware
+itself** ("unsupported ELF architecture: e_machine 94", Xtensa), and its guidance rules out Cortex-M
+raw images too, which is what an nRF image would be. Ghidra, which REA would have driven anyway,
+supports Xtensa and is used directly. `rea setup` was not run, so the Claude configuration is
+unchanged. Detail in `tools/re/README.md`.
+
+**How to run.** `tools/re/README.md` for the offline tools. Everything else is unchanged:
+`make test PYTHON=/root/venv/bin/python` and `make fw-build` under WSL.
+
+**Verified.**
+
+- `make vectors`: identical to `claude/cc700-test-vectors.md`.
+- Host C: **17 of 17 plain, 15 of 15 under ASan and UBSan** (the plain count includes the two UI
+  tests). `test_nrf_proto` is new: ten tests on frames copied byte for byte from the 4 November
+  capture, every single-bit corruption of a frame refused, resynchronisation through noise at every
+  chunk size from 1 to 17, the pressure limits, and the clock decoding the capture's own date.
+- Python tools: 21 of 21.
+- `make fw-build`: no warnings, **`app.bin` 1,239,952 bytes of 8,192,000 (15 %)**. Nothing flashed.
+- Ghidra against known facts: the CRC routine at `0x4222137c` with its polynomial at `0x4220e4a8`, the
+  frame builder at `0x4205062c`, and the barometer's divide-by-100 scaling all decompile to what the
+  wire had already confirmed.
+
+**Not verified.**
+
+- **Nothing in this entry has run on the unit.** The barometer has never been read by our firmware on
+  hardware; the key, battery and light layouts have never been seen in a clean capture.
+- The key event codes (which number means press, release, long press) and which index is which
+  button are unknown until buttons are pressed during a capture.
+- The Android JVM suites were not re-run: nothing under `android/` or `core/src/` changed.
+- The vendor app's code was searched as text, not decompiled.
+
+**Deviations and choices.** REA is installed with `--ignore-scripts` under `/opt/re` and wrapped by
+`tools/re/rea.sh`, which refuses its live-target commands (adb, gdb, process and browser capture) so
+it cannot be pointed at the unit by accident. The vendor APK and the firmware ELF stay outside the
+repository. Q39 is new. `docs/BRINGUP-LOG.md`'s header said nothing had been written to the unit,
+which stopped being true on 4 November, and is corrected.
+
+**A machine note.** Windows ran out of virtual memory once during this work and took the WSL VM down
+with it, losing a Ghidra run; drive C: has 2.7 GB free, which caps the page file. Heavy jobs were run
+one at a time afterwards. Freeing space on C: is worth doing before the next long session.
+
+**Review notes for Daniel** (unchanged gates, restated because work has moved on around them): the
+WP4 contact sheet is still unreviewed, so there are no golden images; the 4 GB storage is still not
+backed up (bring-up step 1); and the stock firmware's responsiveness was never measured, which the
+original plan made the yardstick for "better than stock" and which can still be done by switching
+`otadata` back.
+
+### For Daniel: the next session on the unit
+
+One flash and one capture, about ten minutes. Everything is passive: the firmware only listens.
+
+1. Flash `build\fw\app.bin` to `ota_1` at `0x7f0000`, exactly as for the previous builds (`otadata`
+   already selects `ota_1`; nothing else is written).
+2. Start `python tools\capture_serial.py COM3 --seconds 300 --out outputs\nrf-capture-2.txt` and wait
+   for `==== window 1 of 6 starting ====`. Each window is 30 seconds.
+   - Window 1: leave it flat on the desk.
+   - Window 2: press each of the three buttons, one at a time, short presses a few seconds apart, then
+     hold one for two seconds. Note the order you pressed them in.
+   - Window 3: cover the light sensor with a thumb for ten seconds, then shine a phone torch on it.
+   - Window 4: lift the unit from the desk to above your head and hold it there ten seconds, then put
+     it on the floor for ten seconds. (About 2 m of height is about 24 Pa.)
+   - Windows 5 and 6: nothing. USB has to stay in for the capture, so the battery test is separate.
+3. Send the file. The lines that matter are `KEY`, `LIGHT?`, `BATTERY?`, `CLOCK` and `baro … Pa`.
+
+The unit still cannot switch itself off under our firmware, so do not leave it running on battery.

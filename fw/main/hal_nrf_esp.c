@@ -184,6 +184,18 @@ int hal_nrf_baro_temp_c100(int16_t *out)
     return 0;
 }
 
+static void hexdump(char *out, size_t outsz, const uint8_t *p, size_t n)
+{
+    size_t k = 0;
+    if (!outsz)
+        return;
+    out[0] = '\0';
+    for (size_t i = 0; i < n && k + 4 < outsz; i++)
+        k += (size_t)snprintf(out + k, outsz - k, "%02x ", p[i]);
+    if (k)
+        out[k - 1] = '\0';
+}
+
 /* Every verified frame comes through here, whether or not the capture is still logging. */
 static void consume(const fw_nrf_frame_t *f)
 {
@@ -201,19 +213,47 @@ static void consume(const fw_nrf_frame_t *f)
             ESP_LOGW(TAG, "barometer: first reading %" PRId32 " Pa, %d.%02d C", pa, b.temp_c100 / 100,
                      frac < 0 ? -frac : frac);
         }
-    }
-}
-
-static void hexdump(char *out, size_t outsz, const uint8_t *p, size_t n)
-{
-    size_t k = 0;
-    if (!outsz)
         return;
-    out[0] = '\0';
-    for (size_t i = 0; i < n && k + 4 < outsz; i++)
-        k += (size_t)snprintf(out + k, outsz - k, "%02x ", p[i]);
-    if (k)
-        out[k - 1] = '\0';
+    }
+#if NRF_DECODE_LOG
+    /* Bring-up: say in words what the vendor's handlers say these messages are, so one capture with
+       the buttons pressed, the sensor covered and the cable out confirms or refutes each of them. */
+    fw_nrf_key_t k;
+    if (fw_nrf_parse_key(f, &k) == 0) {
+        /* Every key frame, raw as well: this message has never been seen in a clean capture. */
+        char hex[3 * 12 + 4];
+        hexdump(hex, sizeof hex, f->payload, f->plen > 12 ? 12 : f->plen);
+        ESP_LOGW(TAG, "KEY index %u event %u extra %u (kind %u) | %s", k.index, k.event, k.extra, f->kind, hex);
+        return;
+    }
+    static uint32_t last_ms[3];
+    static uint32_t last_val[3] = {0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu};
+    uint32_t now = hal_clock_monotonic_ms();
+    fw_nrf_battery_t bat;
+    fw_nrf_light_t li;
+    fw_nrf_clock_t c;
+    if (fw_nrf_parse_battery(f, &bat) == 0) {
+        uint32_t v = ((uint32_t)bat.percent << 16) | bat.millivolts;
+        if (v != last_val[0] && now - last_ms[0] >= 1000) {
+            last_val[0] = v;
+            last_ms[0] = now;
+            ESP_LOGW(TAG, "BATTERY? %u mV, %u %%", bat.millivolts, bat.percent);
+        }
+    } else if (fw_nrf_parse_light(f, &li) == 0) {
+        if (li.value != last_val[1] && now - last_ms[1] >= 1000) {
+            last_val[1] = li.value;
+            last_ms[1] = now;
+            ESP_LOGW(TAG, "LIGHT? value %" PRIu32 ", aux %u", li.value, li.aux);
+        }
+    } else if (fw_nrf_parse_clock(f, &c) == 0) {
+        if (last_val[2] == 0xFFFFFFFFu || now - last_ms[2] >= 60000) {
+            last_val[2] = 0;
+            last_ms[2] = now;
+            ESP_LOGW(TAG, "CLOCK %04u-%02u-%02u %02u:%02u:%02u", c.year, c.month, c.day, c.hour, c.minute,
+                     c.second);
+        }
+    }
+#endif
 }
 
 static id_stat_t *stat_for(uint8_t id, uint8_t sub)

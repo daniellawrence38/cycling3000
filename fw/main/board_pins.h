@@ -100,6 +100,8 @@
 #define TOUCH_INVERT_X 0
 #define TOUCH_INVERT_Y 0
 #define TOUCH_LOG_PRESSES 1 /* log the first presses, raw and mapped, so the axes can be checked */
+#define BARO_LOG 1 /* log pressure every two seconds, for the height-change check during bring-up */
+#define NRF_DECODE_LOG 1 /* name key, battery, light and clock messages in the log, to confirm them */
 
 /* UARTs.
  UART0 is most likely the GNSS (the image carries Airoha $PAIR command strings) and the

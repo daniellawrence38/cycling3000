@@ -2,7 +2,13 @@
 
 What actually happened, step by step, as `docs/BRINGUP.md` is worked through. The plan is that
 document; this one is the record. Every command that touched the unit was typed by Daniel
-(START-HERE rule 1). Nothing has been written to the unit.
+(START-HERE rule 1).
+
+**Corrected 17 November 2026.** This header used to end "Nothing has been written to the unit", which
+stopped being true at step 4 on 4 November: our `app.bin` is in `ota_1` (`0x7f0000`) and `otadata`
+(`0xd000`) selects it. Nothing else on the unit has been written: the bootloader, the partition
+table, `nvs`, `phy_init`, `coredump`, `ota_0` (the stock firmware) and the 4 GB storage are as they
+were, and writing `outputs/esp32s3-backup/otadata-now.bin` back to `0xd000` returns to stock.
 
 Started 4 November 2026.
 

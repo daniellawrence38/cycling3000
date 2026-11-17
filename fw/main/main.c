@@ -10,6 +10,7 @@
  *
  * Deliberately absent: nvs_flash_init (the stock NVS partition is left alone, Q29), TinyUSB, anything
  * that writes flash. */
+#include <inttypes.h>
 #include <string.h>
 
 #include "board_pins.h"
@@ -220,6 +221,21 @@ static void core_task(void *arg)
         }
         if ((int32_t)(now - next_ui) >= 0) {
             next_ui += 1000;
+#if BARO_LOG
+            /* Bring-up: one line every two seconds, so lifting the unit a metre or two can be seen
+               in a capture as about 12 Pa per metre. Switch off once the barometer has been ridden. */
+            static int baro_log_div;
+            if (++baro_log_div % 2 == 0) {
+                int32_t bp = hal_baro_read_pa();
+                int16_t bt = 0;
+                if (bp >= 0 && hal_nrf_baro_temp_c100(&bt) == 0)
+                    ESP_LOGI(TAG, "baro %" PRId32 " Pa, %d.%02d C, core alt %s%" PRId32 " m", bp, bt / 100,
+                             bt % 100 < 0 ? -(bt % 100) : bt % 100, cc_view()->alt_ok ? "" : "(none) ",
+                             cc_view()->alt_m);
+                else
+                    ESP_LOGW(TAG, "baro: no fresh reading");
+            }
+#endif
             ui_refresh();
         }
         uint32_t wait = lv_timer_handler();

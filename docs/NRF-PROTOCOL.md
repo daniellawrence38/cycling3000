@@ -5,9 +5,18 @@ by static analysis. **The unit was not involved in producing any of it.** Addres
 addresses in the `ota_0` application image; the method — find a string, find the `l32r` that loads it,
 read the code around it — is described in `BRINGUP-LOG.md`.
 
-Nothing in this document has yet been seen on the wire. It is Unverified in the sense of START-HERE
-rule 3, but it is read from the vendor's own encoder *and* its own decoder, and the two agree, which
-is a strong internal check.
+**How to read this document.** It is a record in the order things were learned, so later sections
+correct earlier ones. The first part (down to "Confirmed on the wire") was written before any capture
+and is kept as written; the framing in it was then confirmed on the unit (115200 baud, over 200,000
+frames, no CRC reject), and two of its statements were wrong and are corrected below (header byte 3
+is a constant, not a direction; id 16 is not only "the power channel"). The current sensor map is the
+last part, "The sensor map", and the code that implements it is `fw/main/nrf_proto.c`.
+
+**"SPU" is not the co-processor's name** (corrected 17 November 2026). The vendor's phone app uses
+`spu_id` for the product model (390 is the CC700 Pro) and the factory screen's `SPUVer 1.711` is the
+product's firmware version, so `SPUID=%d Not Match DevType=%d` is a product-id check that happens to
+sit in the link code. This document's title and earlier notes call the nRF "the SPU"; read that as
+"the nRF co-processor".
 
 ## Why this matters
 
@@ -381,3 +390,76 @@ spec never asked for and is out of scope for v1 (rule 4), but it is recorded her
 
 **No id outside 0 and 16 has ever been seen**, over more than 200,000 frames. The ids the dispatcher
 forwards to the application are still unaccounted for, and the button question is still open.
+
+---
+
+# What the vendor's handlers say, 17 November 2026
+
+Read from the stock firmware with Ghidra's decompiler (`tools/re/`, files only; the unit was not
+involved). Earlier sections stopped at the parser because following the data further by hand meant
+five queue hops; the decompiler follows them in seconds. Each claim below names the function it
+comes from, so it can be re-read with `tools/re/gh.sh DecompileAt.java <address>`.
+
+**Cross-checks on the method.** The decompiler reproduces what was already known and confirmed on
+the wire: `0x4222137c` is the bitwise CRC with the polynomial at `0x4220e4a8`, and `0x4205062c`
+builds `A5, len+4, 6F, F1, kind, id, payload, CRC low, CRC high`. The barometer handler divides the
+int16 at payload 2 and the uint32 at payload 4 by `100.0` (`0x4203ed20`), which is the scaling the
+capture had already given.
+
+## Corrections to what is written above
+
+| Earlier statement | What the code says |
+| --- | --- |
+| "the four senders build their payloads from globals rather than constants, so they cannot be replayed byte-exactly" | Three of the four use **constants in read-only data**, and `SendPowerOffCmd` builds its payload from the immediate `0x2E2`. All four payloads are known exactly (below). |
+| `SendQuerySlaveModeCmd` is kind 1, id 16 | It is **kind 2, id 1** (`0x42055ca8` calls the builder with `(2, 1, …)`). Id 1 is the slave-mode channel; its reply is what the id 1 handler `0x42050fa4` takes. |
+| "None of the ids the dispatcher forwards … has ever appeared", read as "the buttons may be among them" (Q38) | The buttons are **not** on those ids. They are on id 16, sub-tag `0x49` (below), unsolicited. |
+| id 0 sub-tag 0x53 "bytes 5–7 never changed", clock "elapsed is the better guess" | Bytes 5–7 are **day, month and year**. It is a calendar clock, and the capture decodes to its own date. |
+| id 0 sub-tag 0x52 "a status or configuration record" | Probably the **battery**: millivolts and percent. |
+| id 16 / 0xF1 / 0x0a "probably battery millivolts" | Not supported by the code: the handler stores the int16 as a float in a global and posts no event. What it is remains unknown; it is not what the battery path reads. |
+
+## The senders, exactly
+
+All four call the builder `0x4205062c(kind, id, payload, 8)`.
+
+| Function | Address | kind | id | Payload (8 bytes) | Source of the payload |
+| --- | --- | --- | --- | --- | --- |
+| `SendPowerOffCmd` | `0x42055bac` | 2 | 16 | `e2 02 00 00 00 00 00 00` | immediate `0x2E2`, then zero |
+| `SendPowerOnCmd` | `0x42055c00` | 2 | 16 | `e2 02 00 00 00 01 00 00` | constant at `0x3c375e58` |
+| `SendCheckPowerOnReasonCmd` | `0x42055c54` | 1 | 16 | `e2 02 00 00 00 01 00 00` | the same constant |
+| `SendQuerySlaveModeCmd` | `0x42055ca8` | 2 | 1 | `24 01 ff ff 00 ff ff ff` | constant at `0x3c375e70` |
+
+So power off and power on differ in one byte (payload byte 5), and "why did you power on" is the
+power-on payload sent as a query (kind 1) instead of a command (kind 2). The reply comes back on id 16
+with sub-tag `0xE2` and is handled as a power event (`0x420560f4`, `ArmSendPowerOnSysEvent`).
+
+**This does not change the rule about transmitting.** Knowing the bytes makes a transmit *possible*,
+not agreed: nothing has been sent, the listener has no transmit path, and the first transmit is still
+Daniel's decision (Q38). What it changes is that `hal_power_off` is now a known frame, not a guess.
+
+## Id 16 by sub-tag (`0x42051200`)
+
+| Payload byte 0 | Byte 1 | What the handler does | Status |
+| --- | --- | --- | --- |
+| `0x49` | key index | **Key event.** Builds `{timestamp, index = payload[1], event = payload[6], payload[5]}` and posts it as event 0, which `0x42050a48` hands to `ArmSendBtnEvent` (`0x42055cfc`) and the "ESP32 Key Queue". The reader (`KeyQueueReceive`, `0x42055db4`) logs `Index:%d Evt:%d`, accepts index below 5, and treats event 4 as the start of a long press. | Layout from code. Not yet seen in a clean capture; the first long capture's byte-0 range `49-f1` shows the sub-tag does occur. |
+| `0xE2` | 2 | Power event (reply to the power queries); event code in payload[5]: 4, 5 or 6 | From code only |
+| `0xF0` | 2 | Posts payload[2] as event 3 | From code only; seen on the wire with zeros |
+| `0xF1` | 1, 2 | Two motion handlers taking a uint32 at payload 2 and a uint16 at payload 6 (`0x42214dfc`, `0x42214eec`) | 1 is the accelerometer on the wire; 2 never seen |
+| `0xF1` | 3 | **Barometer**: int16 / 100 degrees, uint32 / 100 pascals, then an altitude | Confirmed on the wire |
+| `0xF1` | 4 | Takes the uint32 at payload 2, maps it through a threshold table to a level (`0x420511ac`), posts event 9. That is a **light sensor driving a backlight level**. | Probable; cover test still to do |
+| `0xF1` | 10 | Stores the int16 at payload 2 as a float; no event | Unknown quantity |
+| `0xF3` | 3 | Posts payload as event 7 | From code only |
+
+## Id 0 by sub-tag (`0x42050d78`)
+
+| Payload byte 0 | Layout | Status |
+| --- | --- | --- |
+| `0x53` | `53 ?? SS MM HH DD MO YY`: seconds, minutes, hours, day of month in the low five bits of DD, month from 0, year from 1900. The handler range-checks every field and logs `ERR TIME PARA` otherwise. | **Confirmed against data already captured**: `53 ff 09 00 09 64 0a 7e` is 4 November 2026, 09:00:09, and that capture was taken on 4 November 2026. The three high bits of DD read 3, which is Wednesday, the day it was. |
+| `0x52` | uint16 at payload 4, byte at payload 6, posted together as event 4 | On the wire: 4290 and 100 with the unit on USB. Probably battery millivolts and percent. Unplug test still to do. |
+
+## What the firmware now does with this
+
+`fw/main/nrf_proto.c` decodes all of the above and `core/tests/test_nrf_proto.c` pins them to frames
+from the capture (the clock test asserts the capture's own date). With `NRF_DECODE_LOG` on, the
+listener names each message in the log (`KEY`, `BATTERY?`, `LIGHT?`, `CLOCK`), so the next capture
+with the buttons pressed, the sensor covered and the cable out confirms or refutes each one in words.
+Only the barometer is wired through to the core so far.

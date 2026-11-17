@@ -21,6 +21,11 @@ No GPL or AGPL code in the core, firmware or app (START-HERE, brief 3).
 | JUnit 5 | 5.11.3 | EPL-2.0 | Gradle | JVM tests only, not shipped |
 | Gradle wrapper | 8.14.3 | Apache-2.0 | `android/gradlew`, `android/gradle/wrapper/` | Build only |
 
+| Ghidra | 12.2 | Apache-2.0 | developer machine (`/opt/re/ghidra`, installed by `tools/re/setup_wsl.sh`) | Offline reading of the stock firmware backup (`tools/re`); not shipped, nothing of it is in the firmware or the app |
+| REA (`rea-agents`) | 6.9.0 | MIT (bundles third-party tools under their own licences, listed in its `THIRD_PARTY_NOTICES.md`) | developer machine (`/opt/re/rea`) | Offline inspection of the flash backup's layout and of the vendor APK's signature (`tools/re/rea.sh`); not shipped |
+| Node.js | 24.22.3 | MIT | developer machine (`/opt/re/node`) | Runs REA only |
+| OpenJDK | 25 | GPL-2.0 with Classpath Exception | developer machine (system package) | Runs Ghidra only; a tool, not linked into anything shipped |
+
 Mockup icons in `ui/icons/icons.json` are the SVG paths from Daniel's mockups.
 
 Pinned for later work packages, not yet fetched: ESP-IDF v5.5.6 (Apache-2.0, includes NimBLE, Apache-2.0).
