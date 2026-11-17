@@ -11,3 +11,6 @@ endif()
 # component and nothing here calls lv_malloc_core, so without this the archive member that defines it
 # might never be pulled in and the link would fail with undefined lv_*_core symbols.
 target_link_libraries(${COMPONENT_LIB} INTERFACE "-u lv_malloc_core")
+# The phone link's IDF-free helpers (host-tested by core/tests/test_fw_phone_bond.c). Kept off the SRCS
+# line above so that branches adding sources there merge without a conflict.
+target_sources(${COMPONENT_LIB} PRIVATE phone_bond.c link_trace.c)

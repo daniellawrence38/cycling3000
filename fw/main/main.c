@@ -351,6 +351,7 @@ static void core_task(void *arg)
             }
             ui_app_step(now);
             cc_link_tick(&link_srv, now);
+            fw_link_tick(now); /* phone link: bond to the eMMC, pairing window expiry, idle parameters */
             const cc_view_t *v = cc_view();
             if (fw_link_connected()) {
                 cc_link_poll_events(&link_srv);
