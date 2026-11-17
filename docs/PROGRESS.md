@@ -866,3 +866,40 @@ answered.
 
 **Next.** (1) Daniel flashes this build and sends the `emmc:` lines. (2) From the size in use, a raw
 read-out to the PC, hashed twice. (3) Then `FS_EMMC_MODE 2`.
+
+### The probe's result, and the read-out · 17 November 2026
+
+It took three flashes. The first capture started 2.6 s after the reset and missed a probe that ran at
+boot, so it now runs at 10 s and 40 s. The second could not get its 32 KB buffer. The third worked,
+twice, with identical results (`outputs/emmc-probe-3.txt`):
+
+- **The storage is 7.3 GB, not 4 GB**: an eMMC named `MV3608`, 14,942,208 sectors, running at 20 MHz
+  on a 4-bit bus. So the pins, the slot and the speed in `198c484` are all confirmed on hardware.
+- **One FAT32 volume starting at sector 0**, no partition table, 4 KB clusters, two FATs of 14,561
+  sectors.
+- **286 MB in use, 6,993 MB free.** Twenty-two folders in the root (`FONT`, `MAP`, `FITS`, `CONFIG`,
+  `GPS`, `USER`, `WIFI`, `LOG` and others) and two files.
+- **Internal memory is tight with the whole firmware running**: 70 KB of DMA-capable RAM free and
+  the largest block 31,744 bytes. That is why 32 KB failed, and it matters for mode 2, whose FatFs
+  and SDMMC buffers come from the same pool.
+
+**The read-out exists.** `FS_EMMC_MODE 3` (`fw/main/emmc_dump_esp.c`) runs nothing but the copy: no
+display, UI, Bluetooth or nRF listener, so the screen is dark. It sends everything before the data
+area (boot sector, reserved sectors, both FATs) and every cluster whose FAT entry is not zero, as
+text records each carrying a CRC over its address and data, and repeats for ever.
+`tools/emmc_dump.py capture` listens, keeps each record whose CRC is right, and stops when every
+record has arrived at least twice with identical contents and the count and combined checksum match
+what the unit reported. `list` then walks the directory tree in the backup and checks every file's
+data is there; `extract` writes the files out; `image` rebuilds a full raw image.
+
+**Verified.** Host C 20 of 20 plain and 18 of 18 under ASan and UBSan (`test_dump_fmt` is new: base64
+against the RFC 4648 vectors and a golden record). `tools/tests/test_emmc_dump.py` (4 tests) holds the
+PC tool to the same golden record, the CRC of which was computed separately in Python, and plays a
+small FAT32 volume through the collector: two agreeing passes complete it, a lost record, a record
+that differs between passes and a reported read error each prevent completion, and the files, a long
+file name and a rebuilt image all come back byte for byte. `make fw-build` clean; the mode 3 image is
+247,504 bytes and `nm` finds no eMMC write or erase call and no FatFs function in it.
+
+**Not verified.** The read-out has not run on the unit. Its speed over the USB serial port is
+unmeasured; at a guessed 0.3 to 0.5 MB/s, two passes of about 400 MB of text would take roughly half
+an hour to an hour.

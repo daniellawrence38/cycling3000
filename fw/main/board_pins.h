@@ -134,7 +134,9 @@
  * order is: probe it read-only, copy it off, and only then write to it.
  *   0  leave it alone: null storage, nothing is saved
  *   1  read-only probe at boot (card, partitions, space in use, root directory), then null storage
- *   2  mount it and keep rides, routes, workouts and settings in /sdcard/CC700 (writes to the eMMC) */
-#define FS_EMMC_MODE 1
+ *   2  mount it and keep rides, routes, workouts and settings in /sdcard/CC700 (writes to the eMMC)
+ *   3  read-out: send every sector in use to the PC for tools/emmc_dump.py, and run nothing else
+ *      (dark screen, no UI, no Bluetooth). Read-only. Flash a mode 1 or 2 build afterwards. */
+#define FS_EMMC_MODE 3
 
 #endif

@@ -303,6 +303,13 @@ static void core_task(void *arg)
 void app_main(void)
 {
     ESP_LOGI(TAG, "CC700 firmware starting");
+    if (FS_EMMC_MODE == 3) {
+        /* The eMMC read-out and nothing else: no display, UI, Bluetooth or nRF listener
+           (emmc_dump_esp.c says why). */
+        ESP_LOGW(TAG, "FS_EMMC_MODE 3: eMMC read-out only. The screen stays dark; run tools/emmc_dump.py");
+        xTaskCreatePinnedToCore(fw_emmc_dump_task, "dump", 8192, NULL, 5, NULL, 1);
+        return;
+    }
     fw_sensors_start();
     /* Core 1 for the core task; NimBLE's host runs on core 0 by default. 16 KB stack: the model is
      * static, LVGL's layout recursion is the deepest user. */
