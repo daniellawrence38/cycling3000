@@ -411,7 +411,7 @@ Why it matters: every hold in the product goes through this (previous page, paus
 power). It also means a short press acts on release, not on press, on the real unit.
 Answer:
 
-### Q41 · bring-up · open
+### Q41 · bring-up · answered 17 November 2026
 Question: The handshake (commit `e0e46b0`) sends only frames from the Q38 table, but it adds timing
 and gating choices that Q38 does not specify. Which of these should stay?
 1. Event 5/6 wakes the unit from power-off only if it arrives more than 500 ms after the
@@ -429,7 +429,7 @@ Default used: all of 1 to 4 as listed, and 5 left as it is. Each one transmits l
 does, or closes files that would otherwise be left open.
 Why it matters: these decide how long the unit keeps sending to the nRF when something is wrong, and
 whether a charger plug-in can restart it.
-Answer:
+Answer: Daniel, 17 November 2026: "go with what you think". All of 1 to 4 stay as listed. For 5, the writer is left as it is for now, and is to be fixed with the store work.
 
 ## Document errors
 
