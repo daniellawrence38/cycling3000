@@ -18,7 +18,7 @@ void fw_link_on_mtu(uint16_t mtu);    /* implemented by main.c */
 void fw_link_on_connect(int connected);
 
 void fw_sensors_start(void);          /* after NimBLE sync */
-void fw_sensors_tick(uint32_t now_ms);/* core task, 10 Hz: calibration requests */
+void fw_sensors_tick(uint32_t now_ms);/* core task, every loop: events, scan, reconnects, calibration */
 
 int hal_gnss_init(void);              /* UART0 receive-only bring-up for NMEA 0183 */
 struct hal_fs *fw_fs_sdmmc(void);     /* 4 GB eMMC at /sdcard/CC700 (falls back to fw_fs_null on failure) */

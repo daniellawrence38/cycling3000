@@ -561,8 +561,9 @@ void scr_confirm(lv_obj_t *r, const ui_model_t *m)
         snprintf(msg, sizeof msg, "This permanently deletes the ride (%s, %s %s). It has not been uploaded.", hms, d,
                  m->v.settings.units == CC_UNITS_MI ? "mi" : "km");
     } else if (k == UI_CONFIRM_FORGET_SENSOR) {
+        int hr = m->forget_kind == 2; /* the heart-rate screen names its strap "Sensor" (board 22) */
         snprintf(msg, sizeof msg, "%s \xC2\xB7\xC2\xB7\xC2\xB7%s will be removed from this unit. You can pair it again from Sensors.",
-                 m->pm_name, m->pm_id4);
+                 hr ? "Sensor" : m->pm_name, hr ? m->hr_id4 : m->pm_id4);
     } else {
         snprintf(msg, sizeof msg, "The phone must be paired again before it can send workouts or routes, or collect rides.");
     }

@@ -208,6 +208,43 @@ int cc_bonds_load(hal_fs_t *fs, cc_bonds_t *b, cc_slots_t *slots)
     return 0;
 }
 
+const cc_bond_t *cc_bonds_find(const cc_bonds_t *b, uint8_t kind)
+{
+    for (int i = 0; i < b->count && i < CC_MAX_BONDS; i++)
+        if (b->b[i].kind == kind)
+            return &b->b[i];
+    return NULL;
+}
+
+int cc_bonds_remove(cc_bonds_t *b, uint8_t kind)
+{
+    int removed = 0;
+    for (int i = 0; i < b->count && i < CC_MAX_BONDS;) {
+        if (b->b[i].kind == kind) {
+            memmove(&b->b[i], &b->b[i + 1], (size_t)(b->count - i - 1) * sizeof b->b[0]);
+            b->count--;
+            memset(&b->b[b->count], 0, sizeof b->b[0]);
+            removed = 1;
+        } else {
+            i++;
+        }
+    }
+    return removed;
+}
+
+int cc_bonds_put(cc_bonds_t *b, const cc_bond_t *e)
+{
+    if (e->kind != 1 && e->kind != 2)
+        return -1;
+    cc_bond_t copy = *e; /* e may point into b */
+    copy.name[CC_BOND_NAME] = 0;
+    cc_bonds_remove(b, copy.kind);
+    if (b->count >= CC_MAX_BONDS)
+        return -1;
+    b->b[b->count++] = copy;
+    return 0;
+}
+
 int cc_bonds_save(hal_fs_t *fs, const cc_bonds_t *b, cc_slots_t *slots)
 {
     uint8_t rec[SLOT_MAX];

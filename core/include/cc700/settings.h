@@ -71,6 +71,15 @@ typedef struct {
 int cc_bonds_load(hal_fs_t *fs, cc_bonds_t *b, cc_slots_t *slots);
 int cc_bonds_save(hal_fs_t *fs, const cc_bonds_t *b, cc_slots_t *slots);
 
+/* One sensor of each kind (spec 6, Sensors: one power meter and one heart-rate strap). The entry of
+ * that kind, or NULL. */
+const cc_bond_t *cc_bonds_find(const cc_bonds_t *b, uint8_t kind);
+/* Stores e as the sensor of its kind, replacing any earlier one of that kind. Returns 0, or -1 if the
+ * kind is not 1 or 2 or the table is full. */
+int cc_bonds_put(cc_bonds_t *b, const cc_bond_t *e);
+/* Removes the sensor of that kind. Returns 1 if one was removed. */
+int cc_bonds_remove(cc_bonds_t *b, uint8_t kind);
+
 /* Wrapping sequence comparison: a newer than b. */
 static inline int cc_seq_newer(uint32_t a, uint32_t b) { return (int32_t)(a - b) > 0; }
 

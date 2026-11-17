@@ -206,7 +206,8 @@ static void f_add(ui_model_t *m)
 {
     f_list(m);
     m->scanning = 1;
-    ui_scan_item_t s[3] = {{"PM500", "7C2E", 1, 3}, {"PM500", "90D1", 1, 1}, {"Sensor", "41B9", 2, 2}};
+    ui_scan_item_t s[3] = {{"PM500", "7C2E", 1, 3, {0x2E, 0x7C}, 0}, {"PM500", "90D1", 1, 1, {0xD1, 0x90}, 0},
+                           {"Sensor", "41B9", 2, 2, {0xB9, 0x41}, 0}};
     memcpy(m->scan, s, sizeof s);
     m->n_scan = 3;
 }

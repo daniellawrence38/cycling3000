@@ -23,6 +23,7 @@
 #include "freertos/task.h"
 #include "fs_null.h"
 #include "fw.h"
+#include "fw_sensors.h"
 #include "hal_baro.h"
 #include "hal_ble.h"
 #include "hal_clock.h"
@@ -87,6 +88,11 @@ static const ui_app_hooks_t UI_HOOKS = {
     .cal_start = cc_calibration_start,
     .cal_state = cal_state_hook,
     .cal_ack = cc_calibration_ack,
+    .sensor_scan = fw_sensors_scan,
+    .sensor_scan_list = fw_sensors_scan_list,
+    .sensor_pair = fw_sensors_pair,
+    .sensor_forget = fw_sensors_forget,
+    .sensor_saved = fw_sensors_saved,
 };
 
 #if TOUCH_LOG_PRESSES
@@ -311,6 +317,7 @@ static void core_task(void *arg)
             fw_nrf_status_log(when);
             fw_gnss_status_log(when);
             fw_ride_status_log(when);
+            fw_sensors_status_log(when);
             next_status = next_status < 20000 ? 20000 : next_status < 40000 ? 40000 : next_status + 30000;
         }
 #if FS_EMMC_MODE == 1

@@ -437,6 +437,37 @@ Why it matters: these decide how long the unit keeps sending to the nRF when som
 whether a charger plug-in can restart it.
 Answer: Daniel, 17 November 2026: "go with what you think". All of 1 to 4 stay as listed. For 5, the writer is left as it is for now, and is to be fixed with the store work.
 
+### Q42 · bring-up step 6 (BLE sensors) · open
+Question: The spec gives the Add sensor screen ("Scanning, then results", board 10), one sensor of
+each kind, and the 10.7 backoff, but leaves these open:
+1. What the unit shows between PAIR and a working sensor, and when pairing fails.
+2. The order of the result rows.
+3. Whether the backoff delay counts from the start or the end of a failed attempt, and what resets it.
+4. What happens to reconnects while Add sensor is scanning (NimBLE runs one scan or one connect at a
+   time, and refuses the other).
+5. What to do if a sensor asks for link-layer pairing (encryption).
+Options and defaults used (the safest readings):
+1. PAIR returns to Sensors at once and the sensor shows there as "Searching…" while the unit
+   connects. It is written to `config/sensors.a|b` (brief 5.9, `cc_bonds_*`) only once the measurement
+   subscription succeeds. After 3 failed tries (1 s, then 2 s apart) it is dropped, not saved, and the
+   log says so. No new screen or text was added (rule 4).
+2. In the order first heard, not by signal: a row never moves under the rider's finger. The mockup's
+   rows are not sorted by signal either. At most three rows; a device not heard for 10 s leaves.
+   A kind already paired is not offered (one of each; forget to replace, spec 6 screen 9).
+3. From the end of the failed attempt (each attempt waits up to 10 s for the sensor). A successful
+   subscription resets it to 1 s. So a sleeping sensor is tried after 1, 2, 4, 8, 15, then every 30 s,
+   plus the 10 s each try listens.
+4. Reconnects wait while the scan runs, and a connect in flight is cancelled so the scan can start;
+   the cancelled try does not count as a failure. Both the scan and the connect set-up listen for half
+   the time (50 of 100 ms, 30 of 60 ms), so the phone's advertising keeps its slots.
+5. Sensors are not bonded. A passkey request from a sensor is refused (the unit cannot type one) and
+   logged. Not handled: a sensor that bonds with "Just Works" would leave a record in NimBLE's RAM store,
+   which `hal_ble_bonded()` counts, and phone pairing would then be refused until reboot. No standard
+   HR strap or power meter is known to require this; the log line "encryption change" would show it.
+Why it matters: these decide what Daniel sees during the first pairing test; each is one constant or
+a few lines in `fw/main/sensors.c` if riding says otherwise.
+Answer:
+
 ## Document errors
 
 ### E5 · brief 5.6 (finish sequence)

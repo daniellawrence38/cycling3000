@@ -28,6 +28,7 @@ typedef struct {
     uint32_t last_state;
     int cal_t;           /* simulated calibration countdown when hooks are absent */
     uint32_t pair_until; /* simulated 60 s pairing window when hooks are absent */
+    int scan_on;         /* the sensor_scan hook was last called with 1 */
     int dirty;
     int had_input;
     int touch_down;
@@ -225,15 +226,27 @@ static void fill_model(void)
         m->pm_paired = 1;
         m->hr_paired = 1;
     } else {
-        m->pm_paired = v->power_state != CC_SENS_OFF;
-        m->hr_paired = v->hr_state != CC_SENS_OFF;
+        if (U.hooks.sensor_saved) {
+            /* Paired means saved in config/sensors (or being paired now), not "heard from": a sensor
+               that is asleep is still paired and shows as searching. */
+            m->pm_paired = U.hooks.sensor_saved(1, m->pm_name, (int)sizeof m->pm_name, m->pm_id4,
+                                                (int)sizeof m->pm_id4, NULL);
+            m->hr_paired = U.hooks.sensor_saved(2, NULL, 0, m->hr_id4, (int)sizeof m->hr_id4, &m->hr_bars);
+        } else {
+            m->pm_paired = v->power_state != CC_SENS_OFF;
+            m->hr_paired = v->hr_state != CC_SENS_OFF;
+        }
+        if (U.hooks.sensor_scan_list && ui_app_top() == SCR_ADD_SENSOR) {
+            m->n_scan = U.hooks.sensor_scan_list(m->scan, 3); /* the board has room for three rows */
+            if (m->focus >= m->n_scan) m->focus = m->n_scan > 0 ? m->n_scan - 1 : 0;
+        }
         m->pm_live_w = v->power3_ok ? (int)v->power3 : 0;
         m->pm_live_rpm = v->cad_ok ? (int)v->cad : 0;
         m->hr_live = v->hr_ok ? (int)v->hr : 0;
         if (U.hooks.cal_state)
             m->cal = U.hooks.cal_state();
     }
-    if (!m->pm_name[0]) {
+    if (!m->pm_name[0] && !(U.has_hooks && U.hooks.sensor_saved)) { /* the mockups' sensors */
         snprintf(m->pm_name, sizeof m->pm_name, "PM500");
         snprintf(m->pm_id4, sizeof m->pm_id4, "7C2E");
         snprintf(m->hr_id4, sizeof m->hr_id4, "41B9");
@@ -447,17 +460,23 @@ static void activate(void)
         int f = m->focus;
         if (f == 0 && m->pm_paired) push(SCR_POWER_METER);
         else if ((f == 1 || (f == 0 && !m->pm_paired)) && m->hr_paired) push(SCR_HEART_RATE);
-        else { push(SCR_ADD_SENSOR); m->scanning = 1; }
+        else {
+            push(SCR_ADD_SENSOR);
+            m->scanning = 1;
+            if (U.hooks.sensor_scan_list) m->n_scan = 0; /* filled by the scan (ui_app_step starts it) */
+        }
         break;
     }
     case SCR_ADD_SENSOR:
         if (m->focus < m->n_scan) {
-            if (m->scan[m->focus].kind == 1) m->pm_paired = 1; else m->hr_paired = 1;
+            if (U.hooks.sensor_pair) U.hooks.sensor_pair(&m->scan[m->focus]); /* saved once subscribed */
+            else if (m->scan[m->focus].kind == 1) m->pm_paired = 1;
+            else m->hr_paired = 1;
             pop();
         }
         break;
     case SCR_POWER_METER:
-        if (m->focus == 1) { open_confirm(UI_CONFIRM_FORGET_SENSOR); break; }
+        if (m->focus == 1) { m->forget_kind = 1; open_confirm(UI_CONFIRM_FORGET_SENSOR); break; }
         if (m->cal == UI_CAL_IDLE || m->cal == UI_CAL_FAILED) {
             if (U.has_hooks && U.hooks.cal_start) U.hooks.cal_start(U.now);
             else { m->cal = UI_CAL_RUNNING; U.cal_t = 3; }
@@ -468,7 +487,7 @@ static void activate(void)
         }
         break;
     case SCR_HEART_RATE:
-        if (m->focus == 1) open_confirm(UI_CONFIRM_FORGET_SENSOR);
+        if (m->focus == 1) { m->forget_kind = 2; open_confirm(UI_CONFIRM_FORGET_SENSOR); }
         break;
     case SCR_PROFILE:
         if (m->focus < 4) {
@@ -511,10 +530,11 @@ static void activate(void)
                 if (U.has_hooks && U.hooks.erase_bond) U.hooks.erase_bond();
                 m->phone = UI_PHONE_NOT_PAIRED;
                 cc_on_phone(0);
-            } else if (U.depth >= 2 && U.stack[U.depth - 2] == SCR_POWER_METER) {
-                m->pm_paired = 0;
             } else {
-                m->hr_paired = 0;
+                int kind = U.depth >= 2 && U.stack[U.depth - 2] == SCR_POWER_METER ? 1 : 2;
+                if (U.has_hooks && U.hooks.sensor_forget) U.hooks.sensor_forget(kind);
+                if (kind == 1) m->pm_paired = 0;
+                else m->hr_paired = 0;
             }
             pop();
             pop();
@@ -835,6 +855,13 @@ void ui_app_step(uint32_t now_ms)
             U.redraw_owed = 0;
             U.dirty = 1;
         }
+    }
+    /* The sensor scan runs exactly while Add sensor is on top with no ride in progress, however the
+       screen was reached or left (BACK, PAIR, a tap, a reset to Ready). */
+    int want_scan = v->state == CC_RS_READY && ui_app_top() == SCR_ADD_SENSOR;
+    if (U.hooks.sensor_scan && want_scan != U.scan_on) {
+        U.scan_on = want_scan;
+        U.hooks.sensor_scan(want_scan);
     }
     cc_tick(now_ms); /* commands issued by the UI this step show in the view now */
     fill_model();

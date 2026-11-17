@@ -50,7 +50,9 @@ typedef struct { char name[41]; uint32_t secs; int steps; uint8_t id[8]; } ui_wo
    screens show "--" instead of a figure (QUESTIONS Q35). */
 typedef struct { char name[41]; uint32_t dist_m; uint32_t ascent_m; int climbs; int has_profile; uint8_t id[8]; } ui_rt_item_t;
 typedef struct { uint32_t ride_id; uint32_t start_local; uint32_t dist_m, timer_s; int avg_power, has_power; int uploaded; } ui_ride_item_t;
-typedef struct { char name[24]; char id4[8]; int kind; int bars; } ui_scan_item_t;
+/* One Add sensor row. addr and addr_type identify the device to the firmware's sensor manager; the
+   screens show only id4. */
+typedef struct { char name[24]; char id4[8]; int kind; int bars; uint8_t addr[6]; uint8_t addr_type; } ui_scan_item_t;
 
 typedef enum { UI_CONFIRM_DISCARD, UI_CONFIRM_FORGET_SENSOR, UI_CONFIRM_FORGET_PHONE } ui_confirm_kind_t;
 typedef enum { UI_PHONE_CONNECTED, UI_PHONE_PAIRING, UI_PHONE_NOT_PAIRED } ui_phone_state_t;
@@ -79,6 +81,7 @@ typedef struct {
     int pm_paired, hr_paired;
     char pm_name[24], pm_id4[8], hr_id4[8];
     ui_scan_item_t scan[4]; int n_scan; int scanning;
+    int forget_kind;             /* the sensor Confirm "forgetsensor" is about: 2 heart rate, else power */
     ui_cal_state_t cal;
     int pm_live_w, pm_live_rpm;
     int hr_live, hr_bars;
@@ -205,6 +208,15 @@ typedef struct {
     int (*cal_start)(uint32_t now_ms);
     ui_cal_state_t (*cal_state)(void);
     void (*cal_ack)(void);
+    /* Sensors (bring-up step 6). The scan runs while Add sensor is on top and stops when it closes;
+       the list is read at every render. sensor_saved fills the identity of the saved (or pairing)
+       sensor of that kind and returns 1, or returns 0 if there is none; name and bars may be NULL.
+       Without these hooks the screens behave as in the mockups (both sensors paired). */
+    void (*sensor_scan)(int on);
+    int (*sensor_scan_list)(ui_scan_item_t *out, int max);
+    void (*sensor_pair)(const ui_scan_item_t *it);
+    void (*sensor_forget)(int kind);
+    int (*sensor_saved)(int kind, char *name, int name_cap, char *id4, int id4_cap, int *bars);
 } ui_app_hooks_t;
 
 void ui_app_init(hal_fs_t *fs, uint32_t now_ms, const ui_app_hooks_t *hooks);

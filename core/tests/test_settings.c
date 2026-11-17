@@ -142,9 +142,45 @@ static void test_bonds(void)
     }
 }
 
+/* One sensor of each kind: put replaces the same kind, remove forgets it, and the table survives a
+ * save and load with the HR strap's random address type intact. */
+static void test_bonds_one_of_each_kind(void)
+{
+    cc_bonds_t b, r;
+    cc_slots_t sl;
+    memset(&b, 0, sizeof b);
+    cc_bonds_load(fs, &r, &sl);
+    TEST_ASSERT_NULL(cc_bonds_find(&b, 1));
+    cc_bond_t pm = {1, 0, {0x2E, 0x7C, 3, 4, 5, 6}, "PM500"};
+    cc_bond_t pm2 = {1, 0, {0xD1, 0x90, 3, 4, 5, 6}, "PM500"};
+    cc_bond_t hr = {2, 1, {0xB9, 0x41, 7, 6, 5, 0xC4}, ""};
+    memset(hr.name, 'H', sizeof hr.name); /* no terminator: put must cut it to CC_BOND_NAME */
+    TEST_ASSERT_EQUAL_INT(0, cc_bonds_put(&b, &pm));
+    TEST_ASSERT_EQUAL_INT(0, cc_bonds_put(&b, &hr));
+    TEST_ASSERT_EQUAL_UINT8(2, b.count);
+    TEST_ASSERT_EQUAL_INT(0, cc_bonds_put(&b, &pm2)); /* replaces, never a second power meter */
+    TEST_ASSERT_EQUAL_UINT8(2, b.count);
+    TEST_ASSERT_EQUAL_HEX8(0xD1, cc_bonds_find(&b, 1)->addr[0]);
+    TEST_ASSERT_EQUAL_UINT(CC_BOND_NAME, strlen(cc_bonds_find(&b, 2)->name)); /* truncated to fit the file */
+    cc_bond_t bad = {3, 0, {0}, "x"};
+    TEST_ASSERT_EQUAL_INT(-1, cc_bonds_put(&b, &bad));
+    TEST_ASSERT_EQUAL_INT(0, cc_bonds_put(&b, cc_bonds_find(&b, 2))); /* aliasing its own entry */
+    TEST_ASSERT_EQUAL_UINT8(2, b.count);
+    TEST_ASSERT_EQUAL_INT(0, cc_bonds_save(fs, &b, &sl));
+    TEST_ASSERT_EQUAL_INT(1, cc_bonds_load(fs, &r, &sl));
+    TEST_ASSERT_EQUAL_UINT8(1, cc_bonds_find(&r, 2)->addr_type);
+    TEST_ASSERT_EQUAL_HEX8(0xC4, cc_bonds_find(&r, 2)->addr[5]);
+    TEST_ASSERT_EQUAL_INT(1, cc_bonds_remove(&r, 1));
+    TEST_ASSERT_EQUAL_INT(0, cc_bonds_remove(&r, 1));
+    TEST_ASSERT_EQUAL_UINT8(1, r.count);
+    TEST_ASSERT_NULL(cc_bonds_find(&r, 1));
+    TEST_ASSERT_NOT_NULL(cc_bonds_find(&r, 2));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_bonds_one_of_each_kind);
     RUN_TEST(test_defaults_when_empty);
     RUN_TEST(test_alternates_and_newest_wins);
     RUN_TEST(test_seq_wraps);
