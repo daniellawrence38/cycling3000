@@ -584,9 +584,36 @@ static int take_frame(const uint8_t *acc, size_t len, int keep)
     return used;
 }
 
-/* Listens at one baud rate for ms. Returns how many valid frames arrived. */
-static uint32_t listen_at(uint32_t baud, uint32_t ms, int keep)
+/* The rate the port is set to now; 0 before the first set_baud() or after one failed. */
+static uint32_t port_baud;
+
+/* Sets the port to baud, and does nothing if it is already there.
+ *
+ * WHY ONCE PER RATE. uart_param_config is not a cheap "set the divider". In ESP-IDF v5.5.6
+ * (components/esp_driver_uart/src/uart.c, uart_param_config) it runs, among other things:
+ *
+ *     uart_hal_init(&(uart_context[uart_num].hal), uart_num);
+ *     ...
+ *     success = uart_hal_set_baudrate(&(uart_context[uart_num].hal), uart_config->baud_rate, sclk_freq);
+ *     ...
+ *     UART_EXIT_CRITICAL(&(uart_context[uart_num].spinlock));
+ *     uart_hal_rxfifo_rst(&(uart_context[uart_num].hal));
+ *     uart_hal_txfifo_rst(&(uart_context[uart_num].hal));
+ *
+ * So every call re-initialises the port and empties both hardware FIFOs. Bytes the driver has already
+ * moved into the TX FIFO are thrown away: a command frame written just before (the power-on frame and
+ * the GNSS frame at boot, a wake retry, a GNSS frame from the core task) can go out cut short, which
+ * the nRF's CRC check then rejects. Received bytes in the RX FIFO are lost as well. The listener used
+ * to call it at the start of every listen window, every 30 s for as long as the unit was on.
+ *
+ * Now it runs only when the rate actually changes, which is during the search; once the rate is
+ * locked the port is never reconfigured again. Before changing rate it waits for anything
+ * still being sent to finish, so a frame queued at the old rate is not truncated. */
+static int set_baud(uint32_t baud)
 {
+    if (baud == port_baud)
+        return 0;
+    uart_wait_tx_done(UART_NRF_PORT, pdMS_TO_TICKS(50));
     uart_config_t cfg = {
         .baud_rate = (int)baud,
         .data_bits = UART_DATA_8_BITS,
@@ -595,9 +622,21 @@ static uint32_t listen_at(uint32_t baud, uint32_t ms, int keep)
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_DEFAULT,
     };
-    if (uart_param_config(UART_NRF_PORT, &cfg) != ESP_OK)
-        return 0;
+    if (uart_param_config(UART_NRF_PORT, &cfg) != ESP_OK) {
+        port_baud = 0; /* unknown state: the next call tries again */
+        return -1;
+    }
+    port_baud = baud;
+    /* Whatever is in the ring was received at the old rate and is noise at the new one. */
     uart_flush_input(UART_NRF_PORT);
+    return 0;
+}
+
+/* Listens at one baud rate for ms. Returns how many valid frames arrived. */
+static uint32_t listen_at(uint32_t baud, uint32_t ms, int keep)
+{
+    if (set_baud(baud) != 0)
+        return 0;
 
     uint32_t before = frame_count;
     static uint8_t acc[ACC_MAX]; /* static: this task has a modest stack */
@@ -662,15 +701,9 @@ static void nrf_task(void *arg)
         vTaskDelete(NULL);
         return;
     }
-    uart_config_t boot = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT,
-    };
-    uart_param_config(UART_NRF_PORT, &boot);
+    /* 115200 before anything is sent: it is the first candidate, so the search's first listen_at
+       finds the port already there and does not reset the FIFO under the frames sent just below. */
+    set_baud(115200);
     /* TX is GPIO 42; sends SendPowerOnCmd, GNSS power on/off/reset, and SendPowerOffCmd (Q38). */
     if (uart_set_pin(UART_NRF_PORT, PIN_UART_NRF_TX, PIN_UART_NRF_RX, UART_PIN_NO_CHANGE,
                      UART_PIN_NO_CHANGE) != ESP_OK) {
