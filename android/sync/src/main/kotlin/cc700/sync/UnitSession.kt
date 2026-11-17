@@ -120,6 +120,24 @@ class UnitSession(
     private var client: LinkClient? = null
     private val lock = Any()
 
+    /**
+     * Spec 10.5: the app reconnects by itself. Set by a pairing or a Connect (the user wants the link),
+     * cleared by Disconnect and Forget. The app's idle loop calls [reconnectIfDue] while not connected.
+     */
+    @Volatile var autoReconnect = false
+        private set
+    private var lastAttemptMs = Long.MIN_VALUE
+
+    /** Tries [connect] at most once every [everyMs] while [autoReconnect] holds and a unit is paired.
+     * Returns true if it tried. */
+    fun reconnectIfDue(nowMs: Long, everyMs: Long = 20_000): Boolean {
+        if (!autoReconnect || connected || pairing.load() == null) return false
+        if (lastAttemptMs != Long.MIN_VALUE && nowMs - lastAttemptMs < everyMs) return false
+        lastAttemptMs = nowMs
+        connect()
+        return true
+    }
+
     fun scan(): List<FoundUnit> = connector.scan()
 
     /** First pairing (protocol 5): connect, bond with the passkey, HELLO, store the unit, then the mirror. */
@@ -131,6 +149,7 @@ class UnitSession(
                 val t = connector.pair(unit, passkey)
                 open(t)
                 pairing.save(PairedUnit(unit.name, unit.address))
+                autoReconnect = true
                 mirror(PairedUnit(unit.name, unit.address))
             } catch (e: Exception) {
                 drop(null)
@@ -147,6 +166,7 @@ class UnitSession(
     fun connect(): UnitStatus {
         synchronized(lock) {
             val u = pairing.load() ?: return _status.value
+            autoReconnect = true
             if (client != null) return _status.value
             _status.value = _status.value.copy(state = LinkState.CONNECTING, unit = u, error = null)
             try {
@@ -161,10 +181,11 @@ class UnitSession(
         return _status.value
     }
 
-    fun disconnect() = synchronized(lock) { drop(null) }
+    fun disconnect() = synchronized(lock) { autoReconnect = false; drop(null) }
 
     /** Forget unit: removes the phone's bond and the stored unit. */
     fun forget() = synchronized(lock) {
+        autoReconnect = false
         val u = pairing.load()
         drop(null)
         if (u != null) connector.forget(u.address)

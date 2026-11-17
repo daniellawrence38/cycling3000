@@ -467,6 +467,77 @@ Options and defaults used (the safest readings):
 Why it matters: these decide what Daniel sees during the first pairing test; each is one constant or
 a few lines in `fw/main/sensors.c` if riding says otherwise.
 Answer:
+Update (phone-link branch): point 5's "not handled" case is closed. `hal_ble_bonded()` now counts only
+authenticated (passkey) bonds, which a Just Works sensor never is, and phone pairing no longer depends
+on that count at all (Q44). A sensor's record is also never written to the eMMC (Q43).
+
+### Q43 · phone link · open
+Question: Where do the phone's bond keys live across reboots? NimBLE keeps bonds in NVS, which the
+firmware never initialises because the partition belongs to the stock firmware (Q29), so until now the
+phone was forgotten at every reboot and had to pair again.
+Options: (a) keep bonds in RAM only (re-pair after every power-off); (b) initialise NVS after all;
+(c) mirror the phone's bond to a file under `CC700/config/` on the eMMC.
+Default used: (c), as Q29 already foresaw. NimBLE's RAM store stays the live store; its write and
+delete callbacks are wrapped (`fw/main/link_gatt.c`) and the core task writes a snapshot to
+`CC700/config/phone.a` and `phone.b`: two alternating slots with a sequence number and CRC-32, fsynced,
+never renamed (protocol 7, brief 5.9), so a power cut leaves the previous record loadable. At boot the
+file is loaded into the RAM store before the NimBLE host starts. What is stored is the minimum that
+reconnection needs: for the one authenticated phone, its and our security records (LTK, EDIV/Rand,
+the phone's IRK for its private address, key size, flags), its CCC descriptor state, and the unit's
+own IRK. Nothing else: no sensor record (a Just Works bond is never authenticated, Q42 point 5), no
+name. The keys are never logged; the log names the slot, the sequence number, the count and the last
+two bytes of the phone's address. Forget phone on the unit deletes both files, so no key is left on
+the eMMC. The record format is `fw/main/phone_bond.c` (magic `PB`, version 1), tested on the host by
+`core/tests/test_fw_phone_bond.c` (round trip, every flipped byte and truncation refused, a power cut
+mid-write, erase).
+What this means: anyone who copies the eMMC's `CC700/config/phone.*` could decrypt a capture of that
+phone's link with the unit, or impersonate the phone to the unit. That is the same exposure the stock
+firmware's NVS bond store has (flash is not encrypted on this unit), and the link carries workouts,
+routes and rides, not credentials (the Intervals.icu key never leaves the phone).
+Answer:
+
+### Q44 · phone link · open
+Question: Protocol 2.2 accepts a new pairing "only during a 60 s pairing window ... and only when no bond
+exists". On the unit, Forget phone is reachable only from the Phone screen's connected state (spec
+screen 23, kebab), and a bonded phone that is away shows the "notpaired" state with PAIR (there is no
+"paired, not connected" state). So a lost or replaced phone could never be forgotten, and the unit
+could never pair again.
+Options: (a) as written: refuse while a bond exists, and add a way to forget a phone that is not
+connected (a new screen state, which rule 4 does not allow); (b) inside the window, accept the pairing
+even if a bond exists, and delete the older phone's bond only once the new pairing has completed.
+Default used: (b). There is still one bond; a new one needs the rider at the unit (Menu, Phone, PAIR)
+and the passkey; and cancelling the window or a failed pairing leaves the old phone's bond untouched.
+The window closes as soon as a pairing completes, so a second phone cannot use the rest of it. Outside
+the window every pairing request is refused, as written. Log line: `pairing: bonded with ..:xx:xx ...
+the older phone's bond was replaced`.
+Answer:
+
+### Q45 · phone link · open
+Question: Smaller choices the protocol leaves open on a real link.
+1. A central that connects and never encrypts holds the unit's one peripheral link, and the unit stops
+   advertising while connected (protocol 2.3), so the real phone cannot get in.
+2. Protocol 2.4 says the unit "prefers" 100 to 200 ms with latency 4 while idle and that the phone uses
+   the shortest interval during a transfer, but not who asks or when.
+3. On reconnection the phone may send HELLO before the unit has finished encrypting the link; RX needs
+   an encrypted link and Write Without Response has no error reply, so the HELLO is lost silently and
+   the 3 s timeout reports a failure.
+4. Spec 10.5 says the app reconnects by itself, but not how often.
+5. Protocol 1 asks for a NimBLE connection limit of at least 4; `fw/sdkconfig.defaults` has 3 (one
+   phone and two sensors), which the sensors work has now run with on the unit.
+Defaults used:
+1. A connection that has not encrypted with a passkey bond 60 s after connecting is dropped (and
+   logged), so advertising resumes. 60 s covers a first pairing typed slowly inside the window.
+2. The unit asks for 100 to 200 ms, latency 4, supervision 6 s once the link has carried no request
+   for 10 s; the app asks Android for high priority before its first write after 5 s of quiet.
+3. The app waits up to 5 s for the unit's first notification (the unit sends EVENT_STATE as soon as
+   the link is encrypted and subscribed) before HELLO, and goes ahead without it, since events are a
+   convenience (protocol 4).
+4. Every 20 s while a unit is paired, the user last chose Connect or Add unit, the app is running, and
+   Bluetooth is on with permission. Disconnect and Forget unit stop it.
+5. Kept at 3 (no change), because the steady state is one phone and two sensors and each connection
+   costs internal RAM; the unit does not advertise while the phone is connected, so a fourth slot would
+   only serve a stray central. Raise it if a log ever shows a connection refused for want of a slot.
+Answer:
 
 ## Document errors
 

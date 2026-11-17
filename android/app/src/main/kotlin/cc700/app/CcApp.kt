@@ -1,7 +1,11 @@
 package cc700.app
 
+import android.Manifest
 import android.app.Application
+import android.bluetooth.BluetoothManager
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import cc700.app.ble.BleConnector
 import cc700.app.data.AppDb
 import cc700.app.data.ConnectionMode
@@ -74,6 +78,15 @@ class Graph(private val ctx: Context) {
 
     val session = UnitSession(connector, settings)
 
+    /** Simulated mode always; Bluetooth only with the permission granted and the adapter on. */
+    private fun mayConnect(): Boolean {
+        if (settings.settings.value.mode == ConnectionMode.SIMULATED) return true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            ctx.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) return false
+        val bt = ctx.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        return bt?.adapter?.isEnabled == true
+    }
+
     val rides = RideSync(session, RoomRideStore(db.rides()), FileBlobStore(File(ctx.filesDir, "rides"))) {
         keys.get()?.let { k -> IntervalsClient(http, { k }, settings.settings.value.intervalsBase.toHttpUrl()) }
     }
@@ -83,7 +96,11 @@ class Graph(private val ctx: Context) {
         // screens' requests on the same thread wait at most 300 ms.
         scope.launch {
             while (true) {
-                if (!session.idle(300)) delay(1000)
+                if (!session.idle(300)) {
+                    // Spec 10.5: back in range, the app reconnects by itself (every 20 s at most).
+                    if (mayConnect()) session.reconnectIfDue(System.currentTimeMillis())
+                    delay(1000)
+                }
                 yield()
             }
         }
