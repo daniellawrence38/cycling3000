@@ -822,3 +822,19 @@ warnings.
   acting on it. It does not prove it.
 - **Clock.** The nRF's clock reads 2023-06-01 (`CLOCK 2023-06-01 23:51:29`). It has not been set,
   so the GNSS time is needed before ride timestamps can be trusted.
+
+## 17 November 2026 · Storage live: the eMMC is mounted read-write
+
+`outputs/storage-1.txt`, firmware `21f19a1` (`FS_EMMC_MODE 2`). The backup was verified first
+(see above).
+
+- The log reads `fs: mounted eMMC at /sdcard (root /sdcard/CC700): 7280 MB total, 6993 MB free`,
+  then `core started (recovered 0)`, with no storage errors.
+- Daniel confirms:
+  - the STORAGE ERROR banner is gone;
+  - a brightness change survived a power-off and power-on, so settings are written to and read
+    back from `/sdcard/CC700`.
+- Still to test on the unit:
+  - a recorded ride saved as `.fit` and recovered after a power cut;
+  - workouts and routes received over the link;
+  - the stock firmware still booting with a `CC700` folder present on the volume.
