@@ -41,7 +41,9 @@ extern "C" {
 typedef enum {
     SCR_MAIN, SCR_WORKOUT, SCR_CLIMB, SCR_NAV, SCR_WORKOUTS, SCR_WORKOUT_DETAIL, SCR_READY, SCR_MENU, SCR_SENSORS,
     SCR_ADD_SENSOR, SCR_POWER_METER, SCR_PROFILE, SCR_ROUTES, SCR_ROUTE_DETAIL, SCR_HISTORY, SCR_SUMMARY, SCR_PAUSED,
-    SCR_PAUSE_MENU, SCR_CONFIRM, SCR_ALERTS, SCR_EMPTY, SCR_HEART_RATE, SCR_PHONE, SCR_SETTINGS, SCR_COUNT
+    SCR_PAUSE_MENU, SCR_CONFIRM, SCR_ALERTS, SCR_EMPTY, SCR_HEART_RATE, SCR_PHONE, SCR_SETTINGS,
+    SCR_HR_GRAPH, /* not a mockup board: the heart-rate graph Daniel asked for (QUESTIONS) */
+    SCR_COUNT
 } ui_screen_id_t;
 
 typedef struct { char name[41]; uint32_t secs; int steps; uint8_t id[8]; } ui_wo_item_t;
@@ -195,6 +197,10 @@ void scr_empty(lv_obj_t *r, const ui_model_t *m);
 void scr_heart_rate(lv_obj_t *r, const ui_model_t *m);
 void scr_phone(lv_obj_t *r, const ui_model_t *m);
 void scr_settings(lv_obj_t *r, const ui_model_t *m);
+void scr_hr_graph(lv_obj_t *r, const ui_model_t *m); /* heart rate, last 5 min (screens_hrgraph.c) */
+
+/* 1 if (x, y) is on Main's HEART RATE field, the tap that opens the heart-rate graph. */
+int ui_hr_field_hit(int x, int y);
 
 /* The ride-page overlays (banner, hold bar), drawn above any ride page. */
 void ui_overlays(lv_obj_t *r, const ui_model_t *m);

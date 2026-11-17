@@ -38,6 +38,13 @@ int cc_hrhist_at(const cc_hrhist_t *h, int age_s);
 /* Min, max and mean of the readings in the window. Returns n_valid. */
 int cc_hrhist_stats(const cc_hrhist_t *h, cc_hrhist_stats_t *st);
 
+/* The graph's y axis for readings min..max (bpm, min <= max): lo and hi on whole tens with the
+   readings strictly inside (a flat line never sits on the frame), at least CC_HRHIST_MIN_SPAN wide
+   (widened upwards first, never below 0), and a grid step of 10, 20, 40 or 50 bpm giving at most
+   six grid lines (five up to a 160 bpm span). */
+#define CC_HRHIST_MIN_SPAN 40
+void cc_hrhist_axis(int min, int max, int *lo, int *hi, int *step);
+
 #ifdef __cplusplus
 }
 #endif

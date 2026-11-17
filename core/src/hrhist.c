@@ -43,3 +43,21 @@ int cc_hrhist_stats(const cc_hrhist_t *h, cc_hrhist_stats_t *st)
         st->avg = (int)cc_bin_mean(sum, st->n_valid);
     return st->n_valid;
 }
+
+void cc_hrhist_axis(int min, int max, int *lo, int *hi, int *step)
+{
+    if (min < 1) min = 1;
+    if (max < min) max = min;
+    int l = ((min - 1) / 10) * 10;  /* the ten below min (min itself if it is not a ten) */
+    int h = (max / 10 + 1) * 10;    /* the ten above max */
+    int up = 1;
+    while (h - l < CC_HRHIST_MIN_SPAN) {
+        if (up || l < 10) h += 10;
+        else l -= 10;
+        up = !up;
+    }
+    int span = h - l;
+    *lo = l;
+    *hi = h;
+    *step = span <= 40 ? 10 : span <= 80 ? 20 : span <= 160 ? 40 : 50;
+}

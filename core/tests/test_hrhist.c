@@ -114,6 +114,36 @@ static void test_all_gaps(void)
     for (int a = 0; a < CC_HRHIST_N; a++) TEST_ASSERT_EQUAL_INT(-1, cc_hrhist_at(&h, a));
 }
 
+static void test_axis(void)
+{
+    /* {min, max, lo, hi, step} */
+    static const int c[][5] = {
+        {120, 125, 100, 140, 10}, /* 110..130 widened to 40: up first, then down */
+        {120, 120, 100, 140, 10}, /* a flat line on a ten is still strictly inside */
+        {121, 159, 120, 160, 10}, /* already 40 wide */
+        {118, 164, 110, 170, 20}, /* 60 */
+        {95, 181, 90, 190, 40},   /* 100 */
+        {60, 200, 50, 210, 40},   /* 160 */
+        {40, 230, 30, 240, 50},   /* 210 */
+        {1, 254, 0, 260, 50},     /* the widest */
+        {3, 5, 0, 40, 10},        /* never below 0: widened upwards */
+        {15, 15, 0, 40, 10},
+    };
+    for (unsigned i = 0; i < sizeof c / sizeof c[0]; i++) {
+        int lo, hi, step;
+        cc_hrhist_axis(c[i][0], c[i][1], &lo, &hi, &step);
+        TEST_ASSERT_EQUAL_INT_MESSAGE(c[i][2], lo, "lo");
+        TEST_ASSERT_EQUAL_INT_MESSAGE(c[i][3], hi, "hi");
+        TEST_ASSERT_EQUAL_INT_MESSAGE(c[i][4], step, "step");
+        TEST_ASSERT_TRUE(lo < c[i][0] && hi > c[i][1]);
+        TEST_ASSERT_TRUE(hi - lo >= CC_HRHIST_MIN_SPAN);
+        TEST_ASSERT_TRUE(lo % 10 == 0 && hi % 10 == 0);
+        int lines = 0;
+        for (int y = lo; y <= hi; y++) if (y % step == 0) lines++;
+        TEST_ASSERT_TRUE(lines >= 2 && lines <= 6);
+    }
+}
+
 /* ------------------------------------------------------------------ in the core */
 static void tick_to(uint32_t t)
 {
@@ -223,6 +253,7 @@ int main(void)
     RUN_TEST(test_clamp);
     RUN_TEST(test_wrap_around);
     RUN_TEST(test_all_gaps);
+    RUN_TEST(test_axis);
     RUN_TEST(test_core_records_ride);
     RUN_TEST(test_core_window_slides);
     return UNITY_END();

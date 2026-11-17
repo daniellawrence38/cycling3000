@@ -276,6 +276,53 @@ static void f_ph_pair(ui_model_t *m) { f_list(m); m->phone = UI_PHONE_PAIRING; m
 static void f_ph_none(ui_model_t *m) { f_list(m); m->phone = UI_PHONE_NOT_PAIRED; m->v.phone_connected = 0; }
 static void f_settings(ui_model_t *m) { f_list(m); }
 
+/* ------------------------------------------------------------------ heart-rate graph (not a board) */
+/* A threshold interval and its recovery, at second s of the last 5 min (0 oldest): integers only, so
+   every run draws the same picture. */
+static int hrg_demo_bpm(int s)
+{
+    int v;
+    if (s < 60) v = 128 + s / 6;                         /* end of a recovery, drifting up */
+    else if (s < 200) v = 138 + (s - 60) * 20 / 140;     /* on the interval: 138 to 158 */
+    else if (s < 250) v = 158 - (s - 200) * 26 / 50;     /* easy: back down to 132 */
+    else v = 132 + (s - 250) * 20 / 50;                  /* the next interval starting */
+    return v + (s * 7) % 5 - 2;                          /* beat-to-beat wobble */
+}
+
+static void hrg_fill(ui_model_t *m, int secs, int gap_a, int gap_b, int gap_c, int gap_d)
+{
+    cc_hrhist_reset(&m->v.hr_hist);
+    for (int s = CC_HRHIST_N - secs; s < CC_HRHIST_N; s++) {
+        int gap = (s >= gap_a && s < gap_b) || (s >= gap_c && s < gap_d);
+        cc_hrhist_push(&m->v.hr_hist, !gap, hrg_demo_bpm(s));
+    }
+    int now = cc_hrhist_at(&m->v.hr_hist, 0);
+    m->v.hr_ok = now > 0;
+    m->v.hr = now > 0 ? now : 0;
+}
+
+static void f_hrg_data(ui_model_t *m) { ui_model_demo(m); hrg_fill(m, CC_HRHIST_N, 0, 0, 0, 0); }
+/* The ride began 3:40 ago, and the strap dropped out twice (20 s and 6 s) */
+static void f_hrg_gaps(ui_model_t *m) { ui_model_demo(m); hrg_fill(m, 220, 150, 170, 231, 237); }
+/* The strap went quiet 30 s ago: the line stops and the reading is "--" */
+static void f_hrg_lost(ui_model_t *m)
+{
+    ui_model_demo(m);
+    hrg_fill(m, CC_HRHIST_N, CC_HRHIST_N - 30, CC_HRHIST_N, 0, 0);
+    m->v.hr_state = CC_SENS_LOST;
+}
+/* No strap paired: nothing recorded */
+static void f_hrg_empty(ui_model_t *m)
+{
+    ui_model_demo(m);
+    cc_hrhist_reset(&m->v.hr_hist);
+    for (int i = 0; i < 95; i++) cc_hrhist_push(&m->v.hr_hist, 0, 0);
+    m->v.hr_ok = 0;
+    m->v.hr = 0;
+    m->v.hr_state = CC_SENS_OFF;
+    m->hr_paired = 0;
+}
+
 const ui_scenario_t ui_scenarios[] = {
     {"Main", "only", SCR_MAIN, f_main},
     {"Workout", "inrange", SCR_WORKOUT, f_wo_in},
@@ -325,5 +372,9 @@ const ui_scenario_t ui_scenarios[] = {
     {"Phone", "pairing", SCR_PHONE, f_ph_pair},
     {"Phone", "notpaired", SCR_PHONE, f_ph_none},
     {"Settings", "only", SCR_SETTINGS, f_settings},
+    {"HrGraph", "data", SCR_HR_GRAPH, f_hrg_data},
+    {"HrGraph", "gaps", SCR_HR_GRAPH, f_hrg_gaps},
+    {"HrGraph", "lost", SCR_HR_GRAPH, f_hrg_lost},
+    {"HrGraph", "empty", SCR_HR_GRAPH, f_hrg_empty},
 };
 const int ui_n_scenarios = (int)(sizeof ui_scenarios / sizeof ui_scenarios[0]);
