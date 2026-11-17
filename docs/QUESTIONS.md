@@ -334,6 +334,31 @@ confirmed on the unit, and `fw_nrf_build_power_off` builds the exact 16-byte `Se
 (kind 2, id 16, payload `e2 02 00 00 00 00 00 00`, CRC-16/XMODEM `0x418F` little-endian `8f 41`) for
 `hal_power_off()`. Nothing else is transmitted on the nRF link.
 
+**Correction and amendment, 17 November 2026.** Two things in the answer above did not hold.
+
+The CRC quoted is wrong. The power-off frame is `a5 0c 6f f1 02 10 e2 02 00 00 00 00 00 00 f8 1a`
+(CRC `0x1AF8`), computed independently with Python's CRC-16/XMODEM and equal to what the builder
+produces, which is the frame that switched the unit off on hardware. `8f 41` was never what was sent.
+
+"Nothing else is transmitted" stopped being true in `c57ba48`, which also sends power-on at boot with
+timed retries and three GNSS power frames, without this question being reopened (found by the
+independent review; see `docs/PROGRESS.md`). The vendor's own behaviour has since been read out of
+the stock firmware (`docs/RE-FINDINGS-2.md`), and **Daniel approved the following on 17 November
+2026**, on the recommendation that the firmware should send what the nRF was designed to receive:
+
+| Frame | Decision |
+| --- | --- |
+| `SendPowerOffCmd`, repeated until power drops, after open files are closed | **Approved.** The vendor repeats it about every 1.5 s and closes files first. |
+| `SendPowerOnCmd`, repeated until the nRF confirms with its power event | **Approved.** The vendor repeats it about every 100 ms. |
+| `SendQuerySlaveModeCmd` (kind 2, id 1) before power-on, until answered | **Approved.** The vendor does this first; the reply says the nRF is in its application. |
+| GNSS reset (`e2 02 07 00 00 02 …`) after about 5 s with no bytes from the receiver | **Approved.** The vendor's watchdog does this. |
+| GNSS power-on (`e2 02 07 00 00 01 …`) at boot | **Kept for now, to be tested.** The vendor does not send it at boot. It was added to fix "no GPS" and no capture shows whether it is needed. |
+| The four `$PAIR` set-up commands to the GNSS receiver itself, on GPIO 1 | **Not approved yet.** A transmit to a different chip; first capture what the receiver sends unprompted. |
+
+Anything not in this table is not to be transmitted without asking again. In particular, if the
+slave-mode reply says the nRF is in its bootloader, the vendor starts an nRF firmware upgrade; ours
+must do nothing of the kind, only log it.
+
 ### Q37 · bring-up · open
 Question: `fw/main/hal_touch_esp.c` reproduces the vendor's CST3240 sequence byte for byte, but
 differs from it in two places. The vendor passes `-1` as the I2C timeout, i.e. wait forever; and it
