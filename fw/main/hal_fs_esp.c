@@ -35,6 +35,7 @@ static const char *TAG = "fs";
 #define CC700_ROOT "/sdcard/CC700"
 
 static int mounted;
+int fw_fs_sdmmc_mounted(void) { return mounted; }
 static sdmmc_card_t *card;
 
 static int sd_full(const char *rel, char *out, size_t cap)

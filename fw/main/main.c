@@ -128,6 +128,20 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 #endif
 }
 
+/* One line on the ride for the periodic status log: what an outdoor test needs to be read back. */
+void fw_ride_status_log(const char *when)
+{
+    static const char *const STATE[] = {"ready", "recording", "paused", "pause menu", "confirm discard", "saving", "summary"};
+    const cc_view_t *v = cc_view();
+    unsigned st = (unsigned)v->state;
+    ESP_LOGW(TAG,
+             "status %s: ride %s, timer %" PRIu32 " s, %" PRIu32 " m, speed %s%" PRIu32 " mm/s, gps fix %d, "
+             "alt %s%" PRId32 " m, ascent %" PRIu32 " m, storage error %d, utc %" PRIu32,
+             when, st < sizeof STATE / sizeof STATE[0] ? STATE[st] : "?", v->timer_s, v->dist_m,
+             v->speed_ok ? "" : "(none) ", v->speed_mms, v->gps_fix, v->alt_ok ? "" : "(none) ", v->alt_m,
+             v->ascent_m, v->storage_error, hal_clock_utc_seconds());
+}
+
 static void apply_backlight(void)
 {
     int pct = 100;
@@ -204,6 +218,8 @@ static void core_task(void *arg)
     uint32_t now = hal_clock_monotonic_ms();
 #if FS_EMMC_MODE == 2
     struct hal_fs *fs = fw_fs_sdmmc();
+    if (fw_fs_sdmmc_mounted())
+        fw_log_file_open();
 #else
     struct hal_fs *fs = fw_fs_null();
     ESP_LOGW(TAG, "storage is the null stub (FS_EMMC_MODE %d): nothing is saved, and the STORAGE ERROR "
@@ -294,7 +310,8 @@ static void core_task(void *arg)
             snprintf(when, sizeof when, "%" PRIu32 " s", now / 1000u);
             fw_nrf_status_log(when);
             fw_gnss_status_log(when);
-            next_status = next_status < 20000 ? 20000 : next_status < 40000 ? 40000 : next_status + 60000;
+            fw_ride_status_log(when);
+            next_status = next_status < 20000 ? 20000 : next_status < 40000 ? 40000 : next_status + 30000;
         }
 #if FS_EMMC_MODE == 1
         /* The read-only eMMC probe, at 10 s and again at 40 s after boot, not at boot. The first
@@ -320,6 +337,11 @@ static void core_task(void *arg)
             if (bat >= 0)
                 cc_on_battery(bat, hal_power_charging());
             cc_tick(now);
+            static uint8_t log_div;
+            if (++log_div >= 10) {
+                log_div = 0;
+                fw_log_file_tick(now);
+            }
             ui_app_step(now);
             cc_link_tick(&link_srv, now);
             const cc_view_t *v = cc_view();
@@ -340,6 +362,7 @@ static void core_task(void *arg)
                    that stays open between calls: abort it. Nothing else opens files outside this
                    task, and this task is parked inside hal_power_off from here on. */
                 cc_link_abort(&link_srv);
+                fw_log_file_close();
                 int rc = hal_power_off();
                 if (rc == HAL_POWER_OFF_SENT) {
                     /* Written, and the power is expected to drop: never send it twice. */
@@ -391,13 +414,17 @@ static void core_task(void *arg)
 void app_main(void)
 {
     ESP_LOGI(TAG, "CC700 firmware starting");
-    if (FS_EMMC_MODE == 3) {
+    if (FS_EMMC_MODE == 3 || FS_EMMC_MODE == 4) {
         /* The eMMC read-out and nothing else: no display, UI, Bluetooth or nRF listener
-           (emmc_dump_esp.c says why). */
-        ESP_LOGW(TAG, "FS_EMMC_MODE 3: eMMC read-out only. The screen stays dark; run tools/emmc_dump.py");
-        xTaskCreatePinnedToCore(fw_emmc_dump_task, "dump", 8192, NULL, 5, NULL, 1);
+           (emmc_dump_esp.c says why). Mode 4 sends the /CC700 folder only. */
+        static const char only_cc700 = 1;
+        ESP_LOGW(TAG, "FS_EMMC_MODE %d: eMMC read-out only. The screen stays dark; run tools/emmc_dump.py",
+                 FS_EMMC_MODE);
+        xTaskCreatePinnedToCore(fw_emmc_dump_task, "dump", 8192,
+                                FS_EMMC_MODE == 4 ? (void *)&only_cc700 : NULL, 5, NULL, 1);
         return;
     }
+    fw_log_file_init();
     fw_sensors_start();
     /* Core 1 for the core task; NimBLE's host runs on core 0 by default. 16 KB stack: the model is
      * static, LVGL's layout recursion is the deepest user. */

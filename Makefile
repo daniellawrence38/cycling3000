@@ -11,7 +11,7 @@ PYTHON  ?= python3
 JOBS    ?= $(shell nproc 2>/dev/null || echo 4)
 BUILD   := build
 
-.PHONY: all deps test test-c test-c-plain test-c-asan test-py vectors sim shots android fw-build fw-check clean
+.PHONY: all deps test test-c test-c-plain test-c-asan test-py vectors sim shots android fw-build fw-export fw-check clean
 
 all: test
 
@@ -71,6 +71,13 @@ fw-check:
 
 fw-build:
 	PYTHON="$(PYTHON)" sh tools/fw_build.sh
+
+# The /CC700 read-out (FS_EMMC_MODE 4), for copying rides and logs to the PC. Never flashes anything.
+fw-export:
+	idf.py -C fw -B build/fw-export -DCC700_FS_EMMC_MODE=4 app 2>&1 | tee build/fw-export.log
+	! grep -n "warning:" build/fw-export.log
+	cp build/fw-export/cc700.bin build/fw-export/app.bin
+	@echo "fw-export: build/fw-export/app.bin built (FS_EMMC_MODE 4). Nothing was flashed."
 
 clean:
 	rm -rf $(BUILD) tools/reference/cc700-test-vectors.md

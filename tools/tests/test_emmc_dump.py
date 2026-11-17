@@ -202,3 +202,43 @@ def test_a_lost_record_and_a_differing_record_are_both_caught(tmp_path):
             col.feed(line)
     assert not col.complete()[0]
     col.finish()
+
+
+def subset_stream(vol, cycle):
+    """What a FS_EMMC_MODE 4 pass sends for the folder /FITS: the reserved sectors, the root directory,
+    the folder and its file, and the first FAT's sector 0. NOTE.TXT and the second FAT are not sent."""
+    out = [b"#CC7 H cycle=%d subset=CC700 card=TEST card_sectors=20000 volume_sectors=2440 reserved=%d "
+           b"fats=2 fat_sectors=%d spc=%d data_first=%d clusters=%d root=2\n"
+           % (cycle, vol.RESERVED, vol.FAT_SECTORS, vol.SPC, vol.data_first, vol.CLUSTERS)]
+    recs = []
+    for s in range(0, vol.RESERVED, 8):
+        recs.append((s, b"".join(vol.sectors[s + i] for i in range(8))))
+    for cl in (2, 3, 4, 5):
+        first = vol.data_first + (cl - 2) * vol.SPC
+        recs.append((first, b"".join(vol.sectors[first + i] for i in range(8))))
+    recs.append((vol.RESERVED, vol.sectors[vol.RESERVED]))
+    x = 0
+    for lba, data in recs:
+        out.append(record(lba, data))
+        x ^= emmc_dump.record_crc(lba, data)
+    out.append(b"#CC7 E cycle=%d records=%d sectors=%d used_clusters=4 xor=%08x read_errors=0 dropped_lines=0\n"
+               % (cycle, len(recs), sum(len(d) // 512 for _, d in recs), x))
+    return out
+
+
+def test_a_folder_only_read_out_is_listed_and_extracted_with_under(tmp_path):
+    vol = Volume()
+    col = emmc_dump.Collector(str(tmp_path / "b"))
+    for cycle in (1, 2):
+        for line in subset_stream(vol, cycle):
+            col.feed(line)
+    assert col.complete() == (True, "complete")
+    col.finish()
+    assert emmc_dump.main(["list", str(tmp_path / "b"), "--under", "/fits"]) == 0
+    assert emmc_dump.main(["extract", str(tmp_path / "b"), "--under", "/FITS", "--to", str(tmp_path / "x")]) == 0
+    assert (tmp_path / "x" / "FITS" / "ride one é.fit").read_bytes() == vol.ride
+    assert not (tmp_path / "x" / "NOTE.TXT").exists()
+    # The whole volume cannot be listed from it: NOTE.TXT's data was never sent.
+    assert emmc_dump.main(["list", str(tmp_path / "b")]) == 1
+    with pytest.raises(SystemExit):
+        emmc_dump.main(["list", str(tmp_path / "b"), "--under", "/NOPE"])

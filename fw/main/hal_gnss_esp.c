@@ -39,6 +39,8 @@ static uint32_t rx_bytes;
 static fw_gnss_wd_t wd;
 #if GNSS_LOG
 static int logged_first_fix;
+static hal_gnss_fix_t last_valid;
+static uint32_t n_valid, n_records;
 #endif
 
 int hal_gnss_init(void)
@@ -104,6 +106,11 @@ int hal_gnss_poll(hal_gnss_fix_t *fix)
             if (fw_nmea_feed_byte(&nmea, (char)buf[i], &cand) == 1) {
                 latest = cand;
                 got_fix = 1;
+                n_records++;
+                if (cand.valid) {
+                    last_valid = cand;
+                    n_valid++;
+                }
 #if GNSS_LOG
                 if (cand.valid && !logged_first_fix) {
                     logged_first_fix = 1;
@@ -135,4 +142,10 @@ void fw_gnss_status_log(const char *when)
     ESP_LOGW(TAG, "status %s: %s, %" PRIu32 " byte(s) received this boot; watchdog %s, %u reset(s)%s; fix %s", when,
              gnss_up ? "listening" : "not listening", rx_bytes, wd.armed ? "armed" : "not armed", wd.resets,
              wd.gave_up ? " (gave up)" : "", logged_first_fix ? "seen" : "not seen");
+    if (n_valid)
+        ESP_LOGW(TAG, "status %s: %" PRIu32 " of %" PRIu32 " fix records valid; last: lat %" PRId32 " e-7, lon %" PRId32
+                      " e-7, sats %u, hdop %u.%u, %d mm/s, utc %" PRIu32,
+                 when, n_valid, n_records, last_valid.lat_e7, last_valid.lon_e7, last_valid.sats,
+                 last_valid.hdop_x10 / 10u, last_valid.hdop_x10 % 10u, (int)(last_valid.speed_mps * 1000.0f),
+                 last_valid.utc_seconds);
 }

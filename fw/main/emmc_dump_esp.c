@@ -1,4 +1,5 @@
-/* emmc_dump_esp.c: the eMMC read-out (FS_EMMC_MODE 3). Sends every sector of the storage that holds
+/* emmc_dump_esp.c: the eMMC read-out (FS_EMMC_MODE 3; FS_EMMC_MODE 4 sends the /CC700 folder only,
+ * see send_cc700). Sends every sector of the storage that holds
  * anything to the PC over the USB serial port, as checksummed text records, over and over until the
  * unit is reset. tools/emmc_dump.py collects them and stops when two passes agree on every record.
  *
@@ -82,6 +83,142 @@ static void send(uint8_t *buf, uint32_t lba, uint32_t sectors)
     crc_xor ^= crc;
 }
 
+/* ------------------------------------------------------------------ FS_EMMC_MODE 4: /CC700 only
+ * After a ride the PC needs the rides, settings and logs this firmware wrote, not the stock firmware's
+ * 300 MB. This pass sends the reserved sectors, the root directory, every cluster of the /CC700 tree
+ * and the FAT sectors that describe those clusters, in the same record format, so emmc_dump.py
+ * capture works unchanged and list/extract read it with --under /CC700. Still read-only:
+ * sdmmc_read_sectors is the only storage call. */
+static uint8_t *fatbuf, *dsec, *fat_used;
+static uint32_t fat_cached = UINT32_MAX, sent_clusters;
+
+/* The cluster after cl in its chain: 1 and *next, 0 at the end of the chain, -1 on a read error. */
+static int next_cluster(const fw_fat_bpb_t *b, uint32_t cl, uint32_t *next)
+{
+    uint32_t s = fw_fat_entry_sector(b, cl);
+    uint32_t idx = s - b->reserved_sectors;
+    if (idx < b->fat_sectors)
+        fat_used[idx / 8] |= (uint8_t)(1u << (idx % 8));
+    if (s != fat_cached) {
+        if (sdmmc_read_sectors(&card, fatbuf, s, 1) != ESP_OK) {
+            n_errors++;
+            fat_cached = UINT32_MAX;
+            say("#CC7 X read failed fat lba=%08" PRIx32 "\n", s);
+            return -1;
+        }
+        fat_cached = s;
+    }
+    uint32_t v = fw_fat_entry_value(b, fatbuf, cl);
+    if (fw_fat_is_end(b, v) || v < 2 || v > b->clusters + 1u)
+        return 0;
+    *next = v;
+    return 1;
+}
+
+static void send_cluster(uint8_t *buf, const fw_fat_bpb_t *b, uint32_t cl)
+{
+    uint32_t first = fw_fat_cluster_sector(b, cl);
+    for (uint32_t s = 0; s < b->sectors_per_cluster; s += FW_DUMP_MAX_SECTORS) {
+        uint32_t n = b->sectors_per_cluster - s < FW_DUMP_MAX_SECTORS ? b->sectors_per_cluster - s
+                                                                       : FW_DUMP_MAX_SECTORS;
+        send(buf, first + s, n);
+    }
+    sent_clusters++;
+}
+
+/* Sends a whole chain. Returns 0, or -1 if it loops or a FAT read failed. */
+static int send_chain(uint8_t *buf, const fw_fat_bpb_t *b, uint32_t cl)
+{
+    for (uint32_t guard = 0; guard <= b->clusters; guard++) {
+        send_cluster(buf, b, cl);
+        uint32_t nx;
+        int r = next_cluster(b, cl, &nx);
+        if (r <= 0)
+            return r;
+        cl = nx;
+    }
+    say("#CC7 X cluster chain loops\n");
+    return -1;
+}
+
+#define WALK_STACK 256
+/* Reads directory dir (a cluster chain). Files in it are sent whole and subdirectories are pushed on
+   stack; or, if want is not NULL, nothing is sent or pushed and the first subdirectory called want is
+   returned (0 if there is none). */
+static uint32_t scan_dir(uint8_t *buf, const fw_fat_bpb_t *b, uint32_t dir, const char *want, uint32_t *stack,
+                         int *sp)
+{
+    uint32_t cl = dir;
+    for (uint32_t guard = 0; guard <= b->clusters; guard++) {
+        uint32_t first = fw_fat_cluster_sector(b, cl);
+        for (uint32_t s = 0; s < b->sectors_per_cluster; s++) {
+            if (sdmmc_read_sectors(&card, dsec, first + s, 1) != ESP_OK) {
+                n_errors++;
+                say("#CC7 X read failed dir lba=%08" PRIx32 "\n", first + s);
+                return 0;
+            }
+            for (int e = 0; e < FW_FAT_SECTOR / 32; e++) {
+                fw_fat_dirent_t d;
+                int r = fw_fat_parse_dirent(dsec + e * 32, &d);
+                if (r < 0)
+                    return 0;
+                if (r == 0 || d.cluster < 2)
+                    continue;
+                if (want) {
+                    if (d.is_dir && strcmp(d.name, want) == 0)
+                        return d.cluster;
+                    continue;
+                }
+                if (d.is_dir) {
+                    if (*sp < WALK_STACK)
+                        stack[(*sp)++] = d.cluster;
+                    else
+                        say("#CC7 X too many folders; some not sent\n");
+                } else {
+                    send_chain(buf, b, d.cluster);
+                }
+            }
+        }
+        uint32_t nx;
+        if (next_cluster(b, cl, &nx) <= 0)
+            return 0;
+        cl = nx;
+    }
+    return 0;
+}
+
+static void send_cc700(uint8_t *buf, const fw_fat_bpb_t *b)
+{
+    static uint32_t stack[WALK_STACK];
+    int sp = 0;
+    sent_clusters = 0;
+    memset(fat_used, 0, (b->fat_sectors + 7) / 8);
+    fat_cached = UINT32_MAX;
+    /* (1) The boot sector, FSInfo and the other reserved sectors, but not the FATs. */
+    for (uint32_t s = 0; s < b->reserved_sectors; s += FW_DUMP_MAX_SECTORS) {
+        uint32_t n = b->reserved_sectors - s < FW_DUMP_MAX_SECTORS ? b->reserved_sectors - s : FW_DUMP_MAX_SECTORS;
+        send(buf, s, n);
+    }
+    /* (2) The root directory, so the PC can find /CC700 in it. */
+    send_chain(buf, b, b->root_cluster);
+    uint32_t top = scan_dir(buf, b, b->root_cluster, "CC700", stack, &sp);
+    if (!top) {
+        say("#CC7 X no CC700 folder in the root directory\n");
+    } else {
+        /* (3) The /CC700 tree: each folder's own clusters, then every file in it. */
+        stack[sp++] = top;
+        while (sp > 0) {
+            uint32_t dir = stack[--sp];
+            send_chain(buf, b, dir);
+            scan_dir(buf, b, dir, NULL, stack, &sp);
+        }
+    }
+    /* (4) The FAT sectors that hold those chains (the first FAT only). */
+    for (uint32_t i = 0; i < b->fat_sectors; i++)
+        if (fat_used[i / 8] & (1u << (i % 8)))
+            send(buf, b->reserved_sectors + i, 1);
+}
+
 static int start_card(void)
 {
     sdmmc_host_t host = SDMMC_HOST_DEFAULT();
@@ -111,15 +248,18 @@ static int start_card(void)
 
 void fw_emmc_dump_task(void *arg)
 {
-    (void)arg;
     /* Our own records only on this port from here on. */
     esp_log_level_set("*", ESP_LOG_NONE);
     usb_serial_jtag_driver_config_t ucfg = {.tx_buffer_size = 16384, .rx_buffer_size = 256};
     usb_serial_jtag_driver_install(&ucfg); /* an "already installed" answer is fine */
 
+    const int only_cc700 = arg != NULL; /* FS_EMMC_MODE 4 */
     uint8_t *buf = heap_caps_malloc(FW_DUMP_MAX_SECTORS * FW_FAT_SECTOR, MALLOC_CAP_DMA);
     uint8_t *fat = heap_caps_malloc(FW_FAT_SECTOR, MALLOC_CAP_DMA);
-    while (!buf || !fat || start_card() != 0) {
+    fatbuf = fat;
+    dsec = heap_caps_malloc(FW_FAT_SECTOR, MALLOC_CAP_DMA);
+    fat_used = heap_caps_calloc(1, 65536, MALLOC_CAP_8BIT); /* one bit per FAT sector: up to 524,288 */
+    while (!buf || !fat || !dsec || !fat_used || start_card() != 0) {
         say("#CC7 X cannot start (buffers %s); retrying in 5 s\n", buf && fat ? "ok" : "missing");
         vTaskDelay(pdMS_TO_TICKS(5000));
     }
@@ -133,12 +273,25 @@ void fw_emmc_dump_task(void *arg)
             vTaskDelay(pdMS_TO_TICKS(5000));
             continue;
         }
-        say("#CC7 H cycle=%" PRIu32 " card=%.8s card_sectors=%" PRIu32 " volume_sectors=%" PRIu32
+        if (b.fat_sectors > 65536u * 8u) {
+            say("#CC7 X FAT too large for this read-out\n");
+            vTaskDelay(pdMS_TO_TICKS(5000));
+            continue;
+        }
+        say("#CC7 H cycle=%" PRIu32 " subset=%s card=%.8s card_sectors=%" PRIu32 " volume_sectors=%" PRIu32
             " reserved=%u fats=%u fat_sectors=%" PRIu32 " spc=%u data_first=%" PRIu32 " clusters=%" PRIu32
             " root=%" PRIu32 "\n",
-            cycle, card.cid.name, (uint32_t)card.csd.capacity, b.total_sectors, b.reserved_sectors, b.fats,
+            cycle, only_cc700 ? "CC700" : "all", card.cid.name, (uint32_t)card.csd.capacity, b.total_sectors, b.reserved_sectors, b.fats,
             b.fat_sectors, b.sectors_per_cluster, b.data_first, b.clusters, b.root_cluster);
 
+        if (only_cc700) {
+            send_cc700(buf, &b);
+            say("#CC7 E cycle=%" PRIu32 " records=%" PRIu32 " sectors=%" PRIu32 " used_clusters=%" PRIu32
+                " xor=%08" PRIx32 " read_errors=%" PRIu32 " dropped_lines=%" PRIu32 "\n",
+                cycle, n_records, n_sectors, sent_clusters, crc_xor, n_errors, n_dropped);
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            continue;
+        }
         /* (1) Everything before the data area. */
         for (uint32_t s = 0; s < b.data_first; s += FW_DUMP_MAX_SECTORS) {
             uint32_t n = b.data_first - s < FW_DUMP_MAX_SECTORS ? b.data_first - s : FW_DUMP_MAX_SECTORS;

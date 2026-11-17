@@ -24,6 +24,12 @@ int hal_gnss_init(void);              /* UART0 receive-only bring-up for NMEA 01
 struct hal_fs *fw_fs_sdmmc(void);     /* 4 GB eMMC at /sdcard/CC700 (falls back to fw_fs_null on failure) */
 void fw_emmc_probe(void);             /* read-only: logs the eMMC layout and use; writes nothing */
 void fw_emmc_dump_task(void *arg);
+int fw_fs_sdmmc_mounted(void);       /* 1 once fw_fs_sdmmc has mounted the eMMC */
+void fw_log_file_init(void);          /* log_file_esp.c: copy every log line into a ring, from boot */
+void fw_log_file_open(void);          /* core task, once mounted: /sdcard/CC700/log/LOGnnnn.TXT */
+void fw_log_file_tick(uint32_t now_ms);/* core task, about once a second: ring to file, sync */
+void fw_log_file_close(void);         /* before power-off */
+void fw_ride_status_log(const char *when);
 void fw_nrf_status_log(const char *when);  /* handshake, power events, GNSS power-on, charge state */
 void fw_gnss_status_log(const char *when); /* receiver bytes, watchdog resets, fix */    /* read-only: streams the sectors in use to the PC, for ever */
 #endif

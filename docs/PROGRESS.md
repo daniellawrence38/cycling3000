@@ -998,7 +998,7 @@ The next device test covers all four, using the log lines listed in the handshak
   `/sdcard/CC700` (`FS_EMMC_MODE 2`). Settings persist across a power-off.
 
 ### The next things, in order
-1. **The WP4 contact sheet review gate (Daniel).** `docs/wp4/contact-sheet.png` shows each mockup
+1. **Done: Daniel approved the WP4 contact sheet on 17 November 2026.** Was: the WP4 contact sheet review gate. `docs/wp4/contact-sheet.png` shows each mockup
    beside its simulator rendering. Work packages stop here by instruction.
 2. **An outdoor ride test.** Needs:
    - a GNSS fix, plus the nRF clock set from GNSS (the clock still reads 2023);

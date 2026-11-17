@@ -14,6 +14,9 @@ port is opened so the unit is not reset (see tools/capture_serial.py for why tha
     python tools/emmc_dump.py extract D:\\cc700-toolchain\\emmc-backup --to D:\\cc700-toolchain\\emmc-files
     python tools/emmc_dump.py image   D:\\cc700-toolchain\\emmc-backup --to D:\\emmc.img
 
+A FS_EMMC_MODE 4 build (`make fw-export`) sends only the /CC700 folder; read that with
+`list --under /CC700` and `extract --under /CC700`.
+
 The backup is two files: `emmc-used.bin` (the sectors, in the order they first arrived) and
 `emmc-index.json` (where each one belongs, its checksum, and the volume's geometry). `image` turns
 them back into a full raw image of the storage, with zeros where the storage held no file data.
@@ -334,6 +337,18 @@ class Backup:
             first = (struct.unpack_from("<H", e, 20)[0] << 16) | struct.unpack_from("<H", e, 26)[0]
             yield name, bool(attr & 0x10), struct.unpack_from("<I", e, 28)[0], first
 
+    def find(self, path):
+        """The first cluster of a folder given as /A/B, looked up from the root (case-insensitive)."""
+        cluster = self.root
+        for part in [p for p in path.split("/") if p]:
+            for name, is_dir, _size, first in self.listdir(cluster):
+                if is_dir and name.upper() == part.upper():
+                    cluster = first
+                    break
+            else:
+                raise SystemExit(f"{path}: no such folder in the backup")
+        return cluster
+
     def walk(self, cluster=None, path=""):
         """Yields (path, is_dir, size, first cluster) for everything under a directory."""
         for name, is_dir, size, first in self.listdir(self.root if cluster is None else cluster):
@@ -343,11 +358,17 @@ class Backup:
                 yield from self.walk(first, full)
 
 
+def walk_from(b, under):
+    if not under or under.strip("/") == "":
+        return b.walk()
+    return b.walk(b.find(under), "/" + under.strip("/"))
+
+
 def cmd_list(args):
     b = Backup(args.folder)
     files = dirs = total = 0
     problems = []
-    for path, is_dir, size, first in b.walk():
+    for path, is_dir, size, first in walk_from(b, args.under):
         if is_dir:
             dirs += 1
             print(f"{'<DIR>':>12}  {path}")
@@ -379,7 +400,7 @@ def cmd_extract(args):
     if os.path.exists(args.to) and os.listdir(args.to):
         sys.exit(f"{args.to} is not empty")
     n = 0
-    for path, is_dir, size, first in b.walk():
+    for path, is_dir, size, first in walk_from(b, args.under):
         safe = [p for p in path.split("/") if p and p not in (".", "..")]
         safe = ["".join(c if c not in '<>:"\\|?*' and ord(c) >= 32 else "_" for c in p) for p in safe]
         target = os.path.join(args.to, *safe)
@@ -422,6 +443,9 @@ def main(argv=None):
         s.add_argument("folder")
         if need_to:
             s.add_argument("--to", required=True)
+        if name != "image":
+            s.add_argument("--under", default="",
+                           help="only this folder, e.g. /CC700 (needed for a FS_EMMC_MODE 4 read-out)")
         s.set_defaults(fn=fn)
     args = ap.parse_args(argv)
     return args.fn(args)

@@ -137,7 +137,11 @@
  *   1  read-only probe at boot (card, partitions, space in use, root directory), then null storage
  *   2  mount it and keep rides, routes, workouts and settings in /sdcard/CC700 (writes to the eMMC)
  *   3  read-out: send every sector in use to the PC for tools/emmc_dump.py, and run nothing else
- *      (dark screen, no UI, no Bluetooth). Read-only. Flash a mode 1 or 2 build afterwards. */
+ *      (dark screen, no UI, no Bluetooth). Read-only. Flash a mode 1 or 2 build afterwards.
+ *   4  as 3, but only the /CC700 folder (rides, settings, logs): minutes instead of half an hour.
+ *      Built separately by `make fw-export` (build/fw-export/app.bin), which sets it from CMake. */
+#ifndef FS_EMMC_MODE
 #define FS_EMMC_MODE 2
+#endif
 
 #endif
