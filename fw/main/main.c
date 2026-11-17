@@ -184,7 +184,17 @@ static void core_task(void *arg)
 {
     (void)arg;
     uint32_t now = hal_clock_monotonic_ms();
-    int rec = cc_init(fw_fs_sdmmc(), now);
+#if FS_EMMC_MODE == 2
+    struct hal_fs *fs = fw_fs_sdmmc();
+#else
+#if FS_EMMC_MODE == 1
+    fw_emmc_probe();
+#endif
+    struct hal_fs *fs = fw_fs_null();
+    ESP_LOGW(TAG, "storage is the null stub (FS_EMMC_MODE %d): nothing is saved, and the STORAGE ERROR "
+                  "banner is expected", FS_EMMC_MODE);
+#endif
+    int rec = cc_init(fs, now);
     ESP_LOGI(TAG, "core started (recovered %d)", rec);
     cc_link_host_t host;
     cc_link_host_bind(&host);

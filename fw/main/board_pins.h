@@ -130,5 +130,11 @@
 #define PIN_SDMMC_D3 15
 #define SDMMC_BUS_WIDTH 4
 #define SDMMC_MAX_FREQ_KHZ 20000
+/* What the firmware does with that storage. It has never been backed up (bring-up step 1), so the
+ * order is: probe it read-only, copy it off, and only then write to it.
+ *   0  leave it alone: null storage, nothing is saved
+ *   1  read-only probe at boot (card, partitions, space in use, root directory), then null storage
+ *   2  mount it and keep rides, routes, workouts and settings in /sdcard/CC700 (writes to the eMMC) */
+#define FS_EMMC_MODE 1
 
 #endif

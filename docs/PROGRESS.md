@@ -823,3 +823,46 @@ Daniel flashed `ad7beee` and reported:
        for `.fit.part` / `.meta.tmp` / `settings_a.bin`, and sandboxed all `hal_fs_t` paths strictly
        under `/sdcard/CC700/` so stock directories on `/sdcard` are untouched. Falls back to
        `fw_fs_null()` if the mount fails.
+
+## The eMMC is probed read-only before anything writes to it · 17 November 2026
+
+**`198c484` has not been flashed, and the default no longer mounts the eMMC.** That commit mounts the
+4 GB storage for writing and creates `/sdcard/CC700` on its first boot. The storage has never been
+backed up, which is the reason START-HERE rule 1 exists, and bring-up step 1 (preserve it) is still
+open. Daniel agreed to take it in order instead: probe, copy, then write.
+
+**What exists.** `FS_EMMC_MODE` in `fw/main/board_pins.h` chooses what the firmware does with the
+storage: 0 leaves it alone, **1 (the default now) probes it read-only at boot**, 2 is the read-write
+mount from `198c484`, unchanged. In mode 1 `fw_emmc_probe()` (`fw/main/hal_fs_esp.c`) starts the card
+on the pins read from the stock `MidVFSMount` and logs, as `emmc:` lines: the card's name and size,
+the partition table, each FAT volume's geometry, how much is in use (by counting the free entries in
+the whole FAT), and the root directory. Storage is then the null stub for that boot, so the STORAGE
+ERROR banner is expected and nothing is saved. `fw/main/fat_probe.c` holds the sector parsing with no
+ESP-IDF dependency.
+
+**Why it cannot write.** The probe calls `sdmmc_read_sectors` and nothing else; FatFs is not used and
+nothing is mounted. Checked in the linked image, as Q29 was: `nm` over `build/fw/cc700.elf` finds
+**no `sdmmc_write_sectors`, no erase or trim call, no FatFs function and no `fw_fs_sdmmc`** in a
+mode 1 build. The only thing sent to the card beyond reads is the ordinary start-up sequence (bus
+width and speed), which the stock firmware sends at every boot and which is not stored data.
+
+**I confirmed the pins independently** by decompiling `0x4200b9b0` with `tools/re`: CLK 13, CMD 14,
+D0 16, D1 17, D2 18, D3 15, width 4, mount point `/sdcard`. Two things in `198c484`'s description I
+did not verify: the slot number and the 20 MHz figure, which come from a struct copied from read-only
+data. One thing worth knowing from the same function: the stock mount takes a parameter that becomes
+`format_if_mount_failed`, so the stock firmware can be told to format this volume if it fails to
+mount. A damaged FAT is therefore not just our problem.
+
+**Verified.** Host C 19 of 19 plain and 17 of 17 under ASan and UBSan; `test_fat_probe` is new (five
+tests on sectors built to the FAT specification: partition table, FAT32 and FAT16 boot sectors with
+damaged variants refused, exFAT recognised, free-cluster counting including the masked top bits and
+the end of the volume, chain following, directory entries). Python 21 of 21. `make fw-build` clean,
+`app.bin` 1,300,096 bytes.
+
+**Not verified.** The probe has not run on the unit. Nothing from the real storage has been read, so
+the parser has only ever seen sectors I built. Whether the eMMC is powered when our firmware boots is
+unknown (the GNSS turned out to be gated by the nRF); if it is not, the probe will say no card
+answered.
+
+**Next.** (1) Daniel flashes this build and sends the `emmc:` lines. (2) From the size in use, a raw
+read-out to the PC, hashed twice. (3) Then `FS_EMMC_MODE 2`.

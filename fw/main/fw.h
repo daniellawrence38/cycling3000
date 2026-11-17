@@ -22,4 +22,5 @@ void fw_sensors_tick(uint32_t now_ms);/* core task, 10 Hz: calibration requests 
 
 int hal_gnss_init(void);              /* UART0 receive-only bring-up for NMEA 0183 */
 struct hal_fs *fw_fs_sdmmc(void);     /* 4 GB eMMC at /sdcard/CC700 (falls back to fw_fs_null on failure) */
+void fw_emmc_probe(void);             /* read-only: logs the eMMC layout and use; writes nothing */
 #endif
