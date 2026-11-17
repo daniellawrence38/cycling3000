@@ -254,6 +254,12 @@ static fw_nrf_wake_t wake_state;
 static int wake_active;
 static volatile int wake_result; /* FW_NRF_WAKE_KEY or _EVENT once decided */
 
+/* What fw_nrf_status_log reports, so a capture that starts after boot still shows the handshake. */
+static volatile int seen_slave_mode = -1, seen_power_event = -1;
+static volatile uint32_t seen_power_event_ms;
+static volatile uint16_t seen_ver_major, seen_ver_minor, seen_ver_patch;
+static volatile int seen_ver;
+
 static const char *const FRAME_NAME[] = {"none", "SendQuerySlaveModeCmd", "SendPowerOnCmd", "GNSS power-on",
                                          "GNSS reset", "SendPowerOffCmd"};
 #define TX_GNSS_RESET 4
@@ -528,10 +534,21 @@ static void consume(const fw_nrf_frame_t *f)
                  : (pev == FW_NRF_PWR_EV_MANUAL || pev == FW_NRF_PWR_EV_MANUAL2) ? "manual power-on"
                                                                                    : "no meaning known",
                  f->kind);
+    if (pev >= 0) {
+        seen_power_event = pev;
+        seen_power_event_ms = hal_clock_monotonic_ms();
+    }
     fw_nrf_version_t ver;
-    if (fw_nrf_parse_version(f, &ver) == 0)
+    if (fw_nrf_parse_version(f, &ver) == 0) {
         ESP_LOGW(TAG, "nRF firmware version %u.%u%02u", ver.major, ver.minor, ver.patch);
+        seen_ver_major = ver.major;
+        seen_ver_minor = ver.minor;
+        seen_ver_patch = ver.patch;
+        seen_ver = 1;
+    }
     int smode = fw_nrf_parse_slave_mode(f);
+    if (smode >= 0)
+        seen_slave_mode = smode;
     if (smode >= 0)
         ESP_LOGW(TAG, "slave-mode reply from nRF: mode %d (%s)", smode,
                  smode == FW_NRF_SLAVE_APP ? "in application" : smode == FW_NRF_SLAVE_BOOTLOADER ? "in bootloader" : "busy");
@@ -983,4 +1000,19 @@ void hal_nrf_start(void)
     key_queue = xQueueCreate(16, sizeof(hal_input_event_t));
     tx_lock = xSemaphoreCreateMutex();
     xTaskCreatePinnedToCore(nrf_task, "nrf", 4096, NULL, 2, NULL, 0);
+}
+
+/* One line on the handshake's state for the periodic status log (core task). The fields are written
+   by the nRF task; a torn read only garbles one log line, and nothing acts on it. */
+void fw_nrf_status_log(const char *when)
+{
+    uint32_t gnss_at = gnss_on_ms;
+    ESP_LOGW(TAG,
+             "status %s: handshake %s (fail %s, on by %s), %u queries, %u power-ons sent; slave mode %d; "
+             "last power event %d at %" PRIu32 " ms; nRF version %s%u.%u%02u; GNSS power-on %s at %" PRIu32
+             " ms; charge state %d; power-off %s",
+             when, fw_nrf_hs_state_name(hs.state), fw_nrf_hs_fail_name(hs.fail), fw_nrf_hs_on_name(hs.on),
+             hs.queries, hs.power_ons, seen_slave_mode, seen_power_event, seen_power_event_ms,
+             seen_ver ? "" : "(not seen) ", seen_ver_major, seen_ver_minor, seen_ver_patch,
+             gnss_on_sent ? "sent" : "not sent", gnss_at, charge_state, power_off_active ? "active" : "not active");
 }

@@ -14,7 +14,9 @@ board: **DTR drives GPIO 0, which is both a UART RX line and the ESP32's boot st
 the host assert it on open can drop the unit into the ROM download loader -- dark screen, no firmware,
 "it will not turn on". So DTR and RTS are both deasserted before the port is opened, not after.
 
-Nothing here writes to the port.
+Nothing here writes to the port. If the port disappears (the unit powers off or resets), the
+capture marks it in the file, waits for the port to come back and carries on, so a wake and the boot
+after it are caught in the same file.
 
 Usage:
     python tools/capture_serial.py COM3 --seconds 300 --out nrf-capture.txt
@@ -40,31 +42,40 @@ def main() -> int:
     ap.add_argument("--quiet", action="store_true", help="do not echo to the console")
     a = ap.parse_args()
 
-    # Configure before opening, so the host never asserts the reset or strapping lines. See the note
-    # at the top of this file: on this board that is the difference between a capture and a brick
-    # scare.
-    p = serial.Serial()
-    p.port = a.port
-    p.baudrate = a.baud
-    p.timeout = 0.5
-    p.dtr = False
-    p.rts = False
-    try:
-        p.open()
-    except serial.SerialException as e:
-        sys.exit(f"could not open {a.port}: {e}\n"
-                 "If a monitor is still running on that port, close it first.")
+    deadline = time.time() + a.seconds
+    t0 = time.time()
+    p = open_port(a.port, a.baud)
+    if p is None:
+        print(f"{a.port} is not there yet: waiting for it (plug the unit in or switch it on)")
+        p = wait_for_port(a.port, a.baud, deadline)
+        if p is None:
+            sys.exit(f"could not open {a.port} within {a.seconds:g} s.\n"
+                     "If a monitor is still running on that port, close it first.")
 
     print(f"capturing {a.port} at {a.baud} for {a.seconds:g} s into {a.out}")
-    print("Power-cycle the unit now; the boot log will be caught from the start.")
+    print("If the port disappears (power-off, reset), the capture waits for it and carries on.")
     print("Ctrl+C stops early and still leaves a complete file.\n")
 
-    deadline = time.time() + a.seconds
     total = 0
     try:
         with open(a.out, "wb") as f:
             while time.time() < deadline:
-                data = p.read(4096)
+                try:
+                    data = p.read(4096)
+                except (serial.SerialException, OSError) as e:
+                    # The unit switched off or reset and Windows removed the port. Note it in the file
+                    # and wait for the port to come back, so the next boot is caught as well.
+                    try:
+                        p.close()
+                    except Exception:
+                        pass
+                    mark(f, a.quiet, f"port lost at {time.time() - t0:.1f} s ({e.__class__.__name__}); waiting for it")
+                    p = wait_for_port(a.port, a.baud, deadline)
+                    if p is None:
+                        mark(f, a.quiet, "port did not come back before the end of the capture")
+                        break
+                    mark(f, a.quiet, f"port back at {time.time() - t0:.1f} s")
+                    continue
                 if not data:
                     continue
                 f.write(data)
@@ -76,10 +87,48 @@ def main() -> int:
     except KeyboardInterrupt:
         print("\nstopped early", file=sys.stderr)
     finally:
-        p.close()
+        if p is not None:
+            try:
+                p.close()
+            except Exception:
+                pass
 
     print(f"\n{total} bytes written to {a.out}")
     return 0
+
+
+def open_port(port, baud):
+    """Opens the port with DTR and RTS deasserted before opening (see the note at the top: on this
+    board that is the difference between a capture and a brick scare). None if it cannot be opened."""
+    p = serial.Serial()
+    p.port = port
+    p.baudrate = baud
+    p.timeout = 0.5
+    p.dtr = False
+    p.rts = False
+    try:
+        p.open()
+    except (serial.SerialException, OSError):
+        return None
+    return p
+
+
+def wait_for_port(port, baud, deadline):
+    while time.time() < deadline:
+        p = open_port(port, baud)
+        if p is not None:
+            return p
+        time.sleep(0.2)
+    return None
+
+
+def mark(f, quiet, text):
+    line = f"\n--- capture_serial: {text} ---\n"
+    f.write(line.encode())
+    f.flush()
+    if not quiet:
+        sys.stdout.write(line)
+        sys.stdout.flush()
 
 
 if __name__ == "__main__":

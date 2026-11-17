@@ -262,6 +262,16 @@ static void core_task(void *arg)
                 cc_on_button(now, (cc_btn_t)(ie.kind / 2), (ie.kind % 2) == 0);
         }
         fw_sensors_tick(now);
+        /* A status line at 10 s, 20 s and 40 s, then every 60 s: the capture usually starts a few
+           seconds after a reset and misses the handshake's own log lines. */
+        static uint32_t next_status = 10000;
+        if ((int32_t)(now - next_status) >= 0) {
+            char when[16];
+            snprintf(when, sizeof when, "%" PRIu32 " s", now / 1000u);
+            fw_nrf_status_log(when);
+            fw_gnss_status_log(when);
+            next_status = next_status < 20000 ? 20000 : next_status < 40000 ? 40000 : next_status + 60000;
+        }
 #if FS_EMMC_MODE == 1
         /* The read-only eMMC probe, at 10 s and again at 40 s after boot, not at boot. The first
            capture of it started 2.6 s in and missed it: the PC's serial port is not listening for

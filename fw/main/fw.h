@@ -23,5 +23,7 @@ void fw_sensors_tick(uint32_t now_ms);/* core task, 10 Hz: calibration requests 
 int hal_gnss_init(void);              /* UART0 receive-only bring-up for NMEA 0183 */
 struct hal_fs *fw_fs_sdmmc(void);     /* 4 GB eMMC at /sdcard/CC700 (falls back to fw_fs_null on failure) */
 void fw_emmc_probe(void);             /* read-only: logs the eMMC layout and use; writes nothing */
-void fw_emmc_dump_task(void *arg);    /* read-only: streams the sectors in use to the PC, for ever */
+void fw_emmc_dump_task(void *arg);
+void fw_nrf_status_log(const char *when);  /* handshake, power events, GNSS power-on, charge state */
+void fw_gnss_status_log(const char *when); /* receiver bytes, watchdog resets, fix */    /* read-only: streams the sectors in use to the PC, for ever */
 #endif

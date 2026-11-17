@@ -128,3 +128,11 @@ int hal_gnss_poll(hal_gnss_fix_t *fix)
         *fix = latest;
     return got_fix;
 }
+
+/* One line on the receiver for the periodic status log (core task, which also owns these). */
+void fw_gnss_status_log(const char *when)
+{
+    ESP_LOGW(TAG, "status %s: %s, %" PRIu32 " byte(s) received this boot; watchdog %s, %u reset(s)%s; fix %s", when,
+             gnss_up ? "listening" : "not listening", rx_bytes, wd.armed ? "armed" : "not armed", wd.resets,
+             wd.gave_up ? " (gave up)" : "", logged_first_fix ? "seen" : "not seen");
+}
