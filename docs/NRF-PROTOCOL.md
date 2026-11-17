@@ -518,6 +518,16 @@ it, but it is worth knowing before blaming the altitude code for a blip.
   request to power off that the ESP32 is expected to answer with `SendPowerOffCmd`).
 - Ids 11, 17, 34, 35, 40, 120 to 123 and 128: still never seen.
 
+**Answered later the same day, from the vendor's code** (`docs/RE-FINDINGS-2.md`, which has the
+addresses). The guess two lines up was wrong: **code 4 is not a power-off request.** It means the
+unit was woken by the charger; 5 and 6 mean it was switched on by hand. A long press while the unit is
+on reaches the ESP32 only as the ordinary `0x49` key events, and it is the ESP32's own UI that decides
+to power off and sends `SendPowerOffCmd`. Also settled there: `0xF1`/`0x0a` is a second temperature
+in hundredths of a degree; the id 1 message at power-on is the nRF's firmware version (1.704); the
+never-seen ids are ANT+ device types (120 heart rate, 121 speed and cadence, 122 cadence, 123 speed,
+11 power, 17 trainer, 40 radar, 34 shifting, 35 light), each frame one device's data page; and
+`f0 02 <c>` carries the charge state, with 0 shown as charging.
+
 ## The buttons are now an input
 
 `fw_nrf_keys_feed` (`fw/main/nrf_proto.c`) turns the clicks into the down and up edges the core's
