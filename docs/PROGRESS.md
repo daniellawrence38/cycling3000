@@ -984,3 +984,31 @@ Not verified on the unit:
 - the new PSRAM allocator under the full UI.
 
 The next device test covers all four, using the log lines listed in the handshake commit.
+
+## Bring-up state after the power and storage tests · 17 November 2026
+
+**Confirmed on the unit** (details in `docs/BRINGUP-LOG.md`):
+- The boot handshake: slave mode 1, then one power-on, then manual event 5.
+- Power-off by holding power, on USB and on battery. Since `4ea63f6` it fires 0.5 s into the hold,
+  ahead of the nRF's own cut (Q40 update).
+- "Off and charging" on USB: the screen is dark until power is held, then the unit wakes.
+- The GNSS receiver talks (NMEA bytes arrive within 40 ms of the power-on).
+- The PSRAM memory relief: 148 kB of DMA-capable memory free.
+- The eMMC is backed up (sha256 `a2684835…ca55`) and is now mounted read-write under
+  `/sdcard/CC700` (`FS_EMMC_MODE 2`). Settings persist across a power-off.
+
+### The next things, in order
+1. **The WP4 contact sheet review gate (Daniel).** `docs/wp4/contact-sheet.png` shows each mockup
+   beside its simulator rendering. Work packages stop here by instruction.
+2. **An outdoor ride test.** Needs:
+   - a GNSS fix, plus the nRF clock set from GNSS (the clock still reads 2023);
+   - a short recorded ride, saved as `.fit`;
+   - a power cut during a ride, recovered at the next boot.
+3. **BLE sensors on the unit:** pairing a heart-rate monitor or power meter.
+4. **Check that the stock firmware still boots** with the `CC700` folder on the volume, by switching
+   `otadata` back to `ota_0` once.
+
+### Do not do these without asking Daniel
+- Transmit anything to the nRF outside the Q38 table. `$PAIR` and nRF firmware upgrades are not
+  approved.
+- Anything that writes outside `/sdcard/CC700`, or formats the volume.
