@@ -759,3 +759,18 @@ warnings.
     `$PAIR`, with power and reset behind the nRF on kind 2, id 16 (`e2 02 07 00 00 00/01/02 00 00`).
     `fw/main/nmea.c` and `fw/main/hal_gnss_esp.c` implement a receive-only NMEA listener on UART0 RX
     GPIO 0.
+
+## 17 November 2026 · eMMC backed up (bring-up step 1 done)
+
+- Daniel flashed a mode 3 build (`FS_EMMC_MODE 3`, read-only read-out) and ran
+  `tools/emmc_dump.py capture`. After three passes the tool reported **COMPLETE**: 77,378 records,
+  316.9 MB, every record received at least twice with identical contents, and the record count and
+  combined checksum matching what the unit sent. No bad lines.
+- Backup: `D:\cc700-toolchain\emmc-backup\emmc-used.bin` (316,940,288 bytes) and `emmc-index.json`.
+  sha256 of `emmc-used.bin`:
+  `a26848353d2714439b223f0dd32790ed70d2cd2328067681a70ac0c9f947ca55` (re-hashed offline, matches).
+- Offline `tools/emmc_dump.py list` reads the FAT from the backup alone: 50 files in 34 folders,
+  299.9 MB of file data, and every file's data is present.
+- `FS_EMMC_MODE` is back to 1 (read-only probe). Mode 2 (read-write mount) waits for the integrated
+  build to pass its tests. The backup should also be copied off this PC before anything writes to the
+  eMMC.
