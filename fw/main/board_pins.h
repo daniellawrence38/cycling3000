@@ -103,6 +103,7 @@
 #define BARO_LOG 1 /* log pressure every two seconds, for the height-change check during bring-up */
 #define NRF_DECODE_LOG 1 /* name key, battery, light and clock messages in the log, to confirm them */
 #define GNSS_LOG 1 /* log the first NMEA sentence and first fix on UART0 */
+#define MEM_LOG 1 /* every 60 s: internal, DMA and PSRAM heap, LVGL's share, task stack high-water marks */
 
 /* UARTs. Read from AppDevInit (0x4200a5dc), FUN_421566c0 and MidCommInit (0x420452a4):
  *   - UART0 (ESP port 0, TX 1 / RX 0, 115200 baud from literal 0x42000b8c) is the GNSS receiver

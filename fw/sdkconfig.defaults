@@ -45,7 +45,14 @@ CONFIG_BT_NIMBLE_GAP_DEVICE_NAME_MAX_LEN=31
 
 # LVGL (managed component lvgl/lvgl, configured through Kconfig to match ui/lv_conf.h).
 CONFIG_LV_COLOR_DEPTH_16=y
-CONFIG_LV_USE_CLIB_MALLOC=y
+# LVGL's allocator is fw/main/mem_esp.c: PSRAM first, internal RAM if PSRAM is missing or full. With
+# the C library allocator every LVGL allocation (all under CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL) went to
+# internal DMA-capable RAM. The host simulator keeps LVGL's built-in allocator (ui/lv_conf.h).
+CONFIG_LV_USE_CUSTOM_MALLOC=y
+# Nothing references LVGL's examples or demos, so the linker drops them anyway; leaving them out only
+# saves build time and memory on the build PC (IDEAS.md I10). No effect on the image.
+CONFIG_LV_BUILD_EXAMPLES=n
+CONFIG_LV_BUILD_DEMOS=n
 CONFIG_LV_USE_CLIB_STRING=y
 CONFIG_LV_USE_CLIB_SPRINTF=y
 CONFIG_LV_USE_FONT_COMPRESSED=y

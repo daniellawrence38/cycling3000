@@ -1,5 +1,6 @@
 #include "cc700/fit.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "cc700/util.h"
@@ -718,64 +719,93 @@ int cc_fit_finalise(cc_fit_t *w, int32_t time_offset, const char *final_path, cc
 }
 
 /* ------------------------------------------------------------------ recovery */
-int cc_fit_recover(hal_fs_t *fs, const char *part_path, const char *work_path, const char *final_path,
-                   int32_t time_offset, cc_fit_summary_t *sum, uint32_t *file_crc32, uint32_t *file_size)
+/* Recovery's working set: the rebuilt writer (about 24 KB, nearly all of it the record ring), a read
+   cache, the walk result and a copy buffer. It used to be function-local static storage, which on the
+   unit kept about 29 KB of internal SRAM in .bss for the whole ride although recovery only runs at
+   boot. Now it is one heap block for the duration of the call. On the ESP32-S3 a block this size is
+   above CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL, so ESP-IDF puts it in PSRAM, and falls back to internal
+   RAM if there is no PSRAM (Q30); at boot either has room. If the allocation fails anyway, recovery
+   returns -1, which leaves the .part file in place to be tried again on the next boot -- the same path
+   as a storage error. cc_fit_finalise's own read cache stays static on purpose: it runs at the end of
+   every ride, when a failed allocation would cost the ride. */
+typedef struct {
+    fsrd_t rd;
+    cc_fit_t w;
+    cc_fit_walk_t wk;
+    uint8_t chunk[4096];
+} recover_mem_t;
+
+static int recover(recover_mem_t *m, hal_fs_t *fs, const char *part_path, const char *work_path,
+                   const char *final_path, int32_t time_offset, cc_fit_summary_t *sum, uint32_t *file_crc32,
+                   uint32_t *file_size)
 {
-    static fsrd_t rd;
-    static cc_fit_t w;
-    static cc_fit_walk_t wk;
-    memset(&rd, 0, sizeof rd);
-    rd.fs = fs;
-    rd.f = fs->open(fs, part_path, HAL_FS_READ);
-    if (rd.f < 0)
+    fsrd_t *rd = &m->rd;
+    cc_fit_t *w = &m->w;
+    cc_fit_walk_t *wk = &m->wk;
+    memset(rd, 0, sizeof *rd);
+    rd->fs = fs;
+    rd->f = fs->open(fs, part_path, HAL_FS_READ);
+    if (rd->f < 0)
         return -1;
-    int32_t len = fs->size(fs, rd.f);
+    int32_t len = fs->size(fs, rd->f);
     if (len < 0) {
-        fs->close(fs, rd.f);
+        fs->close(fs, rd->f);
         return -1;
     }
-    int ok = walk(fs_rd, &rd, (uint32_t)len, 1, &wk, NULL, NULL);
-    if (!ok || wk.records == 0) {
-        fs->close(fs, rd.f);
+    int ok = walk(fs_rd, rd, (uint32_t)len, 1, wk, NULL, NULL);
+    if (!ok || wk->records == 0) {
+        fs->close(fs, rd->f);
         return fs->remove(fs, part_path) == 0 ? 1 : -1;
     }
     /* Copy the complete messages into the work file */
     fs->remove(fs, work_path); /* leftover from an interrupted recovery */
     hal_file_t out = fs->open(fs, work_path, HAL_FS_READ | HAL_FS_WRITE | HAL_FS_CREATE | HAL_FS_TRUNC);
     if (out < 0) {
-        fs->close(fs, rd.f);
+        fs->close(fs, rd->f);
         return -1;
     }
-    uint8_t chunk[4096];
+    uint8_t *chunk = m->chunk;
+    const uint32_t chunk_size = (uint32_t)sizeof m->chunk;
     int err = 0;
-    for (uint32_t o = 0; o < wk.end && !err;) {
-        uint32_t n = wk.end - o < sizeof chunk ? wk.end - o : (uint32_t)sizeof chunk;
-        if (fs_rd(&rd, o, chunk, n) != (int)n || fs->write(fs, out, chunk, n) != (int32_t)n)
+    for (uint32_t o = 0; o < wk->end && !err;) {
+        uint32_t n = wk->end - o < chunk_size ? wk->end - o : chunk_size;
+        if (fs_rd(rd, o, chunk, n) != (int)n || fs->write(fs, out, chunk, n) != (int32_t)n)
             err = 1;
         o += n;
     }
-    fs->close(fs, rd.f);
+    fs->close(fs, rd->f);
     if (err) {
         fs->close(fs, out);
         return -1;
     }
-    memset(&w, 0, sizeof w);
-    w.fs = fs;
-    strncpy(w.path, work_path, sizeof w.path - 1);
-    w.f = out;
-    w.open = 1;
-    w.file_pos = wk.end;
-    w.data_size = wk.end - 14;
-    w.session = wk.session;
-    w.lap = wk.lap;
-    w.laps = (uint16_t)wk.laps;
-    w.final_lap_written = wk.final_lap;
-    uint32_t end_ts = wk.last_ts ? wk.last_ts : wk.first_ts;
-    if (wk.session.timer_running && wk.last_ts)
+    memset(w, 0, sizeof *w);
+    w->fs = fs;
+    strncpy(w->path, work_path, sizeof w->path - 1);
+    w->f = out;
+    w->open = 1;
+    w->file_pos = wk->end;
+    w->data_size = wk->end - 14;
+    w->session = wk->session;
+    w->lap = wk->lap;
+    w->laps = (uint16_t)wk->laps;
+    w->final_lap_written = wk->final_lap;
+    uint32_t end_ts = wk->last_ts ? wk->last_ts : wk->first_ts;
+    if (wk->session.timer_running && wk->last_ts)
         end_ts += 1; /* the last record covers its whole second */
-    if (cc_fit_close_messages(&w, end_ts, -1) != 0)
+    if (cc_fit_close_messages(w, end_ts, -1) != 0)
         return -1;
-    if (cc_fit_finalise(&w, time_offset, final_path, sum, file_crc32, file_size) != 0)
+    if (cc_fit_finalise(w, time_offset, final_path, sum, file_crc32, file_size) != 0)
         return -1;
     return fs->remove(fs, part_path) == 0 ? 0 : -1;
+}
+
+int cc_fit_recover(hal_fs_t *fs, const char *part_path, const char *work_path, const char *final_path,
+                   int32_t time_offset, cc_fit_summary_t *sum, uint32_t *file_crc32, uint32_t *file_size)
+{
+    recover_mem_t *m = calloc(1, sizeof *m);
+    if (!m)
+        return -1;
+    int rc = recover(m, fs, part_path, work_path, final_path, time_offset, sum, file_crc32, file_size);
+    free(m);
+    return rc;
 }
