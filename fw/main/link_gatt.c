@@ -22,6 +22,7 @@
 #include "host/ble_hs.h"
 #include "host/ble_store.h"
 #include "host/util/util.h"
+#include "mem_esp.h"
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
 #include "services/gap/ble_svc_gap.h"
@@ -283,7 +284,9 @@ static void host_task(void *arg)
 
 void fw_link_start(void)
 {
-    rxq = xQueueCreate(32, sizeof(fw_pkt_t));
+    /* 32 x 250 bytes of packets: item storage in PSRAM (mem_esp.c), internal if there is none. Only
+       the NimBLE host task (rx_access) and the core task (fw_link_take) touch it. */
+    rxq = fw_queue_create_psram(32, sizeof(fw_pkt_t));
     ESP_ERROR_CHECK(nimble_port_init());
     ble_hs_cfg.sync_cb = on_sync;
     ble_hs_cfg.reset_cb = on_reset;

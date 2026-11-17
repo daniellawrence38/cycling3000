@@ -10,6 +10,7 @@
  * Deliberately absent: nvs_flash_init (the stock NVS partition is left alone, Q29), TinyUSB, anything
  * that writes flash. */
 #include <inttypes.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "board_pins.h"
@@ -32,6 +33,7 @@
 #include "hal_power.h"
 #include "hal_touch.h"
 #include "lvgl.h"
+#include "mem_esp.h"
 #include "nrf_proto.h"
 #include "ui.h"
 
@@ -156,11 +158,24 @@ static void ui_start(uint32_t now)
     lv_tick_set_cb(tick_cb);
     lv_display_t *d = lv_display_create(HAL_DISPLAY_W, HAL_DISPLAY_H);
     lv_display_set_color_format(d, LV_COLOR_FORMAT_RGB565);
-    /* Two 40-line buffers in internal DMA-capable RAM, sized to the i80 bus max_transfer_bytes. */
-    size_t sz = HAL_DISPLAY_W * 40 * 2;
-    void *b1 = heap_caps_malloc(sz, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
-    void *b2 = heap_caps_malloc(sz, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
-    lv_display_set_buffers(d, b1, b2, sz, LV_DISPLAY_RENDER_MODE_PARTIAL);
+    /* ONE 40-line buffer in internal DMA-capable RAM (19,200 bytes), sized to the i80 bus
+       max_transfer_bytes. There used to be two, but a second buffer only helps when the flush returns
+       before the DMA finishes, so that LVGL can render the next band while this one is clocked out.
+       hal_display_flush waits for the transfer to complete (hal_display_esp.c says why) and flush_cb
+       calls lv_display_flush_ready straight after, so LVGL never had anything to overlap: the second
+       buffer was 19,200 bytes of DMA RAM bought for nothing. If 40 lines cannot be had, 20 and then
+       10 are tried (more bands per frame, same picture); with none at all LVGL logs "No draw buffer"
+       and draws nothing, but the unit keeps running. */
+    void *buf = NULL;
+    size_t sz = 0;
+    for (int lines = 40; lines >= 10 && !buf; lines /= 2) {
+        sz = (size_t)HAL_DISPLAY_W * (size_t)lines * 2;
+        buf = heap_caps_malloc(sz, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+        if (!buf)
+            ESP_LOGE(TAG, "no %u bytes of DMA RAM for a %d-line draw buffer", (unsigned)sz, lines);
+    }
+    if (buf)
+        lv_display_set_buffers(d, buf, NULL, (uint32_t)sz, LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_flush_cb(d, flush_cb);
     if (hal_touch_init() == 0) {
         lv_indev_t *in = lv_indev_create();
@@ -198,6 +213,10 @@ static void core_task(void *arg)
     cc_link_init(&link_srv, cc_fs(), &host, link_tx, NULL, 23);
     ui_start(now);
     fw_link_start();
+#if MEM_LOG
+    fw_mem_log("boot"); /* after the display, LVGL, the UI, the UARTs and NimBLE have all allocated */
+    uint32_t next_mem_log = now + 60000;
+#endif
 
     uint32_t next_tick = now;
 #if BARO_LOG
@@ -288,6 +307,14 @@ static void core_task(void *arg)
                          cc_view()->alt_m);
             else
                 ESP_LOGW(TAG, "baro: no fresh reading");
+        }
+#endif
+#if MEM_LOG
+        if ((int32_t)(now - next_mem_log) >= 0) {
+            next_mem_log += 60000;
+            char when[16];
+            snprintf(when, sizeof when, "%" PRIu32 " s", now / 1000u);
+            fw_mem_log(when);
         }
 #endif
         uint32_t wait = lv_timer_handler();

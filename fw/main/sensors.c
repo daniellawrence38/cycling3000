@@ -18,6 +18,7 @@
 #include "hal_ble.h"
 #include "hal_clock.h"
 #include "host/ble_hs.h"
+#include "mem_esp.h"
 
 static const char *TAG = "sensors";
 
@@ -245,7 +246,7 @@ static int on_cal_write(uint16_t conn, const struct ble_gatt_error *err, struct 
 void fw_sensors_start(void)
 {
     if (!q)
-        q = xQueueCreate(64, sizeof(sens_ev_t));
+        q = fw_queue_create_psram(64, sizeof(sens_ev_t)); /* host task to core task only; PSRAM if any */
     for (int k = 0; k < 3; k++)
         L[k].conn = BLE_HS_CONN_HANDLE_NONE;
 }
