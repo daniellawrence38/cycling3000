@@ -233,7 +233,7 @@ hal_fs_t *fw_fs_sdmmc(void)
 #include "esp_heap_caps.h"
 #include "fat_probe.h"
 
-#define PROBE_CHUNK 64 /* sectors per read: 32 KB */
+#define PROBE_CHUNK 4 /* sectors per read: 2 KB. It was 32 KB, which the unit could not spare: see below. */
 
 static void probe_entry(const uint8_t *e, int *shown, int *done)
 {
@@ -315,6 +315,10 @@ static int probe_volume(sdmmc_card_t *c, uint8_t *buf, uint32_t base, const fw_f
 void fw_emmc_probe(void)
 {
     ESP_LOGW("emmc", "==== eMMC read-only probe: nothing is mounted and nothing is written ====");
+    ESP_LOGW("emmc", "memory: DMA-capable free %u bytes, largest block %u; internal free %u",
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA),
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DMA),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     sdmmc_host_t host = SDMMC_HOST_DEFAULT();
     host.slot = SDMMC_HOST_SLOT_1;
     host.max_freq_khz = SDMMC_MAX_FREQ_KHZ;
@@ -331,7 +335,11 @@ void fw_emmc_probe(void)
     static sdmmc_card_t pc; /* static: it is large and this runs on the core task's stack */
     uint8_t *buf = heap_caps_malloc((size_t)PROBE_CHUNK * FW_FAT_SECTOR, MALLOC_CAP_DMA);
     if (!buf) {
-        ESP_LOGE("emmc", "no memory for the read buffer");
+        /* The first run on the unit failed here asking for 32 KB: once LVGL, NimBLE and the display
+           buffers are up there is little DMA-capable internal RAM left. Say how little. */
+        ESP_LOGE("emmc", "no memory for the read buffer (%u bytes wanted; DMA-capable free %u, largest block %u)",
+                 (unsigned)(PROBE_CHUNK * FW_FAT_SECTOR), (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA),
+                 (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
         return;
     }
     esp_err_t e = sdmmc_host_init();
