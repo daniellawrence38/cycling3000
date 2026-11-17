@@ -800,3 +800,25 @@ warnings.
     (Q40 update).
   - In the charge-only state the screen stays dark and the buttons are ignored until the nRF
     reports a manual power-on (`hal_nrf_charge_only`).
+
+## 17 November 2026 · Power-off and wake confirmed, on USB and on battery
+
+`outputs/handshake-3.txt`, firmware `977d60d` (built from `4ea63f6` plus the swallow change).
+
+**Daniel confirms on the unit:**
+- Holding power switches the unit off, and holding it again switches it back on, both on USB and on
+  battery.
+- On USB the screen stays dark while the unit is off and charging.
+
+**The capture shows:**
+- **Off and charging.** The boot comes from power event 4 only, so the screen is dark. There are no
+  sensor frames ("baro: no fresh reading") and no GNSS power-on.
+- **Switching on.** A power hold makes the nRF send event 5 about 230 ms after the first held frame.
+  That brings the screen on, starts the sensors and sends the GNSS power-on; the receiver's first
+  bytes came 40 ms later. The rest of that hold, and its release, were swallowed, with no power-off.
+- **Switching off.** The next hold's log stops 140 ms after its first held frame, and the port drops.
+  In handshake-2 the nRF's own cut came 1.5 to 1.9 s after the first held frame. This is consistent
+  with `SendPowerOffCmd` going out at 0.5 s, its log line being lost with the USB port, and the nRF
+  acting on it. It does not prove it.
+- **Clock.** The nRF's clock reads 2023-06-01 (`CLOCK 2023-06-01 23:51:29`). It has not been set,
+  so the GNSS time is needed before ride timestamps can be trusted.
