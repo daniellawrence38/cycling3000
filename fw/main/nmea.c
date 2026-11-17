@@ -91,8 +91,14 @@ static int parse_coord_e7(const char *val, const char *hemi, int is_lon, int32_t
     return 0;
 }
 
-/* Converts NMEA hhmmss(.ss) and ddmmyy into Unix UTC seconds. Refuses years before 2025 so a cold-boot
- * default date from an un-synced RTC can never be mistaken for real UTC (spec 10.6). */
+/* Converts NMEA hhmmss(.ss) and ddmmyy into Unix UTC seconds, or 0 if the date cannot be real.
+ *
+ * The year is accepted only from 2025 to 2040. NMEA sends two digits, so a receiver's default date is
+ * read in this century: the GPS epoch default, 6 January 1980, arrives as "060180" and reads as 2080,
+ * which the old upper bound of 2099 let through. 2040 is a deliberate horizon: well past this unit's
+ * service life, and it keeps "80" and every other default in the 1980s and 1990s out. Raise it if
+ * this code is still running in 2040. Before 2025 the date cannot be real either: this software did
+ * not exist. A plausible year is not enough on its own; fw_nmea_line also wants evidence of a fix. */
 static uint32_t parse_utc(const char *hms, const char *dmy)
 {
     if (!hms || !dmy || strlen(hms) < 6 || strlen(dmy) != 6)
@@ -106,7 +112,7 @@ static uint32_t parse_utc(const char *hms, const char *dmy)
     int d = (dmy[0] - '0') * 10 + (dmy[1] - '0');
     int m = (dmy[2] - '0') * 10 + (dmy[3] - '0');
     int y = 2000 + (dmy[4] - '0') * 10 + (dmy[5] - '0');
-    if (hh > 23 || mm > 59 || ss > 59 || m < 1 || m > 12 || d < 1 || d > 31 || y < 2025 || y > 2099)
+    if (hh > 23 || mm > 59 || ss > 59 || m < 1 || m > 12 || d < 1 || d > 31 || y < 2025 || y > 2040)
         return 0;
     static const uint8_t mdays[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     int leap = (y % 4 == 0 && (y % 100 != 0 || y % 400 == 0));
@@ -145,6 +151,8 @@ int fw_nmea_line(fw_nmea_t *st, const char *line, hal_gnss_fix_t *fix)
         if (nf < 10)
             return -1;
         int qual = *f[6] ? atoi(f[6]) : 0;
+        if (qual > 0)
+            st->fix_seen = 1; /* from now on the receiver's clock has been set from the satellites */
         if (*f[7]) {
             int s = atoi(f[7]);
             st->sats = (uint8_t)(s < 0 ? 0 : s > 99 ? 99 : s);
@@ -163,7 +171,18 @@ int fw_nmea_line(fw_nmea_t *st, const char *line, hal_gnss_fix_t *fix)
         if (nf < 10)
             return -1;
         memset(fix, 0, sizeof *fix);
-        fix->utc_seconds = parse_utc(f[1], f[9]);
+        /* UTC only from a receiver that has shown it has a fix: this RMC's status is A, or a GGA
+           with fix quality above 0 has been seen since start-up.
+           This is deliberately stricter than spec 10.6, which lets the unit learn UTC before a
+           position fix ("the receiver often reports UTC before it has a position fix"). The core
+           takes any non-zero utc_seconds as the truth (cc_on_gnss), fixes the ride's ID and every
+           FIT timestamp from it, and has no way to take it back. A receiver straight out of a cold
+           start sends its built-in default date in void RMC sentences, and the year check alone
+           cannot tell a default from the real date if the default happens to be plausible. Waiting
+           for a fix costs, at worst, the time to first fix; meanwhile the phone's TIME_SET supplies
+           the time, and a ride started without either is corrected when UTC arrives (10.6). */
+        if (f[2][0] == 'A' || st->fix_seen)
+            fix->utc_seconds = parse_utc(f[1], f[9]);
         fix->sats = st->sats;
         fix->hdop_x10 = st->hdop_x10;
         fix->alt_m = st->alt_m;
