@@ -41,6 +41,7 @@ static cc_link_t link_srv;
 static volatile uint16_t pending_mtu;
 static volatile int phone_state = -1; /* -1 nothing new, 0 disconnected, 1 connected */
 static uint32_t last_saved_seq;
+static uint32_t lib_seen; /* link_srv.lib_changes at the last list refresh */
 static int last_backlight_pct = -1;
 static int power_off_sent;
 
@@ -215,14 +216,20 @@ static void core_task(void *arg)
                 link_srv.ev_state = -1; /* first EVENT_STATE after connect */
             phone_state = -1;
         }
-        int rx_any = 0;
         fw_pkt_t p;
-        while (fw_link_take(&p)) {
+        while (fw_link_take(&p))
             cc_link_rx(&link_srv, p.data, p.len, now);
-            rx_any = 1;
-        }
-        if (rx_any && !cc_ride_active())
+        /* Refresh the Workouts, Routes and History lists only when the phone has changed what they
+           show (link.h, lib_changes), not after every batch of packets. A refresh reads and decodes
+           every stored workout and route (up to 131 KB each) and every ride's metadata; done per
+           packet batch it ran once per chunk of a route upload, on this task, which also owns the
+           link, LVGL and the buttons. During a ride the phone cannot change the library (protocol 4
+           answers BUSY), and leaving the counter unmatched means the refresh happens once the ride
+           ends; ui_app_step refreshes on the return to Ready as well. */
+        if (link_srv.lib_changes != lib_seen && !cc_ride_active()) {
+            lib_seen = link_srv.lib_changes;
             ui_app_refresh_lists();
+        }
         hal_input_event_t ie;
         while (hal_input_poll(&ie)) {
 #if NRF_DECODE_LOG

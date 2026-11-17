@@ -85,6 +85,18 @@ typedef struct {
     uint8_t out[CC_LINK_MSG_MAX];
     /* last state reported in EVENT_STATE */
     int ev_state, ev_batt5;
+    /* Bumped once for every request that changed what the unit's lists show: an object committed by
+     * OBJ_PUT_END, an object removed by OBJ_DELETE, a ride removed by RIDE_DELETE, or a ride's
+     * uploaded flag set or cleared by RIDE_MARK. Only successful requests count. TIME_SET counts too,
+     * because History shows each ride's local date computed with the time zone when the list is built,
+     * and the phone sends the zone once per connection.
+     *
+     * WHY: the screen manager's list refresh reads and decodes every stored workout and route (up to
+     * 131 KB each) and every ride's metadata. The firmware used to run it after every batch of
+     * received packets, which during a route upload meant once per chunk, on the task that also owns
+     * the link, LVGL and the buttons. A host compares this number with the one it last saw and
+     * refreshes only when it has moved. It wraps; compare for inequality, never for order. */
+    uint32_t lib_changes;
 } cc_link_t;
 
 void cc_link_init(cc_link_t *l, hal_fs_t *fs, const cc_link_host_t *host,

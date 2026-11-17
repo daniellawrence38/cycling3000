@@ -699,9 +699,93 @@ static void test_events(void)
     TEST_ASSERT_EQUAL_UINT32(1793000000u, cc_get_u32(txbuf + 3));
 }
 
+/* lib_changes moves exactly when a list the unit shows could have changed, and not per packet: the
+ * firmware refreshes its Workouts, Routes and History lists on it (fw/main/main.c), and a refresh
+ * decodes every stored object, so a count that moved on every PUT_DATA chunk would bring back the
+ * per-chunk refresh this counter exists to remove. */
+static void test_lib_changes(void)
+{
+    TEST_ASSERT_EQUAL_UINT32(0, lk.lib_changes);
+    uint8_t m[64];
+    /* Requests that change nothing stored */
+    m[0] = 0x01; m[1] = 1; m[2] = 1; call(m, 3);            /* HELLO */
+    m[0] = 0x10; m[1] = 2; m[2] = 1; call(m, 3);            /* OBJ_LIST */
+    m[0] = 0x20; m[1] = 3; call(m, 2);                      /* RIDE_LIST */
+    TEST_ASSERT_EQUAL_UINT32(0, lk.lib_changes);
+
+    /* A PUT moves it once, at END, not at BEGIN or per chunk */
+    uint8_t b[19] = {0x11, 4, 1};
+    memcpy(b + 3, w1 + 4, 8);
+    cc_put_u32(b + 11, (uint32_t)w1n);
+    cc_put_u32(b + 15, cc_crc32(w1, w1n));
+    call(b, 19);
+    TEST_ASSERT_EQUAL_HEX8(CC_ST_OK, st());
+    uint8_t dm[300] = {0x12, 5};
+    for (size_t off = 0; off < w1n; off += 50) {
+        size_t take = w1n - off < 50 ? w1n - off : 50;
+        cc_put_u32(dm + 2, (uint32_t)off);
+        memcpy(dm + 6, w1 + off, take);
+        call(dm, 6 + take);
+        TEST_ASSERT_EQUAL_HEX8(CC_ST_OK, st());
+        TEST_ASSERT_EQUAL_UINT32(0, lk.lib_changes);
+    }
+    m[0] = 0x13; m[1] = 6; call(m, 2);
+    TEST_ASSERT_EQUAL_HEX8(CC_ST_OK, st());
+    TEST_ASSERT_EQUAL_UINT32(1, lk.lib_changes);
+
+    /* A PUT that fails at END (wrong CRC declared) changes nothing and does not move it */
+    uint8_t w2[300];
+    memcpy(w2, w1, w1n);
+    w2[4] ^= 0x01; /* another id, so EXISTS does not stop it at BEGIN */
+    memcpy(b + 3, w2 + 4, 8);
+    cc_put_u32(b + 15, cc_crc32(w2, w1n) ^ 1u);
+    call(b, 19);
+    TEST_ASSERT_EQUAL_HEX8(CC_ST_OK, st());
+    cc_put_u32(dm + 2, 0);
+    memcpy(dm + 6, w2, w1n);
+    call(dm, 6 + w1n);
+    m[0] = 0x13; m[1] = 7; call(m, 2);
+    TEST_ASSERT_EQUAL_HEX8(CC_ST_BAD_CRC, st());
+    TEST_ASSERT_EQUAL_UINT32(1, lk.lib_changes);
+
+    /* OBJ_DELETE: once on success, not for an object that is not there */
+    m[0] = 0x14; m[1] = 8; m[2] = 1;
+    memcpy(m + 3, w1 + 4, 8);
+    call(m, 11);
+    TEST_ASSERT_EQUAL_HEX8(CC_ST_OK, st());
+    TEST_ASSERT_EQUAL_UINT32(2, lk.lib_changes);
+    call(m, 11);
+    TEST_ASSERT_EQUAL_HEX8(CC_ST_NOT_FOUND, st());
+    TEST_ASSERT_EQUAL_UINT32(2, lk.lib_changes);
+
+    /* TIME_SET: History's local dates depend on the zone it carries */
+    m[0] = 0x04; m[1] = 12; cc_put_u32(m + 2, 1793000000u); cc_put_u16(m + 6, 480);
+    call(m, 8);
+    TEST_ASSERT_EQUAL_HEX8(CC_ST_OK, st());
+    TEST_ASSERT_EQUAL_UINT32(3, lk.lib_changes);
+
+    /* RIDE_MARK and RIDE_DELETE: once each on success, not for a ride that is not there */
+    make_ride(1793000000u, 500, 0);
+    m[0] = 0x23; m[1] = 9; cc_put_u32(m + 2, 1793000000u); m[6] = 1;
+    call(m, 7);
+    TEST_ASSERT_EQUAL_HEX8(CC_ST_OK, st());
+    TEST_ASSERT_EQUAL_UINT32(4, lk.lib_changes);
+    m[0] = 0x24; m[1] = 10; cc_put_u32(m + 2, 1793000000u);
+    call(m, 6);
+    TEST_ASSERT_EQUAL_HEX8(CC_ST_OK, st());
+    TEST_ASSERT_EQUAL_UINT32(5, lk.lib_changes);
+    call(m, 6);
+    TEST_ASSERT_EQUAL_HEX8(CC_ST_NOT_FOUND, st());
+    m[0] = 0x23; m[1] = 11; cc_put_u32(m + 2, 1793000000u); m[6] = 1;
+    call(m, 7);
+    TEST_ASSERT_EQUAL_HEX8(CC_ST_NOT_FOUND, st());
+    TEST_ASSERT_EQUAL_UINT32(5, lk.lib_changes);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_lib_changes);
     RUN_TEST(test_v5_messages);
     RUN_TEST(test_v5_put_data_packets);
     RUN_TEST(test_v5_bad_crc);

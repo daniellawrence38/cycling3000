@@ -360,6 +360,7 @@ size_t cc_link_handle(cc_link_t *l, const uint8_t *m, size_t len, uint32_t now_m
     case CC_OP_TIME_SET:
         if (pl < 6) { r8(&r, CC_ST_BAD_ARG); return r.n; }
         l->host.set_time(l->host.ctx, cc_get_u32(p), cc_get_i16(p + 4));
+        l->lib_changes++; /* History's dates are local: computed with this offset when the list is built */
         r8(&r, CC_ST_OK);
         return r.n;
     case CC_OP_OBJ_LIST: {
@@ -417,10 +418,14 @@ size_t cc_link_handle(cc_link_t *l, const uint8_t *m, size_t len, uint32_t now_m
         r32(&r, l->put_next);
         return r.n;
     }
-    case CC_OP_OBJ_PUT_END:
+    case CC_OP_OBJ_PUT_END: {
         if (!l->put_open) { r8(&r, CC_ST_NO_SESSION); return r.n; }
-        r8(&r, (uint32_t)put_end(l));
+        int rc = put_end(l);
+        if (rc == CC_ST_OK)
+            l->lib_changes++; /* the object is now in the library under its final name */
+        r8(&r, (uint32_t)rc);
         return r.n;
+    }
     case CC_OP_OBJ_DELETE: {
         if (pl < 9 || (p[0] != 1 && p[0] != 2)) { r8(&r, CC_ST_BAD_ARG); return r.n; }
         char fin[64];
@@ -428,6 +433,7 @@ size_t cc_link_handle(cc_link_t *l, const uint8_t *m, size_t len, uint32_t now_m
         if (fs->remove(fs, fin) != 0) { r8(&r, CC_ST_NOT_FOUND); return r.n; }
         if (l->host.object_deleted)
             l->host.object_deleted(l->host.ctx, p[0], p + 1);
+        l->lib_changes++;
         r8(&r, CC_ST_OK);
         return r.n;
     }
@@ -486,12 +492,16 @@ size_t cc_link_handle(cc_link_t *l, const uint8_t *m, size_t len, uint32_t now_m
     case CC_OP_RIDE_MARK: {
         if (pl < 5) { r8(&r, CC_ST_BAD_ARG); return r.n; }
         int rc = cc_ride_mark(fs, cc_get_u32(p), p[4] & 1);
+        if (rc == 0)
+            l->lib_changes++; /* History shows UPLOADED or WAITING from this flag */
         r8(&r, rc == 0 ? CC_ST_OK : rc == -2 ? CC_ST_NOT_FOUND : CC_ST_IO_ERROR);
         return r.n;
     }
     case CC_OP_RIDE_DELETE: {
         if (pl < 4) { r8(&r, CC_ST_BAD_ARG); return r.n; }
         int rc = cc_ride_delete(fs, cc_get_u32(p));
+        if (rc == 0)
+            l->lib_changes++;
         r8(&r, rc == 0 ? CC_ST_OK : CC_ST_NOT_FOUND);
         return r.n;
     }
