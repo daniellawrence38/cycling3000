@@ -1,12 +1,11 @@
 /* hal_esp.c: the HAL on the ESP32-S3. The clock is real here; the display, touch and barometer are real
- * in their own files; everything else that depends on unknown wiring
- * (buttons, GNSS, battery, light sensor, power-off) is a stub that returns
+ * in their own files, and the buttons come from the nRF link; everything else that depends on unknown wiring
+ * (GNSS, battery, light sensor, power-off) is a stub that returns
  * "not implemented" and logs once (brief 4), until bring-up identifies the hardware (BRINGUP.md step 3). */
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "hal_clock.h"
 #include "hal_gnss.h"
-#include "hal_input.h"
 #include "hal_power.h"
 
 static const char *TAG = "hal";
@@ -39,13 +38,7 @@ void hal_clock_set_utc(uint32_t unix_seconds)
 
 /* display: the real ST7789 i80 driver is in hal_display_esp.c */
 
-/* input */
-int hal_input_poll(hal_input_event_t *ev)
-{
-    (void)ev;
-    NOT_IMPLEMENTED();
-    return 0;
-}
+/* input: the buttons are in hal_nrf_esp.c, decoded from the nRF link; touch goes straight to LVGL */
 
 /* GNSS */
 int hal_gnss_poll(hal_gnss_fix_t *fix)

@@ -120,3 +120,48 @@ int fw_nrf_parse_light(const fw_nrf_frame_t *f, fw_nrf_light_t *out)
     out->aux = u16le(p + 6);
     return 0;
 }
+
+int fw_nrf_keys_feed(fw_nrf_keys_t *k, const fw_nrf_key_t *ev, uint32_t now_ms, fw_nrf_edge_t out[2])
+{
+    if (ev->index >= FW_NRF_KEYS)
+        return 0;
+    uint8_t i = ev->index;
+    int n = 0;
+    switch (ev->event) {
+    case FW_NRF_KEY_CLICK:
+        /* A click while we believe the button is held means a hold end was lost: finish the hold. */
+        if (!k->held[i])
+            out[n++] = (fw_nrf_edge_t){i, 1};
+        out[n++] = (fw_nrf_edge_t){i, 0};
+        k->held[i] = 0;
+        break;
+    case FW_NRF_KEY_HELD:
+        if (!k->held[i]) {
+            k->held[i] = 1;
+            out[n++] = (fw_nrf_edge_t){i, 1};
+        }
+        k->seen_ms[i] = now_ms;
+        break;
+    case FW_NRF_KEY_HOLD_END:
+        if (k->held[i]) {
+            k->held[i] = 0;
+            out[n++] = (fw_nrf_edge_t){i, 0};
+        }
+        break;
+    default: /* an event code never seen on the unit: not guessed at */
+        break;
+    }
+    return n;
+}
+
+int fw_nrf_keys_tick(fw_nrf_keys_t *k, uint32_t now_ms, fw_nrf_edge_t out[FW_NRF_KEYS])
+{
+    int n = 0;
+    for (uint8_t i = 0; i < FW_NRF_KEYS; i++) {
+        if (k->held[i] && now_ms - k->seen_ms[i] > FW_NRF_KEY_LOST_MS) {
+            k->held[i] = 0;
+            out[n++] = (fw_nrf_edge_t){i, 0};
+        }
+    }
+    return n;
+}

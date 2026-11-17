@@ -197,6 +197,12 @@ static void core_task(void *arg)
             cc_link_rx(&link_srv, p.data, p.len, now);
         hal_input_event_t ie;
         while (hal_input_poll(&ie)) {
+#if NRF_DECODE_LOG
+            static const char *const NAME[] = {"left down", "left up", "right down", "right up",
+                                               "power down", "power up"};
+            if (ie.kind <= HAL_PWR_UP)
+                ESP_LOGI(TAG, "button: %s", NAME[ie.kind]);
+#endif
             if (ie.kind <= HAL_PWR_UP)
                 cc_on_button(now, (cc_btn_t)(ie.kind / 2), (ie.kind % 2) == 0);
         }

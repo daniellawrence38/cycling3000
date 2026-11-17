@@ -25,8 +25,9 @@ recommendation; the `Answer:` line is left empty for him. Provisional decisions 
 
 **Status, 17 November 2026.** Q36 is answered and implemented for the barometer. Q38 is narrowed:
 the buttons turn out to be on a message that needs no request, so the passive test is now expected to
-settle it. Q39 is new and is Daniel's. Open and needing Daniel: Q18, Q21, Q22, Q23, Q24, Q32, Q34,
-Q35, Q37, Q38, Q39. The paragraph below is the 4 November status, kept as written.
+settle it, and on the same day it did: the buttons are an input now, and Q38 is down to one
+decision (may the firmware send the power-off frame). Q39 and Q40 are new. Open and needing Daniel:
+Q18, Q21, Q22, Q23, Q24, Q32, Q34, Q35, Q37, Q38, Q39, Q40. The paragraph below is the 4 November status, kept as written.
 
 **Status, 4 November 2026.** Answered: Q14, Q15, Q16, Q17, Q19, Q20, Q25, Q26, Q27, Q28, Q29, Q30,
 Q31 and Q33 — fourteen of the twenty-two. The eight still open all need Daniel, and none of them
@@ -318,6 +319,16 @@ for each. Two statements in the question are also corrected: `SendQuerySlaveMode
 byte for byte. That makes a transmit possible; it does not make it agreed. The never-seen ids (11,
 17, 34, 35, 40, 120 to 123, 128) are still unexplained and are now most likely ANT+ traffic, which
 only exists with a paired sensor.
+Result (17 November 2026, `outputs/nrf-capture-2.txt`): **(c) settled the buttons, with nothing sent.**
+Keys arrive as id 16 / `0x49`: index 0 power, 1 left, 2 right; event 1 a short press, 4 held (every
+300 ms), 5 released after a hold. They are implemented as `hal_input`. The same capture showed the
+nRF switching its sensors on by itself when the power button is held, and announcing it with an
+`e2 … 05 …` power event, so powering **on** needs no transmit either. What still needs one is
+powering **off**: the stock firmware answers the user's request with `SendPowerOffCmd`, whose frame
+is now known exactly (kind 2, id 16, payload `e2 02 00 00 00 00 00 00`). That is the narrower target
+this question asked for. It stays open for one decision only: whether our firmware may send that one
+frame. Until it can, the unit runs until the battery is flat, which is what happened between 4 and
+17 November.
 Answer:
 
 ### Q37 · bring-up · open
@@ -351,6 +362,25 @@ update, and applying an update would also replace the stock firmware in `ota_0` 
 describes, so it should be captured and not installed.
 Why it matters: it decides whether ANT+ and the Di2 display (Q34) can be decoded offline or need
 live experiments. It is not on the path to a first recorded ride.
+Answer:
+
+### Q40 · bring-up · open
+Question: The spec's holds are timed from the moment a button goes down (1 s for a bottom button,
+2 s for power, with a bar showing progress). The nRF does not report the moment a button goes down.
+It reports a short press as one frame when the button is let go, and a hold as a "held" frame that
+first arrives some time after the press (the delay is the nRF's own long-press threshold, not
+measured yet) and then repeats every 300 ms. So the unit cannot know a button is down until the nRF
+has already decided it is a long press.
+Options: (a) start the core's hold timer at the first "held" frame, so a hold takes the nRF's
+threshold plus the spec's time, and the progress bar runs for the spec's time; (b) treat the first
+"held" frame as the hold itself and fire at once, with no progress bar; (c) backdate the press by an
+assumed threshold so the bar starts part-filled.
+Default used: **(a)**. It invents nothing: every timestamp the core sees is real, the bar behaves as
+the mockup shows, and the only cost is that holds feel longer than the spec says. (b) changes what
+the screen shows and (c) needs a number nobody has measured. `CC_HOLD_BOTTOM_MS` and
+`CC_HOLD_POWER_MS` are the two constants to shorten if (a) feels slow, and they are untouched.
+Why it matters: every hold in the product goes through this (previous page, pause, the pause menu,
+power). It also means a short press acts on release, not on press, on the real unit.
 Answer:
 
 ## Document errors

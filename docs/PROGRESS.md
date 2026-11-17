@@ -659,3 +659,42 @@ One flash and one capture, about ten minutes. Everything is passive: the firmwar
 3. Send the file. The lines that matter are `KEY`, `LIGHT?`, `BATTERY?`, `CLOCK` and `baro … Pa`.
 
 The unit still cannot switch itself off under our firmware, so do not leave it running on battery.
+
+## Capture 2: the link confirmed on the unit, and buttons as an input · 17 November 2026
+
+Daniel flashed `a990a63` and ran the capture (`outputs/nrf-capture-2.txt`): power, left, right pressed
+once each, power held two seconds, the light sensor covered then lit, the unit raised then put on the
+floor. He typed every command; I read the file. 6390 frames, 0 CRC rejects. Detail in
+`docs/NRF-PROTOCOL.md`, "Confirmed on the unit".
+
+**Confirmed on hardware.**
+
+- **Barometer, through our own firmware into the core.** Desk 100478 to 100480 Pa, overhead about
+  12 Pa lower, floor about 7 Pa higher; the core reported 71 m. First time `hal_baro_read_pa` has run
+  on the unit.
+- **Buttons**: index 0 power, 1 left, 2 right; event 1 short press, 4 held, 5 released after a hold.
+- **Battery**: 3477 mV and 2 % rising on charge (4290 mV and 100 % on 4 November).
+- **Light sensor**: 0 to 30 covered, 600 in the room, 6000 to 9000 under a torch, in coarse bands.
+- **Clock layout**, and that the clock had reset to 2023-06-01: it has to be set, not trusted.
+
+**Found, not predicted.**
+
+- The nRF has an off state. Until the power button was held it sent only the battery; on release it
+  sent a power-on event and started the sensors, with nothing transmitted by us.
+- The battery had run flat since 4 November, because our firmware cannot switch the unit off.
+- A thumb on the case moved the barometer by up to 29 Pa (2.4 m) for a few seconds.
+
+**What exists now.** `hal_input_poll` is real: `fw_nrf_keys_feed` turns the nRF's clicks into the
+edges the core expects, with a one-second release if a hold's repeats stop. The core task logs each
+edge while `NRF_DECODE_LOG` is on. The firmware still draws only the Ready screen (the screen manager
+is in `ui/sim/app.c` until it is moved), so a button reaches the core but changes little on screen yet.
+
+**Verified.** Host C 17 of 17 plain and 15 of 15 under ASan and UBSan; `test_nrf_proto` now has twelve
+tests, two of them replaying the capture's key frames at their own times. `make fw-build` clean.
+**Not verified:** the button input has not run on the unit (the capture was taken with the build
+before it); the nRF's long-press threshold is unmeasured (Q40).
+
+**Next, in order.** (1) Flash this build and check the `button:` lines against real presses. (2) Daniel
+decides Q38's one remaining point, the power-off frame; without it the unit cannot be switched off.
+(3) Battery and light into `hal_power`. (4) Move the screen manager into the firmware so buttons and
+touch drive the real UI. (5) Storage pins and GNSS, read from the stock firmware with `tools/re`.

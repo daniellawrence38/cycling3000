@@ -67,16 +67,45 @@ int fw_nrf_parse_accel(const fw_nrf_frame_t *f, fw_nrf_accel_t *out);
 
 /* id 16, sub-tag 0x49: a key event. The vendor handler (0x42051200) copies payload[1] as the key
  * index and payload[6] as the event code into the record its key queue reader logs as
- * "Index:%d Evt:%d", and keeps payload[5] beside them. Index is below 5 in the reader; event 4 starts
- * a long press there. NOT yet seen in a clean capture: the meaning of each index and event code is
- * Unverified until buttons are pressed during one. */
+ * "Index:%d Evt:%d", and keeps payload[5] beside them.
+ * Confirmed on the unit, 17 November 2026 (outputs/nrf-capture-2.txt): index 0 is the power button,
+ * 1 the bottom left, 2 the bottom right. A short press is ONE frame with event 1, sent when the
+ * button is let go. A held button sends event 4 every 300 ms while it stays down and event 5 when it
+ * is released. The nRF reports clicks, not edges. */
 #define FW_NRF_SUB_KEY 0x49
+#define FW_NRF_KEY_CLICK 1
+#define FW_NRF_KEY_HELD 4
+#define FW_NRF_KEY_HOLD_END 5
+#define FW_NRF_KEYS 3
 typedef struct {
     uint8_t index; /* which key */
     uint8_t event; /* the vendor's event code */
     uint8_t extra; /* payload[5]; purpose unknown */
 } fw_nrf_key_t;
 int fw_nrf_parse_key(const fw_nrf_frame_t *f, fw_nrf_key_t *out);
+
+/* Turning the nRF's clicks into the down and up edges the core's hold detection wants (brief 6.4).
+ *
+ *   click (1)     -> down, then up at once: a short press
+ *   held (4)      -> down at the first one; the repeats only say the button is still down
+ *   hold end (5)  -> up
+ *
+ * If the repeats stop without a hold end (a lost frame, or the nRF restarting), the button is
+ * released after FW_NRF_KEY_LOST_MS, so a button can never stay down for ever. The repeats come every
+ * 300 ms, so one second is three missed in a row. */
+#define FW_NRF_KEY_LOST_MS 1000u
+typedef struct {
+    uint8_t key;  /* 0 power, 1 left, 2 right */
+    uint8_t down; /* 1 pressed, 0 released */
+} fw_nrf_edge_t;
+typedef struct {
+    uint8_t held[FW_NRF_KEYS];
+    uint32_t seen_ms[FW_NRF_KEYS];
+} fw_nrf_keys_t;
+/* Feeds one key event. Writes up to two edges to out and returns how many. */
+int fw_nrf_keys_feed(fw_nrf_keys_t *k, const fw_nrf_key_t *ev, uint32_t now_ms, fw_nrf_edge_t out[2]);
+/* Call regularly. Writes a release for each held button whose repeats have stopped; returns how many. */
+int fw_nrf_keys_tick(fw_nrf_keys_t *k, uint32_t now_ms, fw_nrf_edge_t out[FW_NRF_KEYS]);
 
 /* id 0, sub-tag 0x53: the nRF's calendar clock. The vendor handler (0x42050d78) reads seconds,
  * minutes, hours, day of month (low five bits), month from 0 and year from 1900, and range-checks

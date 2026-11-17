@@ -1,0 +1,1205 @@
+W (10059) cc700: baro: no fresh reading
+I (10089) nrf: raw #57: a5 0c 6f f1 04 00 52 ff ff ff 94 0d 02 ff cb 7c
+I (10089) nrf: raw #58: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (10389) nrf: raw #59: a5 0c 6f f1 04 00 52 ff ff ff 94 0d 02 ff cb 7c
+I (10389) nrf: raw #60: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (10689) nrf: raw #61: a5 0c 6f f1 04 00 52 ff ff ff 94 0d 02 ff cb 7c
+I (10689) nrf: raw #62: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (10989) nrf: raw #63: a5 0c 6f f1 04 00 52 ff ff ff 94 0d 02 ff cb 7c
+I (10989) nrf: raw #64: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (11289) nrf: raw #65: a5 0c 6f f1 04 00 52 ff ff ff 94 0d 02 ff cb 7c
+I (11289) nrf: raw #66: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (11589) nrf: raw #67: a5 0c 6f f1 04 00 52 ff ff ff 94 0d 02 ff cb 7c
+I (11589) nrf: raw #68: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (11889) nrf: BATTERY? 3477 mV, 2 %
+I (11889) nrf: raw #69: a5 0c 6f f1 04 00 52 ff ff ff 95 0d 02 ff 7f 0a
+I (11889) nrf: raw #70: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (12059) cc700: baro: no fresh reading
+I (12189) nrf: raw #71: a5 0c 6f f1 04 00 52 ff ff ff 95 0d 02 ff 7f 0a
+I (12189) nrf: raw #72: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (12489) nrf: raw #73: a5 0c 6f f1 04 00 52 ff ff ff 95 0d 02 ff 7f 0a
+I (12489) nrf: raw #74: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (12789) nrf: raw #75: a5 0c 6f f1 04 00 52 ff ff ff 95 0d 02 ff 7f 0a
+I (12789) nrf: raw #76: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (13089) nrf: raw #77: a5 0c 6f f1 04 00 52 ff ff ff 95 0d 02 ff 7f 0a
+I (13089) nrf: raw #78: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (13389) nrf: raw #79: a5 0c 6f f1 04 00 52 ff ff ff 95 0d 02 ff 7f 0a
+I (13389) nrf: raw #80: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (13689) nrf: raw #81: a5 0c 6f f1 04 00 52 ff ff ff 95 0d 02 ff 7f 0a
+I (13689) nrf: raw #82: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (13989) nrf: raw #83: a5 0c 6f f1 04 00 52 ff ff ff 95 0d 02 ff 7f 0a
+I (13989) nrf: raw #84: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (14059) cc700: baro: no fresh reading
+I (14289) nrf: raw #85: a5 0c 6f f1 04 00 52 ff ff ff 95 0d 02 ff 7f 0a
+I (14289) nrf: raw #86: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (14589) nrf: raw #87: a5 0c 6f f1 04 00 52 ff ff ff 95 0d 02 ff 7f 0a
+I (14589) nrf: raw #88: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (14889) nrf: raw #89: a5 0c 6f f1 04 00 52 ff ff ff 95 0d 02 ff 7f 0a
+I (14889) nrf: raw #90: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (15189) nrf: raw #91: a5 0c 6f f1 04 00 52 ff ff ff 95 0d 02 ff 7f 0a
+I (15189) nrf: raw #92: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (15489) nrf: raw #93: a5 0c 6f f1 04 00 52 ff ff ff 95 0d 02 ff 7f 0a
+I (15489) nrf: raw #94: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (15789) nrf: raw #95: a5 0c 6f f1 04 00 52 ff ff ff 95 0d 02 ff 7f 0a
+I (15789) nrf: raw #96: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (16059) cc700: baro: no fresh reading
+W (16089) nrf: BATTERY? 3478 mV, 3 %
+I (16089) nrf: raw #97: a5 0c 6f f1 04 00 52 ff ff ff 96 0d 03 ff 92 a2
+I (16089) nrf: raw #98: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (16389) nrf: raw #99: a5 0c 6f f1 04 00 52 ff ff ff 96 0d 03 ff 92 a2
+I (16389) nrf: raw #100: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (16689) nrf: raw #101: a5 0c 6f f1 04 00 52 ff ff ff 96 0d 03 ff 92 a2
+I (16689) nrf: raw #102: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (16989) nrf: raw #103: a5 0c 6f f1 04 00 52 ff ff ff 96 0d 03 ff 92 a2
+I (16989) nrf: raw #104: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (17289) nrf: raw #105: a5 0c 6f f1 04 00 52 ff ff ff 96 0d 03 ff 92 a2
+I (17289) nrf: raw #106: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (17589) nrf: raw #107: a5 0c 6f f1 04 00 52 ff ff ff 96 0d 03 ff 92 a2
+I (17589) nrf: raw #108: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (17889) nrf: raw #109: a5 0c 6f f1 04 00 52 ff ff ff 96 0d 03 ff 92 a2
+I (17889) nrf: raw #110: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (18059) cc700: baro: no fresh reading
+I (18189) nrf: raw #111: a5 0c 6f f1 04 00 52 ff ff ff 96 0d 03 ff 92 a2
+I (18189) nrf: raw #112: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (18489) nrf: raw #113: a5 0c 6f f1 04 00 52 ff ff ff 96 0d 03 ff 92 a2
+I (18489) nrf: raw #114: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (18789) nrf: raw #115: a5 0c 6f f1 04 00 52 ff ff ff 96 0d 03 ff 92 a2
+I (18789) nrf: raw #116: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (19089) nrf: raw #117: a5 0c 6f f1 04 00 52 ff ff ff 96 0d 03 ff 92 a2
+I (19089) nrf: raw #118: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (19389) nrf: raw #119: a5 0c 6f f1 04 00 52 ff ff ff 96 0d 03 ff 92 a2
+I (19389) nrf: raw #120: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (19689) nrf: raw #121: a5 0c 6f f1 04 00 52 ff ff ff 96 0d 03 ff 92 a2
+I (19689) nrf: raw #122: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (19989) nrf: BATTERY? 3479 mV, 3 %
+I (19989) nrf: raw #123: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (19989) nrf: raw #124: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (20059) cc700: baro: no fresh reading
+I (20289) nrf: raw #125: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (20289) nrf: raw #126: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (20589) nrf: raw #127: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (20589) nrf: raw #128: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (20889) nrf: raw #129: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (20889) nrf: raw #130: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (21189) nrf: raw #131: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (21189) nrf: raw #132: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (21489) nrf: raw #133: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (21489) nrf: raw #134: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (21489) nrf: 115200 baud: 2144 byte(s), 134 valid frame(s)
+W (21489) nrf: baud rate found: 115200. Staying here; summary every 30 s.
+W (21489) nrf: ==== window 1 of 6 starting ====
+I (21789) nrf: raw #135: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (21789) nrf: raw #136: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (22059) cc700: baro: no fresh reading
+I (22089) nrf: raw #137: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (22089) nrf: raw #138: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (22389) nrf: raw #139: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (22389) nrf: raw #140: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (22689) nrf: raw #141: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (22689) nrf: raw #142: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (22989) nrf: raw #143: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (22989) nrf: raw #144: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (23289) nrf: raw #145: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (23289) nrf: raw #146: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (23589) nrf: raw #147: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (23589) nrf: raw #148: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (23889) nrf: raw #149: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (23889) nrf: raw #150: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (24059) cc700: baro: no fresh reading
+I (24189) nrf: raw #151: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (24189) nrf: raw #152: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (24489) nrf: raw #153: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (24489) nrf: raw #154: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (24789) nrf: raw #155: a5 0c 6f f1 04 00 52 ff ff ff 97 0d 03 ff 26 d4
+I (24789) nrf: raw #156: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (25089) nrf: BATTERY? 3480 mV, 3 %
+I (25089) nrf: raw #157: a5 0c 6f f1 04 00 52 ff ff ff 98 0d 03 ff c8 00
+I (25089) nrf: raw #158: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (25389) nrf: raw #159: a5 0c 6f f1 04 00 52 ff ff ff 98 0d 03 ff c8 00
+I (25389) nrf: raw #160: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (25689) nrf: raw #161: a5 0c 6f f1 04 00 52 ff ff ff 98 0d 03 ff c8 00
+I (25689) nrf: raw #162: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (25989) nrf: raw #163: a5 0c 6f f1 04 00 52 ff ff ff 98 0d 03 ff c8 00
+I (25989) nrf: raw #164: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (26059) cc700: baro: no fresh reading
+I (26289) nrf: raw #165: a5 0c 6f f1 04 00 52 ff ff ff 98 0d 03 ff c8 00
+I (26289) nrf: raw #166: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (26589) nrf: raw #167: a5 0c 6f f1 04 00 52 ff ff ff 98 0d 03 ff c8 00
+I (26589) nrf: raw #168: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (26889) nrf: raw #169: a5 0c 6f f1 04 00 52 ff ff ff 98 0d 03 ff c8 00
+I (26889) nrf: raw #170: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (27189) nrf: raw #171: a5 0c 6f f1 04 00 52 ff ff ff 98 0d 03 ff c8 00
+I (27189) nrf: raw #172: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (27489) nrf: raw #173: a5 0c 6f f1 04 00 52 ff ff ff 98 0d 03 ff c8 00
+I (27489) nrf: raw #174: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (27789) nrf: raw #175: a5 0c 6f f1 04 00 52 ff ff ff 98 0d 03 ff c8 00
+I (27789) nrf: raw #176: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (28059) cc700: baro: no fresh reading
+I (28089) nrf: raw #177: a5 0c 6f f1 04 00 52 ff ff ff 98 0d 03 ff c8 00
+I (28089) nrf: raw #178: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (28389) nrf: raw #179: a5 0c 6f f1 04 00 52 ff ff ff 98 0d 03 ff c8 00
+I (28389) nrf: raw #180: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (28689) nrf: raw #181: a5 0c 6f f1 04 00 52 ff ff ff 98 0d 03 ff c8 00
+I (28689) nrf: raw #182: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (28989) nrf: BATTERY? 3481 mV, 3 %
+I (28989) nrf: raw #183: a5 0c 6f f1 04 00 52 ff ff ff 99 0d 03 ff 7c 76
+I (28989) nrf: raw #184: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (29289) nrf: raw #185: a5 0c 6f f1 04 00 52 ff ff ff 99 0d 03 ff 7c 76
+I (29289) nrf: raw #186: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (29589) nrf: raw #187: a5 0c 6f f1 04 00 52 ff ff ff 99 0d 03 ff 7c 76
+I (29589) nrf: raw #188: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (29889) nrf: raw #189: a5 0c 6f f1 04 00 52 ff ff ff 99 0d 03 ff 7c 76
+I (29889) nrf: raw #190: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (30059) cc700: baro: no fresh reading
+I (30189) nrf: raw #191: a5 0c 6f f1 04 00 52 ff ff ff 99 0d 03 ff 7c 76
+I (30189) nrf: raw #192: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (30489) nrf: raw #193: a5 0c 6f f1 04 00 52 ff ff ff 99 0d 03 ff 7c 76
+I (30489) nrf: raw #194: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (30789) nrf: #195 id   0 sub 0x52 kind 4 | 52 ff ff ff 99 0d 03 ff
+I (30789) nrf: #196 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (31089) nrf: #197 id   0 sub 0x52 kind 4 | 52 ff ff ff 99 0d 03 ff
+I (31089) nrf: #198 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (31389) nrf: #199 id   0 sub 0x52 kind 4 | 52 ff ff ff 99 0d 03 ff
+I (31389) nrf: #200 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+W (32059) cc700: baro: no fresh reading
+W (32889) nrf: BATTERY? 3482 mV, 3 %
+I (32889) nrf: #209 id   0 sub 0x52 kind 4 | 52 ff ff ff 9a 0d 03 ff
+W (34059) cc700: baro: no fresh reading
+W (36059) cc700: baro: no fresh reading
+W (37089) nrf: BATTERY? 3483 mV, 3 %
+I (37089) nrf: #237 id   0 sub 0x52 kind 4 | 52 ff ff ff 9b 0d 03 ff
+W (38059) cc700: baro: no fresh reading
+W (40059) cc700: baro: no fresh reading
+W (40989) nrf: BATTERY? 3484 mV, 3 %
+I (40989) nrf: #263 id   0 sub 0x52 kind 4 | 52 ff ff ff 9c 0d 03 ff
+W (42059) cc700: baro: no fresh reading
+W (44059) cc700: baro: no fresh reading
+W (44889) nrf: BATTERY? 3485 mV, 3 %
+I (44889) nrf: #289 id   0 sub 0x52 kind 4 | 52 ff ff ff 9d 0d 03 ff
+W (46059) cc700: baro: no fresh reading
+W (48059) cc700: baro: no fresh reading
+W (49979) nrf: BATTERY? 3486 mV, 3 %
+I (49979) nrf: #323 id   0 sub 0x52 kind 4 | 52 ff ff ff 9e 0d 03 ff
+W (50059) cc700: baro: no fresh reading
+I (51779) nrf: 115200 baud: 3232 byte(s), 202 valid frame(s)
+W (51779) nrf: ---- summary: 336 frames, 0 CRC rejects, 2 id/sub-tag pair(s) ----
+W (51779) nrf:   id   0 sub 0x52 kind 4 dir 0xf1:   101 frame(s), every   299 ms | 52 ff ff ff 97-9e 0d 03 ff 
+W (51779) nrf:       last as u16le: 65362 65535 3486 65283 
+W (51779) nrf:       last as u32le: 4294967122 4278390174 
+W (51779) nrf:   id  16 sub 0xf0 kind 4 dir 0xf1:   101 frame(s), every   299 ms | f0 02 00 00 00 00 00 00 
+W (51779) nrf:       last as u16le: 752 0 0 0 
+W (51779) nrf:       last as u32le: 752 0 
+W (51779) nrf: ---- end of summary ----
+W (51779) nrf: ==== window 2 of 6 starting ====
+W (52059) cc700: baro: no fresh reading
+I (52079) nrf: raw #337: a5 0c 6f f1 04 00 52 ff ff ff 9e 0d 03 ff 51 27
+I (52079) nrf: raw #338: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (52379) nrf: raw #339: a5 0c 6f f1 04 00 52 ff ff ff 9e 0d 03 ff 51 27
+I (52379) nrf: raw #340: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (52679) nrf: raw #341: a5 0c 6f f1 04 00 52 ff ff ff 9e 0d 03 ff 51 27
+I (52679) nrf: raw #342: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (52979) nrf: raw #343: a5 0c 6f f1 04 00 52 ff ff ff 9e 0d 03 ff 51 27
+I (52979) nrf: raw #344: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (53279) nrf: raw #345: a5 0c 6f f1 04 00 52 ff ff ff 9e 0d 03 ff 51 27
+I (53279) nrf: raw #346: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (53579) nrf: raw #347: a5 0c 6f f1 04 00 52 ff ff ff 9e 0d 03 ff 51 27
+I (53579) nrf: raw #348: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (53879) nrf: BATTERY? 3487 mV, 3 %
+I (53879) nrf: raw #349: a5 0c 6f f1 04 00 52 ff ff ff 9f 0d 03 ff e5 51
+I (53879) nrf: raw #350: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (54059) cc700: baro: no fresh reading
+I (54179) nrf: raw #351: a5 0c 6f f1 04 00 52 ff ff ff 9f 0d 03 ff e5 51
+I (54179) nrf: raw #352: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (54479) nrf: raw #353: a5 0c 6f f1 04 00 52 ff ff ff 9f 0d 03 ff e5 51
+I (54479) nrf: raw #354: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (54779) nrf: raw #355: a5 0c 6f f1 04 00 52 ff ff ff 9f 0d 03 ff e5 51
+I (54779) nrf: raw #356: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (55079) nrf: raw #357: a5 0c 6f f1 04 00 52 ff ff ff 9f 0d 03 ff e5 51
+I (55079) nrf: raw #358: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (55379) nrf: raw #359: a5 0c 6f f1 04 00 52 ff ff ff 9f 0d 03 ff e5 51
+I (55379) nrf: raw #360: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (55679) nrf: raw #361: a5 0c 6f f1 04 00 52 ff ff ff 9f 0d 03 ff e5 51
+I (55679) nrf: raw #362: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (55709) touch: press 6: raw 12,2 -> 12,2  [06 00 00 c2 1e 01 ab]
+I (55749) touch: press 7: raw 12,2 -> 12,2  [06 00 00 c2 1f 01 ab]
+I (55779) touch: press 8: raw 12,2 -> 12,2  [06 00 00 c2 2b 01 ab]
+I (55809) touch: press 9: raw 12,2 -> 12,2  [06 00 00 c2 38 01 ab]
+I (55849) touch: press 10: raw 20,2 -> 20,2  [06 01 00 42 47 01 ab]
+I (55879) touch: press 11: raw 25,2 -> 25,2  [06 01 00 92 4e 01 ab]
+I (55909) touch: press 12: raw 33,2 -> 33,2  [06 02 00 12 53 01 ab]
+I (55949) touch: press 13: raw 37,2 -> 37,2  [06 02 00 52 60 01 ab]
+I (55979) nrf: raw #363: a5 0c 6f f1 04 00 52 ff ff ff 9f 0d 03 ff e5 51
+I (55979) nrf: raw #364: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (55979) touch: press 14: raw 37,2 -> 37,2  [06 02 00 52 63 01 ab]
+I (56009) touch: press 15: raw 39,2 -> 39,2  [06 02 00 72 60 01 ab]
+I (56039) touch: press 16: raw 39,2 -> 39,2  [06 02 00 72 5d 01 ab]
+W (56059) cc700: baro: no fresh reading
+I (56099) touch: press 17: raw 41,2 -> 41,2  [06 02 00 92 5c 01 ab]
+I (56189) touch: press 18: raw 46,2 -> 46,2  [06 02 00 e2 55 01 ab]
+I (56219) touch: press 19: raw 48,2 -> 48,2  [06 03 00 02 50 01 ab]
+I (56249) touch: press 20: raw 48,2 -> 48,2  [06 03 00 02 49 01 ab]
+I (56279) nrf: raw #365: a5 0c 6f f1 04 00 52 ff ff ff 9f 0d 03 ff e5 51
+I (56279) nrf: raw #366: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (56579) nrf: KEY index 0 event 1 extra 0 (kind 4) | 49 00 00 00 00 00 01 80
+I (56579) nrf: raw #367: a5 0c 6f f1 04 10 49 00 00 00 00 00 01 80 5b fb
+I (56579) nrf: raw #368: a5 0c 6f f1 04 00 52 ff ff ff 9f 0d 03 ff e5 51
+I (56579) nrf: raw #369: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (56879) nrf: raw #370: a5 0c 6f f1 04 00 52 ff ff ff 9f 0d 03 ff e5 51
+I (56879) nrf: raw #371: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (57179) nrf: raw #372: a5 0c 6f f1 04 00 52 ff ff ff 9f 0d 03 ff e5 51
+I (57179) nrf: raw #373: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (57479) nrf: raw #374: a5 0c 6f f1 04 00 52 ff ff ff 9f 0d 03 ff e5 51
+I (57479) nrf: raw #375: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (57779) nrf: raw #376: a5 0c 6f f1 04 00 52 ff ff ff 9f 0d 03 ff e5 51
+I (57779) nrf: raw #377: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (58059) cc700: baro: no fresh reading
+W (58079) nrf: BATTERY? 3488 mV, 3 %
+I (58079) nrf: raw #378: a5 0c 6f f1 04 00 52 ff ff ff a0 0d 03 ff e2 a9
+I (58079) nrf: raw #379: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (58379) nrf: raw #380: a5 0c 6f f1 04 00 52 ff ff ff a0 0d 03 ff e2 a9
+I (58379) nrf: raw #381: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (58979) nrf: raw #382: a5 0c 6f f1 04 00 52 ff ff ff a0 0d 03 ff e2 a9
+I (58979) nrf: raw #383: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (58979) nrf: KEY index 1 event 1 extra 0 (kind 4) | 49 01 00 00 00 00 01 80
+I (58979) nrf: raw #384: a5 0c 6f f1 04 10 49 01 00 00 00 00 01 80 3a 43
+I (58979) nrf: raw #385: a5 0c 6f f1 04 00 52 ff ff ff a0 0d 03 ff e2 a9
+I (58979) nrf: raw #386: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (59279) nrf: raw #387: a5 0c 6f f1 04 00 52 ff ff ff a0 0d 03 ff e2 a9
+I (59279) nrf: raw #388: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (59579) nrf: raw #389: a5 0c 6f f1 04 00 52 ff ff ff a0 0d 03 ff e2 a9
+I (59579) nrf: raw #390: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (59879) nrf: raw #391: a5 0c 6f f1 04 00 52 ff ff ff a0 0d 03 ff e2 a9
+I (59879) nrf: raw #392: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (60059) cc700: baro: no fresh reading
+I (60179) nrf: raw #393: a5 0c 6f f1 04 00 52 ff ff ff a0 0d 03 ff e2 a9
+I (60179) nrf: raw #394: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (60779) nrf: raw #395: a5 0c 6f f1 04 00 52 ff ff ff a0 0d 03 ff e2 a9
+I (60779) nrf: raw #396: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (60779) nrf: KEY index 2 event 1 extra 0 (kind 4) | 49 02 00 00 00 00 01 80
+I (60779) nrf: #397 id  16 sub 0x49 kind 4 | 49 02 00 00 00 00 01 80
+I (60779) nrf: #398 id   0 sub 0x52 kind 4 | 52 ff ff ff a0 0d 03 ff
+I (60779) nrf: #399 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (61079) nrf: #400 id   0 sub 0x52 kind 4 | 52 ff ff ff a0 0d 03 ff
+I (61079) nrf: #401 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (61379) nrf: #402 id   0 sub 0x52 kind 4 | 52 ff ff ff a0 0d 03 ff
+I (61379) nrf: #403 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+W (61979) nrf: BATTERY? 3489 mV, 3 %
+I (61979) nrf: #406 id   0 sub 0x52 kind 4 | 52 ff ff ff a1 0d 03 ff
+W (62059) cc700: baro: no fresh reading
+W (64059) cc700: baro: no fresh reading
+W (64379) nrf: KEY index 0 event 4 extra 0 (kind 4) | 49 00 00 00 00 00 04 80
+I (64379) nrf: #424 id  16 sub 0x49 kind 4 | 49 00 00 00 00 00 04 80
+W (64679) nrf: KEY index 0 event 4 extra 0 (kind 4) | 49 00 00 00 00 00 04 80
+I (64679) nrf: #425 id  16 sub 0x49 kind 4 | 49 00 00 00 00 00 04 80
+W (64679) nrf: KEY index 0 event 5 extra 0 (kind 4) | 49 00 00 00 00 00 05 80
+I (64679) nrf: #426 id  16 sub 0x49 kind 4 | 49 00 00 00 00 00 05 80
+I (64679) nrf: #427 id  16 sub 0xe2 kind 4 | e2 02 00 00 ff 05 00 ff
+I (64679) nrf: #428 id   1 sub 0x01 kind 4 | 01 01 00 00 00 00 00 01 04 11
+W (64679) nrf: barometer: first reading 100470 Pa, 30.65 C
+I (64679) nrf: #429 id  16 sub 0xf1 kind 4 | f1 03 f9 0b 23 4e 99 00
+W (64679) nrf: CLOCK 2023-06-01 12:20:00
+I (64679) nrf: #430 id   0 sub 0x53 kind 4 | 53 ff 00 14 0c 81 05 7b
+W (64879) nrf: LIGHT? value 600, aux 510
+I (64879) nrf: #433 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 fe 01
+I (64879) nrf: #434 id  16 sub 0xf1 kind 4 | f1 0a 71 0e 00 00 00 00
+I (64879) nrf: #435 id  16 sub 0xf1 kind 4 | f1 01 00 00 fb ff 14 04
+I (64879) nrf: #436 id  16 sub 0xf1 kind 4 | f1 01 08 00 f7 ff 14 04
+I (64879) nrf: #437 id  16 sub 0xf1 kind 4 | f1 01 01 00 01 00 19 04
+I (64879) nrf: #438 id  16 sub 0xf1 kind 4 | f1 01 fa ff 01 00 14 04
+I (64879) nrf: #439 id  16 sub 0xf1 kind 4 | f1 03 00 0c 92 4e 99 00
+I (65069) nrf: #440 id   0 sub 0x53 kind 4 | 53 ff 00 14 0c 81 05 7b
+I (65069) nrf: #441 id  16 sub 0xf1 kind 4 | f1 01 fa ff 02 00 11 04
+I (65069) nrf: #442 id  16 sub 0xf1 kind 4 | f1 01 dd ff fa ff 11 04
+I (65069) nrf: #445 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 8a 01
+I (65069) nrf: #446 id  16 sub 0xf1 kind 4 | f1 0a 6f 0e 00 00 00 00
+I (65079) nrf: #447 id  16 sub 0xf1 kind 4 | f1 01 f0 ff 1e 00 06 04
+I (65289) nrf: #448 id  16 sub 0xf1 kind 4 | f1 01 34 00 d6 ff 48 04
+I (65289) nrf: #449 id  16 sub 0xf1 kind 4 | f1 03 02 0c 46 4c 99 00
+I (65289) nrf: #450 id   0 sub 0x53 kind 4 | 53 ff 00 14 0c 81 05 7b
+I (65289) nrf: #451 id  16 sub 0xf1 kind 4 | f1 01 00 00 03 00 1c 04
+I (65289) nrf: #452 id  16 sub 0xf1 kind 4 | f1 01 09 00 f7 ff 1a 04
+I (65289) nrf: #453 id  16 sub 0xf1 kind 4 | f1 01 02 00 fe ff 11 04
+I (65289) nrf: #454 id  16 sub 0xf1 kind 4 | f1 01 ff ff fb ff 16 04
+I (65289) nrf: #455 id  16 sub 0xf1 kind 4 | f1 03 04 0c 75 4d 99 00
+I (65469) nrf: #459 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 ba 01
+I (65469) nrf: #460 id  16 sub 0xf1 kind 4 | f1 0a 67 0e 00 00 00 00
+I (65469) nrf: #461 id  16 sub 0xf1 kind 4 | f1 01 fc ff fc ff 08 04
+I (65469) nrf: #462 id  16 sub 0xf1 kind 4 | f1 01 02 00 fc ff 10 04
+I (65469) nrf: #463 id  16 sub 0xf1 kind 4 | f1 01 fe ff fc ff 12 04
+I (65579) nrf: #464 id  16 sub 0xf1 kind 4 | f1 01 06 00 fc ff 19 04
+I (65589) nrf: #465 id  16 sub 0xf1 kind 4 | f1 03 05 0c 55 4d 99 00
+I (65589) nrf: #467 id  16 sub 0xf1 kind 4 | f1 01 03 00 fb ff 14 04
+I (65589) nrf: #468 id  16 sub 0xf1 kind 4 | f1 01 00 00 01 00 0d 04
+I (65589) nrf: #471 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 bd 01
+I (65869) nrf: #472 id  16 sub 0xf1 kind 4 | f1 0a 74 0e 00 00 00 00
+I (65869) nrf: #473 id  16 sub 0xf1 kind 4 | f1 01 03 00 fc ff 10 04
+I (65869) nrf: #474 id  16 sub 0xf1 kind 4 | f1 01 01 00 f1 ff 14 04
+I (65869) nrf: #475 id  16 sub 0xf1 kind 4 | f1 03 06 0c 15 4d 99 00
+I (65869) nrf: #476 id   0 sub 0x53 kind 4 | 53 ff 01 14 0c 81 05 7b
+I (65869) nrf: #477 id  16 sub 0xf1 kind 4 | f1 01 06 00 fc ff 15 04
+I (65869) nrf: #478 id  16 sub 0xf1 kind 4 | f1 01 02 00 fe ff 10 04
+I (65869) nrf: #479 id  16 sub 0xf1 kind 4 | f1 01 01 00 fe ff 0e 04
+I (65969) nrf: #480 id  16 sub 0xf1 kind 4 | f1 01 fc ff f7 ff 09 04
+I (65969) nrf: #481 id  16 sub 0xf1 kind 4 | f1 03 04 0c c1 4c 99 00
+W (65969) nrf: BATTERY? 3490 mV, 3 %
+I (65969) nrf: #483 id   0 sub 0x52 kind 4 | 52 ff ff ff a2 0d 03 ff
+I (65969) nrf: #485 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 c2 01
+I (66059) cc700: baro 100467 Pa, 30.76 C, core alt 71 m
+I (66769) nrf: #518 id   0 sub 0x53 kind 4 | 53 ff 02 14 0c 81 05 7b
+I (67869) nrf: #560 id   0 sub 0x53 kind 4 | 53 ff 03 14 0c 81 05 7b
+I (68059) cc700: baro 100463 Pa, 30.80 C, core alt 72 m
+I (68769) nrf: #606 id   0 sub 0x53 kind 4 | 53 ff 04 14 0c 81 05 7b
+I (69869) nrf: #648 id   0 sub 0x53 kind 4 | 53 ff 05 14 0c 81 05 7b
+W (69869) nrf: BATTERY? 3491 mV, 3 %
+I (69869) nrf: #651 id   0 sub 0x52 kind 4 | 52 ff ff ff a3 0d 03 ff
+I (70059) cc700: baro 100470 Pa, 30.84 C, core alt 72 m
+I (70769) nrf: #690 id   0 sub 0x53 kind 4 | 53 ff 06 14 0c 81 05 7b
+I (71889) nrf: #736 id   0 sub 0x53 kind 4 | 53 ff 07 14 0c 81 05 7b
+I (72059) cc700: baro 100477 Pa, 30.86 C, core alt 71 m
+I (72779) nrf: #778 id   0 sub 0x53 kind 4 | 53 ff 08 14 0c 81 05 7b
+I (73689) nrf: #820 id   0 sub 0x53 kind 4 | 53 ff 09 14 0c 81 05 7b
+I (74059) cc700: baro 100480 Pa, 30.87 C, core alt 71 m
+I (74879) nrf: #866 id   0 sub 0x53 kind 4 | 53 ff 0a 14 0c 81 05 7b
+W (75069) nrf: BATTERY? 3492 mV, 3 %
+I (75069) nrf: #873 id   0 sub 0x52 kind 4 | 52 ff ff ff a4 0d 03 ff
+I (75779) nrf: #908 id   0 sub 0x53 kind 4 | 53 ff 0b 14 0c 81 05 7b
+I (76059) cc700: baro 100480 Pa, 30.88 C, core alt 71 m
+I (76689) nrf: #950 id   0 sub 0x53 kind 4 | 53 ff 0c 14 0c 81 05 7b
+I (77869) nrf: #996 id   0 sub 0x53 kind 4 | 53 ff 0d 14 0c 81 05 7b
+I (78059) cc700: baro 100480 Pa, 30.89 C, core alt 71 m
+I (78769) nrf: #1038 id   0 sub 0x53 kind 4 | 53 ff 0e 14 0c 81 05 7b
+W (78879) nrf: BATTERY? 3493 mV, 3 %
+I (78879) nrf: #1041 id   0 sub 0x52 kind 4 | 52 ff ff ff a5 0d 03 ff
+I (79859) nrf: #1080 id   0 sub 0x53 kind 4 | 53 ff 0f 14 0c 81 05 7b
+I (80059) cc700: baro 100480 Pa, 30.92 C, core alt 71 m
+I (80759) nrf: #1126 id   0 sub 0x53 kind 4 | 53 ff 10 14 0c 81 05 7b
+I (81859) nrf: #1168 id   0 sub 0x53 kind 4 | 53 ff 11 14 0c 81 05 7b
+I (81869) nrf: 115200 baud: 13440 byte(s), 839 valid frame(s)
+W (81869) nrf: ---- summary: 1175 frames, 0 CRC rejects, 7 id/sub-tag pair(s) ----
+W (81869) nrf:   id   0 sub 0x52 kind 4 dir 0xf1:   100 frame(s), every   300 ms | 52 ff ff ff 9e-a5 0d 03 ff 
+W (81869) nrf:       last as u16le: 65362 65535 3493 65283 
+W (81869) nrf:       last as u32le: 4294967122 4278390181 
+W (81869) nrf:   id  16 sub 0xf0 kind 4 dir 0xf1:   100 frame(s), every   300 ms | f0 02 00 00 00 00 00 00 
+W (81869) nrf:       last as u16le: 752 0 0 0 
+W (81869) nrf:       last as u32le: 752 0 
+W (81869) nrf:   id  16 sub 0x49 kind 4 dir 0xf1:     6 frame(s), every  1621 ms | 49 00-02 00 00 00 00 01-05 80 
+W (81869) nrf:       last as u16le: 73 0 0 32773 
+W (81869) nrf:       last as u32le: 73 2147811328 
+W (81869) nrf:   id  16 sub 0xe2 kind 4 dir 0xf1:     1 frame(s), every     0 ms | e2 02 00 00 ff 05 00 ff 
+W (81869) nrf:       last as u16le: 738 0 1535 65280 
+W (81869) nrf:       last as u32le: 738 4278191615 
+W (81869) nrf:   id   1 sub 0x01 kind 4 dir 0xf1:     1 frame(s), every     0 ms | 01 01 00 00 00 00 00 01 04 11 
+W (81869) nrf:       last as u16le: 257 0 0 256 4356 
+W (81869) nrf:       last as u32le: 257 16777216 
+W (81869) nrf:   id  16 sub 0xf1 kind 4 dir 0xf1:   545 frame(s), every    31 ms | f1 01-0a 00-ff 00-ff 00-ff 00-ff 00-fe 00-04 
+W (81869) nrf:       last as u16le: 497 7 1 1046 
+W (81869) nrf:       last as u32le: 459249 68550657 
+W (81869) nrf:   id   0 sub 0x53 kind 4 dir 0xf1:    86 frame(s), every   202 ms | 53 ff 00-11 14 0c 81 05 7b 
+W (81869) nrf:       last as u16le: 65363 5137 33036 31493 
+W (81869) nrf:       last as u32le: 336723795 2063958284 
+W (81869) nrf: ---- end of summary ----
+W (81869) nrf: ==== window 3 of 6 starting ====
+I (82059) cc700: baro 100479 Pa, 30.92 C, core alt 71 m
+I (82079) nrf: raw #1176: a5 0c 6f f1 04 10 f1 01 08 00 ff ff 14 04 b5 42
+I (82079) nrf: raw #1177: a5 0c 6f f1 04 10 f1 01 08 00 01 00 0d 04 2a 09
+I (82089) nrf: raw #1178: a5 0c 6f f1 04 10 f1 01 09 00 fb ff 10 04 20 01
+I (82089) nrf: raw #1179: a5 0c 6f f1 04 10 f1 01 0d 00 fb ff 18 04 28 8e
+I (82089) nrf: raw #1180: a5 0c 6f f1 04 10 f1 03 15 0c 90 51 99 00 5b fb
+I (82089) nrf: raw #1181: a5 0c 6f f1 04 00 53 ff 11 14 0c 81 05 7b 8c a2
+I (82089) nrf: raw #1182: a5 0c 6f f1 04 00 52 ff ff ff a5 0d 03 ff a7 15
+I (82279) nrf: raw #1183: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (82279) nrf: raw #1184: a5 0c 6f f1 04 10 f1 04 58 02 00 00 23 02 01 77
+I (82279) nrf: raw #1185: a5 0c 6f f1 04 10 f1 0a 6f 0e 00 00 00 00 98 5a
+I (82279) nrf: raw #1186: a5 0c 6f f1 04 10 f1 01 03 00 ff ff 11 04 e2 7e
+I (82279) nrf: raw #1187: a5 0c 6f f1 04 10 f1 01 03 00 fd ff 0e 04 c7 80
+I (82279) nrf: raw #1188: a5 0c 6f f1 04 10 f1 01 08 00 fd ff 15 04 ec 9c
+I (82279) nrf: raw #1189: a5 0c 6f f1 04 10 f1 01 09 00 00 00 15 04 e4 b0
+I (82279) nrf: raw #1190: a5 0c 6f f1 04 10 f1 03 16 0c 8c 51 99 00 2e 61
+I (82459) nrf: raw #1191: a5 0c 6f f1 04 00 53 ff 11 14 0c 81 05 7b 8c a2
+I (82459) nrf: raw #1192: a5 0c 6f f1 04 10 f1 01 08 00 fb ff 10 04 80 44
+I (82469) nrf: raw #1193: a5 0c 6f f1 04 10 f1 01 09 00 ff ff 16 04 77 61
+I (82469) nrf: raw #1194: a5 0c 6f f1 04 00 52 ff ff ff a5 0d 03 ff a7 15
+I (82469) nrf: raw #1195: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (82469) nrf: raw #1196: a5 0c 6f f1 04 10 f1 04 58 02 00 00 23 02 01 77
+I (82469) nrf: raw #1197: a5 0c 6f f1 04 10 f1 0a 7f 0e 00 00 00 00 1c 40
+I (82469) nrf: raw #1198: a5 0c 6f f1 04 10 f1 01 08 00 01 00 12 04 67 1a
+I (82679) nrf: raw #1199: a5 0c 6f f1 04 10 f1 01 08 00 fc ff 14 04 69 d9
+I (82679) nrf: raw #1200: a5 0c 6f f1 04 10 f1 03 16 0c 88 51 99 00 df ab
+I (82689) nrf: raw #1201: a5 0c 6f f1 04 00 53 ff 11 14 0c 81 05 7b 8c a2
+I (82689) nrf: raw #1202: a5 0c 6f f1 04 10 f1 01 0b 00 f7 ff 10 04 52 c5
+I (82689) nrf: raw #1203: a5 0c 6f f1 04 10 f1 01 04 00 fe ff 14 04 e2 3f
+I (82689) nrf: raw #1204: a5 0c 6f f1 04 10 f1 01 09 00 fd ff 15 04 4c d9
+I (82689) nrf: raw #1205: a5 0c 6f f1 04 10 f1 01 01 00 04 00 1c 04 cf cd
+I (82689) nrf: raw #1206: a5 0c 6f f1 04 10 f1 03 17 0c 85 51 99 00 f9 d7
+I (82859) nrf: raw #1207: a5 0c 6f f1 04 00 53 ff 12 14 0c 81 05 7b 6c 6c
+W (82859) nrf: BATTERY? 3494 mV, 3 %
+I (82859) nrf: raw #1208: a5 0c 6f f1 04 00 52 ff ff ff a6 0d 03 ff 7b 8e
+I (82869) nrf: raw #1209: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (82869) nrf: raw #1210: a5 0c 6f f1 04 10 f1 04 58 02 00 00 24 02 96 ee
+I (82869) nrf: raw #1211: a5 0c 6f f1 04 10 f1 0a 77 0e 00 00 00 00 5e 4d
+I (82869) nrf: raw #1212: a5 0c 6f f1 04 10 f1 01 06 00 ff ff 15 04 27 f1
+I (82869) nrf: raw #1213: a5 0c 6f f1 04 10 f1 01 04 00 ff ff 16 04 34 2f
+I (82869) nrf: raw #1214: a5 0c 6f f1 04 10 f1 01 06 00 f9 ff 14 04 8f e5
+I (82979) nrf: raw #1215: a5 0c 6f f1 04 10 f1 01 02 00 fe ff 0e 04 bb 5e
+I (82979) nrf: raw #1216: a5 0c 6f f1 04 10 f1 03 17 0c 83 51 99 00 60 f0
+I (82979) nrf: raw #1217: a5 0c 6f f1 04 00 53 ff 12 14 0c 81 05 7b 6c 6c
+I (82979) nrf: raw #1218: a5 0c 6f f1 04 10 f1 01 0c 00 ff ff 10 04 d0 88
+I (82979) nrf: raw #1219: a5 0c 6f f1 04 10 f1 01 03 00 00 00 10 04 13 c9
+I (82979) nrf: raw #1220: a5 0c 6f f1 04 00 52 ff ff ff a6 0d 03 ff 7b 8e
+I (82979) nrf: raw #1221: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (82979) nrf: raw #1222: a5 0c 6f f1 04 10 f1 04 58 02 00 00 24 02 96 ee
+I (83259) nrf: raw #1223: a5 0c 6f f1 04 10 f1 0a 74 0e 00 00 00 00 be 83
+I (83259) nrf: raw #1224: a5 0c 6f f1 04 10 f1 01 0d 00 fb ff 15 04 74 f8
+I (83269) nrf: raw #1225: a5 0c 6f f1 04 10 f1 01 0b 00 fc ff 14 04 89 17
+I (83269) nrf: raw #1226: a5 0c 6f f1 04 10 f1 03 16 0c 81 51 99 00 a8 58
+I (83269) nrf: raw #1227: a5 0c 6f f1 04 00 53 ff 12 14 0c 81 05 7b 6c 6c
+I (83269) nrf: raw #1228: a5 0c 6f f1 04 10 f1 01 08 00 f8 ff 14 04 98 13
+I (83269) nrf: raw #1229: a5 0c 6f f1 04 10 f1 01 08 00 fd ff 14 04 dd af
+I (83269) nrf: raw #1230: a5 0c 6f f1 04 10 f1 01 09 00 ff ff 12 04 b3 ad
+I (83359) nrf: raw #1231: a5 0c 6f f1 04 10 f1 01 09 00 ff ff 10 04 d1 cb
+I (83359) nrf: raw #1232: a5 0c 6f f1 04 10 f1 03 16 0c 7f 51 99 00 bf 65
+I (83369) nrf: raw #1233: a5 0c 6f f1 04 00 53 ff 12 14 0c 81 05 7b 6c 6c
+I (83369) nrf: raw #1234: a5 0c 6f f1 04 00 52 ff ff ff a6 0d 03 ff 7b 8e
+I (83369) nrf: raw #1235: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (83369) nrf: #1236 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 24 02
+I (83369) nrf: #1237 id  16 sub 0xf1 kind 4 | f1 0a 81 0e 00 00 00 00
+I (83369) nrf: #1238 id  16 sub 0xf1 kind 4 | f1 01 07 00 fb ff 10 04
+I (83579) nrf: #1239 id  16 sub 0xf1 kind 4 | f1 01 07 00 ff ff 0d 04
+I (83579) nrf: #1240 id  16 sub 0xf1 kind 4 | f1 01 0e 00 fc ff 14 04
+I (83579) nrf: #1241 id  16 sub 0xf1 kind 4 | f1 01 03 00 f8 ff 11 04
+I (83579) nrf: #1242 id  16 sub 0xf1 kind 4 | f1 03 15 0c 7e 51 99 00
+I (83579) nrf: #1243 id   0 sub 0x53 kind 4 | 53 ff 12 14 0c 81 05 7b
+I (83579) nrf: #1244 id  16 sub 0xf1 kind 4 | f1 01 0c 00 f7 ff 14 04
+I (83579) nrf: #1245 id  16 sub 0xf1 kind 4 | f1 01 09 00 f9 ff 14 04
+I (83579) nrf: #1246 id   0 sub 0x52 kind 4 | 52 ff ff ff a6 0d 03 ff
+I (83759) nrf: #1247 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (83759) nrf: #1248 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 25 02
+I (83759) nrf: #1249 id  16 sub 0xf1 kind 4 | f1 0a 75 0e 00 00 00 00
+I (83769) nrf: #1250 id  16 sub 0xf1 kind 4 | f1 01 09 00 fc ff 0e 04
+I (83769) nrf: #1251 id  16 sub 0xf1 kind 4 | f1 01 04 00 fc ff 11 04
+I (83769) nrf: #1252 id  16 sub 0xf1 kind 4 | f1 03 17 0c 7c 51 99 00
+I (83769) nrf: #1253 id   0 sub 0x53 kind 4 | 53 ff 13 14 0c 81 05 7b
+I (83769) nrf: #1254 id  16 sub 0xf1 kind 4 | f1 01 10 00 fd ff 0a 04
+I (83879) nrf: #1255 id  16 sub 0xf1 kind 4 | f1 01 0d 00 02 00 14 04
+I (83879) nrf: #1256 id  16 sub 0xf1 kind 4 | f1 01 08 00 fd ff 16 04
+I (83879) nrf: #1257 id  16 sub 0xf1 kind 4 | f1 01 04 00 fd ff 16 04
+I (83879) nrf: #1258 id  16 sub 0xf1 kind 4 | f1 03 18 0c 7a 51 99 00
+I (83879) nrf: #1259 id   0 sub 0x53 kind 4 | 53 ff 13 14 0c 81 05 7b
+I (83889) nrf: #1260 id   0 sub 0x52 kind 4 | 52 ff ff ff a6 0d 03 ff
+I (83889) nrf: #1261 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (83889) nrf: #1262 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 23 02
+I (84059) cc700: baro 100479 Pa, 30.96 C, core alt 71 m
+I (84159) nrf: #1263 id  16 sub 0xf1 kind 4 | f1 0a 69 0e 00 00 00 00
+I (84169) nrf: #1264 id  16 sub 0xf1 kind 4 | f1 01 13 00 f9 ff 14 04
+I (84169) nrf: #1265 id  16 sub 0xf1 kind 4 | f1 01 10 00 fd ff 12 04
+I (84169) nrf: #1266 id  16 sub 0xf1 kind 4 | f1 01 08 00 ff ff 08 04
+I (84169) nrf: #1267 id  16 sub 0xf1 kind 4 | f1 01 07 00 fd ff 14 04
+I (84169) nrf: #1268 id  16 sub 0xf1 kind 4 | f1 03 18 0c 77 51 99 00
+I (84169) nrf: #1270 id  16 sub 0xf1 kind 4 | f1 01 09 00 01 00 11 04
+I (84279) nrf: #1271 id  16 sub 0xf1 kind 4 | f1 01 09 00 fe ff 0d 04
+I (84279) nrf: #1272 id   0 sub 0x52 kind 4 | 52 ff ff ff a6 0d 03 ff
+I (84279) nrf: #1273 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (84279) nrf: #1274 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 25 02
+I (84279) nrf: #1275 id  16 sub 0xf1 kind 4 | f1 0a 74 0e 00 00 00 00
+I (84279) nrf: #1276 id  16 sub 0xf1 kind 4 | f1 01 06 00 ff ff 12 04
+I (84279) nrf: #1277 id  16 sub 0xf1 kind 4 | f1 01 0b 00 ff ff 11 04
+I (84279) nrf: #1278 id  16 sub 0xf1 kind 4 | f1 03 17 0c 74 51 99 00
+I (84479) nrf: #1280 id  16 sub 0xf1 kind 4 | f1 01 0b 00 fc ff 1c 04
+I (84479) nrf: #1281 id  16 sub 0xf1 kind 4 | f1 01 04 00 fd ff 0e 04
+I (84479) nrf: #1282 id  16 sub 0xf1 kind 4 | f1 01 09 00 fd ff 0c 04
+I (84479) nrf: #1283 id  16 sub 0xf1 kind 4 | f1 01 0e 00 00 00 10 04
+I (84479) nrf: #1284 id  16 sub 0xf1 kind 4 | f1 03 18 0c 70 51 99 00
+I (84679) nrf: #1288 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 24 02
+I (84679) nrf: #1289 id  16 sub 0xf1 kind 4 | f1 0a 74 0e 00 00 00 00
+I (84859) nrf: #1295 id   0 sub 0x53 kind 4 | 53 ff 14 14 0c 81 05 7b
+I (85759) nrf: #1337 id   0 sub 0x53 kind 4 | 53 ff 15 14 0c 81 05 7b
+I (86059) cc700: baro 100478 Pa, 30.95 C, core alt 71 m
+W (86159) nrf: LIGHT? value 30, aux 76
+I (86879) nrf: #1383 id   0 sub 0x53 kind 4 | 53 ff 16 14 0c 81 05 7b
+W (86879) nrf: BATTERY? 3495 mV, 3 %
+I (86879) nrf: #1390 id   0 sub 0x52 kind 4 | 52 ff ff ff a7 0d 03 ff
+W (87259) nrf: LIGHT? value 0, aux 7
+I (87779) nrf: #1425 id   0 sub 0x53 kind 4 | 53 ff 17 14 0c 81 05 7b
+I (88059) cc700: baro 100492 Pa, 30.97 C, core alt 70 m
+W (88559) nrf: LIGHT? value 10, aux 12
+I (88679) nrf: #1467 id   0 sub 0x53 kind 4 | 53 ff 18 14 0c 81 05 7b
+W (89659) nrf: LIGHT? value 0, aux 0
+I (89879) nrf: #1513 id   0 sub 0x53 kind 4 | 53 ff 19 14 0c 81 05 7b
+I (90059) cc700: baro 100507 Pa, 30.99 C, core alt 70 m
+I (90779) nrf: #1555 id   0 sub 0x53 kind 4 | 53 ff 1a 14 0c 81 05 7b
+W (90779) nrf: BATTERY? 3496 mV, 3 %
+I (90779) nrf: #1558 id   0 sub 0x52 kind 4 | 52 ff ff ff a8 0d 03 ff
+I (91679) nrf: #1597 id   0 sub 0x53 kind 4 | 53 ff 1b 14 0c 81 05 7b
+I (92059) cc700: baro 100493 Pa, 31.02 C, core alt 69 m
+I (92859) nrf: #1643 id   0 sub 0x53 kind 4 | 53 ff 1c 14 0c 81 05 7b
+I (93759) nrf: #1685 id   0 sub 0x53 kind 4 | 53 ff 1d 14 0c 81 05 7b
+I (94059) cc700: baro 100479 Pa, 31.01 C, core alt 70 m
+I (94859) nrf: #1727 id   0 sub 0x53 kind 4 | 53 ff 1e 14 0c 81 05 7b
+W (94859) nrf: BATTERY? 3497 mV, 3 %
+I (94859) nrf: #1728 id   0 sub 0x52 kind 4 | 52 ff ff ff a9 0d 03 ff
+I (95759) nrf: #1773 id   0 sub 0x53 kind 4 | 53 ff 1f 14 0c 81 05 7b
+I (96059) cc700: baro 100478 Pa, 31.04 C, core alt 70 m
+I (96859) nrf: #1815 id   0 sub 0x53 kind 4 | 53 ff 20 14 0c 81 05 7b
+I (97759) nrf: #1857 id   0 sub 0x53 kind 4 | 53 ff 21 14 0c 81 05 7b
+I (98059) cc700: baro 100479 Pa, 31.04 C, core alt 70 m
+I (98879) nrf: #1903 id   0 sub 0x53 kind 4 | 53 ff 22 14 0c 81 05 7b
+W (99259) nrf: LIGHT? value 50, aux 231
+I (99779) nrf: #1945 id   0 sub 0x53 kind 4 | 53 ff 23 14 0c 81 05 7b
+W (99779) nrf: BATTERY? 3498 mV, 3 %
+I (99779) nrf: #1948 id   0 sub 0x52 kind 4 | 52 ff ff ff aa 0d 03 ff
+I (100059) cc700: baro 100470 Pa, 31.05 C, core alt 71 m
+W (100559) nrf: LIGHT? value 600, aux 2556
+I (100679) nrf: #1987 id   0 sub 0x53 kind 4 | 53 ff 24 14 0c 81 05 7b
+W (101659) nrf: LIGHT? value 9000, aux 61
+I (101879) nrf: #2033 id   0 sub 0x53 kind 4 | 53 ff 25 14 0c 81 05 7b
+I (102059) cc700: baro 100460 Pa, 31.07 C, core alt 71 m
+I (102779) nrf: #2075 id   0 sub 0x53 kind 4 | 53 ff 26 14 0c 81 05 7b
+I (103679) nrf: #2117 id   0 sub 0x53 kind 4 | 53 ff 27 14 0c 81 05 7b
+W (103679) nrf: BATTERY? 3499 mV, 3 %
+I (103679) nrf: #2118 id   0 sub 0x52 kind 4 | 52 ff ff ff ab 0d 03 ff
+I (104059) cc700: baro 100467 Pa, 31.09 C, core alt 72 m
+I (104859) nrf: #2163 id   0 sub 0x53 kind 4 | 53 ff 28 14 0c 81 05 7b
+I (105759) nrf: #2205 id   0 sub 0x53 kind 4 | 53 ff 29 14 0c 81 05 7b
+I (106059) cc700: baro 100475 Pa, 31.11 C, core alt 71 m
+I (106859) nrf: #2247 id   0 sub 0x53 kind 4 | 53 ff 2a 14 0c 81 05 7b
+I (107759) nrf: #2293 id   0 sub 0x53 kind 4 | 53 ff 2b 14 0c 81 05 7b
+W (107879) nrf: BATTERY? 3500 mV, 3 %
+I (107879) nrf: #2300 id   0 sub 0x52 kind 4 | 52 ff ff ff ac 0d 03 ff
+I (108059) cc700: baro 100478 Pa, 31.12 C, core alt 71 m
+I (108859) nrf: #2335 id   0 sub 0x53 kind 4 | 53 ff 2c 14 0c 81 05 7b
+I (109759) nrf: #2377 id   0 sub 0x53 kind 4 | 53 ff 2d 14 0c 81 05 7b
+I (110059) cc700: baro 100478 Pa, 31.12 C, core alt 71 m
+I (110879) nrf: #2423 id   0 sub 0x53 kind 4 | 53 ff 2e 14 0c 81 05 7b
+I (111769) nrf: #2465 id   0 sub 0x53 kind 4 | 53 ff 2f 14 0c 81 05 7b
+W (111769) nrf: BATTERY? 3501 mV, 3 %
+I (111769) nrf: #2468 id   0 sub 0x52 kind 4 | 52 ff ff ff ad 0d 03 ff
+I (112059) nrf: 115200 baud: 20864 byte(s), 1303 valid frame(s)
+W (112059) nrf: ---- summary: 2478 frames, 0 CRC rejects, 4 id/sub-tag pair(s) ----
+W (112059) nrf:   id  16 sub 0xf1 kind 4 dir 0xf1:   953 frame(s), every    31 ms | f1 01-0a 00-ff 00-ff 00-ff 00-ff 00-ff 00-0a 
+W (112059) nrf:       last as u16le: 497 403 134 891 
+W (112059) nrf:       last as u32le: 26411505 58392710 
+W (112059) nrf:   id   0 sub 0x53 kind 4 dir 0xf1:   150 frame(s), every   201 ms | 53 ff 11-2f 14 0c 81 05 7b 
+W (112059) nrf:       last as u16le: 65363 5167 33036 31493 
+W (112059) nrf:       last as u32le: 338689875 2063958284 
+W (112059) nrf:   id   0 sub 0x52 kind 4 dir 0xf1:   100 frame(s), every   299 ms | 52 ff ff ff a5-ad 0d 03 ff 
+I (112059) cc700: baro 100478 Pa, 31.13 C, core alt 71 m
+W (112059) nrf:       last as u16le: 65362 65535 3501 65283 
+W (112059) nrf:       last as u32le: 4294967122 4278390189 
+W (112059) nrf:   id  16 sub 0xf0 kind 4 dir 0xf1:   100 frame(s), every   297 ms | f0 02 00 00 00 00 00 00 
+W (112059) nrf:       last as u16le: 752 0 0 0 
+W (112059) nrf:       last as u32le: 752 0 
+W (112059) nrf: ---- end of summary ----
+W (112059) nrf: ==== window 4 of 6 starting ====
+I (112159) nrf: raw #2479: a5 0c 6f f1 04 10 f1 03 2a 0c 2e 51 99 00 5f 42
+I (112159) nrf: raw #2480: a5 0c 6f f1 04 00 53 ff 2f 14 0c 81 05 7b a3 0d
+I (112159) nrf: raw #2481: a5 0c 6f f1 04 00 52 ff ff ff ad 0d 03 ff 64 90
+I (112159) nrf: raw #2482: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (112159) nrf: LIGHT? value 6000, aux 13
+I (112159) nrf: raw #2483: a5 0c 6f f1 04 10 f1 04 70 17 00 00 0d 00 ed 6d
+I (112159) nrf: raw #2484: a5 0c 6f f1 04 10 f1 0a 88 0e 00 00 00 00 e1 19
+I (112169) nrf: raw #2485: a5 0c 6f f1 04 10 f1 01 c7 01 a8 00 04 04 d1 7b
+I (112169) nrf: raw #2486: a5 0c 6f f1 04 10 f1 01 a6 01 d3 00 e8 03 3b 18
+I (112369) nrf: raw #2487: a5 0c 6f f1 04 10 f1 01 6f 01 3b 01 74 03 76 85
+I (112369) nrf: raw #2488: a5 0c 6f f1 04 10 f1 01 9b 01 1e 01 f9 03 a4 f4
+I (112369) nrf: raw #2489: a5 0c 6f f1 04 10 f1 03 2a 0c 2a 51 99 00 ae 88
+I (112379) nrf: raw #2490: a5 0c 6f f1 04 00 53 ff 2f 14 0c 81 05 7b a3 0d
+I (112379) nrf: raw #2491: a5 0c 6f f1 04 10 f1 01 60 01 33 01 a0 03 55 1c
+I (112379) nrf: raw #2492: a5 0c 6f f1 04 10 f1 01 b5 01 c5 00 9c 03 fc 34
+I (112379) nrf: raw #2493: a5 0c 6f f1 04 00 52 ff ff ff ad 0d 03 ff 64 90
+I (112379) nrf: raw #2494: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (112559) nrf: raw #2495: a5 0c 6f f1 04 10 f1 04 b8 0b 00 00 08 00 1b ae
+I (112559) nrf: raw #2496: a5 0c 6f f1 04 10 f1 0a 8c 0e 00 00 00 00 40 1f
+I (112559) nrf: raw #2497: a5 0c 6f f1 04 10 f1 01 ff 01 3f 00 a3 03 a3 3a
+I (112559) nrf: raw #2498: a5 0c 6f f1 04 10 f1 01 33 01 99 00 d4 03 51 d3
+I (112559) nrf: raw #2499: a5 0c 6f f1 04 10 f1 03 29 0c 28 51 99 00 26 ab
+I (112559) nrf: raw #2500: a5 0c 6f f1 04 00 53 ff 2f 14 0c 81 05 7b a3 0d
+I (112559) nrf: raw #2501: a5 0c 6f f1 04 10 f1 01 91 01 47 00 d1 03 95 4c
+I (112559) nrf: raw #2502: a5 0c 6f f1 04 10 f1 01 67 01 71 00 ec 03 71 28
+I (112679) nrf: raw #2503: a5 0c 6f f1 04 10 f1 01 9b 01 19 00 10 03 93 38
+I (112679) nrf: raw #2504: a5 0c 6f f1 04 10 f1 01 02 01 36 00 e9 03 2c f4
+I (112679) nrf: raw #2505: a5 0c 6f f1 04 10 f1 03 29 0c 22 51 99 00 8d c3
+I (112679) nrf: raw #2506: a5 0c 6f f1 04 00 53 ff 30 14 0c 81 05 7b 24 d2
+I (112679) nrf: raw #2507: a5 0c 6f f1 04 00 52 ff ff ff ad 0d 03 ff 64 90
+I (112679) nrf: raw #2508: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (112679) nrf: raw #2509: a5 0c 6f f1 04 10 f1 04 b8 0b 00 00 09 00 2a 9d
+I (112679) nrf: raw #2510: a5 0c 6f f1 04 10 f1 0a 88 0e 00 00 00 00 e1 19
+I (112959) nrf: raw #2511: a5 0c 6f f1 04 10 f1 01 0a 01 0c 00 ff 03 f9 14
+I (112959) nrf: raw #2512: a5 0c 6f f1 04 10 f1 01 eb 00 28 00 db 03 ad 47
+I (112959) nrf: raw #2513: a5 0c 6f f1 04 10 f1 01 83 00 14 00 ca 04 89 36
+I (112959) nrf: raw #2514: a5 0c 6f f1 04 10 f1 01 7b 00 f3 ff 22 04 c8 29
+I (112959) nrf: raw #2515: a5 0c 6f f1 04 10 f1 03 29 0c 16 51 99 00 95 25
+I (112959) nrf: raw #2516: a5 0c 6f f1 04 00 53 ff 30 14 0c 81 05 7b 24 d2
+I (112959) nrf: raw #2517: a5 0c 6f f1 04 10 f1 01 e0 ff 0e 00 d1 03 bc 21
+I (112959) nrf: raw #2518: a5 0c 6f f1 04 10 f1 01 20 00 01 00 0e 04 33 64
+I (113069) nrf: raw #2519: a5 0c 6f f1 04 00 52 ff ff ff ad 0d 03 ff 64 90
+I (113069) nrf: raw #2520: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (113069) nrf: raw #2521: a5 0c 6f f1 04 10 f1 04 d0 07 00 00 04 00 07 32
+I (113069) nrf: raw #2522: a5 0c 6f f1 04 10 f1 0a 88 0e 00 00 00 00 e1 19
+I (113069) nrf: raw #2523: a5 0c 6f f1 04 10 f1 01 1e 00 fc ff 0c 04 d6 c4
+I (113079) nrf: raw #2524: a5 0c 6f f1 04 10 f1 01 1a 00 fe ff 0c 04 1f 2f
+I (113079) nrf: raw #2525: a5 0c 6f f1 04 10 f1 03 29 0c 04 51 99 00 5a d3
+I (113079) nrf: raw #2526: a5 0c 6f f1 04 00 53 ff 30 14 0c 81 05 7b 24 d2
+I (113279) nrf: raw #2527: a5 0c 6f f1 04 10 f1 01 2f 00 ff ff 14 04 fc bf
+I (113279) nrf: raw #2528: a5 0c 6f f1 04 10 f1 01 22 00 f9 ff 14 04 26 d6
+I (113279) nrf: raw #2529: a5 0c 6f f1 04 10 f1 01 23 00 fe ff 18 04 c6 87
+I (113279) nrf: raw #2530: a5 0c 6f f1 04 10 f1 01 1d 00 fc ff 16 04 8e e6
+I (113279) nrf: raw #2531: a5 0c 6f f1 04 10 f1 03 2a 0c f6 50 99 00 af 58
+I (113279) nrf: raw #2532: a5 0c 6f f1 04 00 53 ff 30 14 0c 81 05 7b 24 d2
+I (113279) nrf: raw #2533: a5 0c 6f f1 04 00 52 ff ff ff ad 0d 03 ff 64 90
+I (113279) nrf: raw #2534: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (113469) nrf: LIGHT? value 600, aux 1265
+I (113469) nrf: raw #2535: a5 0c 6f f1 04 10 f1 04 58 02 00 00 f1 04 82 64
+I (113469) nrf: raw #2536: a5 0c 6f f1 04 10 f1 0a 8a 0e 00 00 00 00 a1 92
+I (113469) nrf: raw #2537: a5 0c 6f f1 04 10 f1 01 2a 00 fc ff 11 04 d4 98
+I (113469) nrf: raw #2538: a5 0c 6f f1 04 10 f1 01 26 00 fd ff 10 04 b2 d6
+I (113469) nrf: #2539 id  16 sub 0xf1 kind 4 | f1 01 20 00 f7 ff 12 04
+I (113469) nrf: #2540 id  16 sub 0xf1 kind 4 | f1 01 27 00 f9 ff 16 04
+I (113469) nrf: #2541 id  16 sub 0xf1 kind 4 | f1 03 2a 0c f2 50 99 00
+I (113469) nrf: #2542 id   0 sub 0x53 kind 4 | 53 ff 30 14 0c 81 05 7b
+I (113659) nrf: #2543 id  16 sub 0xf1 kind 4 | f1 01 23 00 fd ff 16 04
+I (113659) nrf: #2544 id  16 sub 0xf1 kind 4 | f1 01 25 00 fe ff 14 04
+I (113659) nrf: #2545 id   0 sub 0x52 kind 4 | 52 ff ff ff ad 0d 03 ff
+I (113659) nrf: #2546 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (113659) nrf: #2547 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 f1 04
+I (113659) nrf: #2548 id  16 sub 0xf1 kind 4 | f1 0a 94 0e 00 00 00 00
+I (113659) nrf: #2549 id  16 sub 0xf1 kind 4 | f1 01 1b 00 fc ff 12 04
+I (113659) nrf: #2550 id  16 sub 0xf1 kind 4 | f1 01 1e 00 fc ff 1c 04
+I (113879) nrf: #2551 id  16 sub 0xf1 kind 4 | f1 03 2a 0c f6 50 99 00
+I (113879) nrf: #2552 id   0 sub 0x53 kind 4 | 53 ff 31 14 0c 81 05 7b
+I (113879) nrf: #2553 id  16 sub 0xf1 kind 4 | f1 01 23 00 fe ff 18 04
+I (113879) nrf: #2554 id  16 sub 0xf1 kind 4 | f1 01 20 00 fe ff 16 04
+I (113879) nrf: #2555 id  16 sub 0xf1 kind 4 | f1 01 25 00 fe ff 0d 04
+I (113879) nrf: #2556 id  16 sub 0xf1 kind 4 | f1 01 22 00 01 00 11 04
+I (113879) nrf: #2557 id  16 sub 0xf1 kind 4 | f1 03 2a 0c 00 51 99 00
+I (113879) nrf: #2558 id   0 sub 0x53 kind 4 | 53 ff 31 14 0c 81 05 7b
+I (114059) nrf: #2559 id   0 sub 0x52 kind 4 | 52 ff ff ff ad 0d 03 ff
+I (114059) nrf: #2560 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (114059) nrf: #2561 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 ec 04
+I (114059) nrf: #2562 id  16 sub 0xf1 kind 4 | f1 0a 8e 0e 00 00 00 00
+I (114059) nrf: #2563 id  16 sub 0xf1 kind 4 | f1 01 26 00 fc ff 15 04
+I (114059) nrf: #2564 id  16 sub 0xf1 kind 4 | f1 01 22 00 00 00 14 04
+I (114059) nrf: #2565 id  16 sub 0xf1 kind 4 | f1 01 1e 00 ff ff 18 04
+I (114059) nrf: #2566 id  16 sub 0xf1 kind 4 | f1 01 1e 00 fe ff 16 04
+I (114059) cc700: baro 100477 Pa, 31.14 C, core alt 71 m
+I (114169) nrf: #2567 id  16 sub 0xf1 kind 4 | f1 03 2a 0c 0e 51 99 00
+I (114169) nrf: #2569 id  16 sub 0xf1 kind 4 | f1 01 26 00 f9 ff 15 04
+I (114179) nrf: #2570 id  16 sub 0xf1 kind 4 | f1 01 1c 00 fc ff 10 04
+I (114179) nrf: #2571 id   0 sub 0x52 kind 4 | 52 ff ff ff ad 0d 03 ff
+I (114179) nrf: #2572 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (114179) nrf: #2573 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 ef 04
+I (114179) nrf: #2574 id  16 sub 0xf1 kind 4 | f1 0a 8d 0e 00 00 00 00
+I (114459) nrf: #2575 id  16 sub 0xf1 kind 4 | f1 01 23 00 f7 ff 15 04
+I (114459) nrf: #2576 id  16 sub 0xf1 kind 4 | f1 01 20 00 fc ff 10 04
+I (114459) nrf: #2577 id  16 sub 0xf1 kind 4 | f1 03 2a 0c 1f 51 99 00
+I (114459) nrf: #2579 id  16 sub 0xf1 kind 4 | f1 01 1a 00 fc ff 10 04
+I (114459) nrf: #2580 id  16 sub 0xf1 kind 4 | f1 01 2d 00 fc ff 18 04
+I (114459) nrf: #2581 id  16 sub 0xf1 kind 4 | f1 01 1d 00 ff ff 0c 04
+I (114459) nrf: #2582 id  16 sub 0xf1 kind 4 | f1 01 23 00 fd ff 10 04
+I (114559) nrf: #2583 id  16 sub 0xf1 kind 4 | f1 03 2b 0c 32 51 99 00
+I (114559) nrf: #2587 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 ec 04
+I (114559) nrf: #2588 id  16 sub 0xf1 kind 4 | f1 0a 8c 0e 00 00 00 00
+I (114559) nrf: #2589 id  16 sub 0xf1 kind 4 | f1 01 26 00 01 00 15 04
+I (114559) nrf: #2590 id  16 sub 0xf1 kind 4 | f1 01 22 00 05 00 0c 04
+I (114769) nrf: #2591 id  16 sub 0xf1 kind 4 | f1 01 27 00 fe ff 12 04
+I (114769) nrf: #2592 id  16 sub 0xf1 kind 4 | f1 01 27 00 fc ff 0d 04
+I (114769) nrf: #2594 id   0 sub 0x53 kind 4 | 53 ff 32 14 0c 81 05 7b
+I (115679) nrf: #2636 id   0 sub 0x53 kind 4 | 53 ff 33 14 0c 81 05 7b
+W (115679) nrf: BATTERY? 3502 mV, 3 %
+I (115679) nrf: #2637 id   0 sub 0x52 kind 4 | 52 ff ff ff ae 0d 03 ff
+I (116059) cc700: baro 100479 Pa, 31.15 C, core alt 71 m
+I (116859) nrf: #2682 id   0 sub 0x53 kind 4 | 53 ff 34 14 0c 81 05 7b
+I (117759) nrf: #2724 id   0 sub 0x53 kind 4 | 53 ff 35 14 0c 81 05 7b
+I (118059) cc700: baro 100479 Pa, 31.18 C, core alt 71 m
+I (118679) nrf: #2766 id   0 sub 0x53 kind 4 | 53 ff 36 14 0c 81 05 7b
+I (119749) nrf: #2812 id   0 sub 0x53 kind 4 | 53 ff 37 14 0c 81 05 7b
+W (119869) nrf: BATTERY? 3503 mV, 3 %
+I (119869) nrf: #2819 id   0 sub 0x52 kind 4 | 52 ff ff ff af 0d 03 ff
+I (120059) cc700: baro 100479 Pa, 31.19 C, core alt 71 m
+I (120669) nrf: #2854 id   0 sub 0x53 kind 4 | 53 ff 38 14 0c 81 05 7b
+I (121749) nrf: #2896 id   0 sub 0x53 kind 4 | 53 ff 39 14 0c 81 05 7b
+I (122059) cc700: baro 100477 Pa, 31.20 C, core alt 71 m
+I (122669) nrf: #2942 id   0 sub 0x53 kind 4 | 53 ff 3a 14 0c 81 05 7b
+I (123769) nrf: #2984 id   0 sub 0x53 kind 4 | 53 ff 3b 14 0c 81 05 7b
+I (124059) cc700: baro 100471 Pa, 31.22 C, core alt 71 m
+I (124669) nrf: #3026 id   0 sub 0x53 kind 4 | 53 ff 00 15 0c 81 05 7b
+W (124669) nrf: BATTERY? 3504 mV, 3 %
+I (124669) nrf: #3027 id   0 sub 0x52 kind 4 | 52 ff ff ff b0 0d 03 ff
+W (124949) nrf: CLOCK 2023-06-01 12:21:00
+I (125869) nrf: #3072 id   0 sub 0x53 kind 4 | 53 ff 01 15 0c 81 05 7b
+I (126059) cc700: baro 100468 Pa, 31.21 C, core alt 71 m
+I (126769) nrf: #3114 id   0 sub 0x53 kind 4 | 53 ff 02 15 0c 81 05 7b
+I (127669) nrf: #3156 id   0 sub 0x53 kind 4 | 53 ff 03 15 0c 81 05 7b
+I (128059) cc700: baro 100468 Pa, 31.24 C, core alt 71 m
+I (128849) nrf: #3202 id   0 sub 0x53 kind 4 | 53 ff 04 15 0c 81 05 7b
+W (128949) nrf: BATTERY? 3505 mV, 3 %
+I (128949) nrf: #3209 id   0 sub 0x52 kind 4 | 52 ff ff ff b1 0d 03 ff
+I (129749) nrf: #3244 id   0 sub 0x53 kind 4 | 53 ff 05 15 0c 81 05 7b
+I (130059) cc700: baro 100467 Pa, 31.26 C, core alt 71 m
+I (130669) nrf: #3286 id   0 sub 0x53 kind 4 | 53 ff 06 15 0c 81 05 7b
+I (131749) nrf: #3332 id   0 sub 0x53 kind 4 | 53 ff 07 15 0c 81 05 7b
+I (132059) cc700: baro 100467 Pa, 31.26 C, core alt 72 m
+I (132659) nrf: #3374 id   0 sub 0x53 kind 4 | 53 ff 08 15 0c 81 05 7b
+W (132849) nrf: BATTERY? 3506 mV, 3 %
+I (132849) nrf: #3377 id   0 sub 0x52 kind 4 | 52 ff ff ff b2 0d 03 ff
+I (133749) nrf: #3416 id   0 sub 0x53 kind 4 | 53 ff 09 15 0c 81 05 7b
+I (134059) cc700: baro 100466 Pa, 31.27 C, core alt 72 m
+I (134659) nrf: #3462 id   0 sub 0x53 kind 4 | 53 ff 0a 15 0c 81 05 7b
+I (135769) nrf: #3504 id   0 sub 0x53 kind 4 | 53 ff 0b 15 0c 81 05 7b
+W (135769) nrf: LIGHT? value 50, aux 132
+I (136059) cc700: baro 100465 Pa, 31.29 C, core alt 72 m
+I (136669) nrf: #3546 id   0 sub 0x53 kind 4 | 53 ff 0c 15 0c 81 05 7b
+W (136669) nrf: BATTERY? 3507 mV, 3 %
+I (136669) nrf: #3547 id   0 sub 0x52 kind 4 | 52 ff ff ff b3 0d 03 ff
+I (137869) nrf: #3592 id   0 sub 0x53 kind 4 | 53 ff 0d 15 0c 81 05 7b
+I (138059) cc700: baro 100474 Pa, 31.30 C, core alt 72 m
+I (138769) nrf: #3634 id   0 sub 0x53 kind 4 | 53 ff 0e 15 0c 81 05 7b
+I (139669) nrf: #3676 id   0 sub 0x53 kind 4 | 53 ff 0f 15 0c 81 05 7b
+I (140059) cc700: baro 100484 Pa, 31.30 C, core alt 71 m
+I (140849) nrf: #3722 id   0 sub 0x53 kind 4 | 53 ff 10 15 0c 81 05 7b
+W (140949) nrf: BATTERY? 3508 mV, 3 %
+I (140949) nrf: #3729 id   0 sub 0x52 kind 4 | 52 ff ff ff b4 0d 03 ff
+W (140949) nrf: LIGHT? value 30, aux 100
+I (141749) nrf: #3764 id   0 sub 0x53 kind 4 | 53 ff 11 15 0c 81 05 7b
+I (142059) cc700: baro 100486 Pa, 31.32 C, core alt 71 m
+I (142069) nrf: 115200 baud: 20864 byte(s), 1304 valid frame(s)
+W (142069) nrf: ---- summary: 3782 frames, 0 CRC rejects, 4 id/sub-tag pair(s) ----
+W (142069) nrf:   id  16 sub 0xf1 kind 4 dir 0xf1:   951 frame(s), every    31 ms | f1 01-0a 00-ff 00-ff 00-ff 00-ff 00-ff 00-ff 
+W (142069) nrf:       last as u16le: 1009 3131 21617 153 
+W (142069) nrf:       last as u32le: 205194225 10048625 
+W (142069) nrf:   id   0 sub 0x53 kind 4 dir 0xf1:   151 frame(s), every   199 ms | 53 ff 00-3b 14-15 0c 81 05 7b 
+W (142079) nrf:       last as u16le: 65363 5393 33036 31493 
+W (142079) nrf:       last as u32le: 353501011 2063958284 
+W (142079) nrf:   id   0 sub 0x52 kind 4 dir 0xf1:   101 frame(s), every   299 ms | 52 ff ff ff ad-b4 0d 03 ff 
+W (142079) nrf:       last as u16le: 65362 65535 3508 65283 
+W (142079) nrf:       last as u32le: 4294967122 4278390196 
+W (142079) nrf:   id  16 sub 0xf0 kind 4 dir 0xf1:   101 frame(s), every   299 ms | f0 02 00 00 00 00 00 00 
+W (142079) nrf:       last as u16le: 752 0 0 0 
+W (142079) nrf:       last as u32le: 752 0 
+W (142079) nrf: ---- end of summary ----
+W (142079) nrf: ==== window 5 of 6 starting ====
+I (142349) nrf: raw #3783: a5 0c 6f f1 04 10 f1 01 0b 00 fd ff 18 04 50 24
+I (142349) nrf: raw #3784: a5 0c 6f f1 04 10 f1 01 0e 00 00 00 14 04 94 4b
+I (142349) nrf: raw #3785: a5 0c 6f f1 04 10 f1 01 0c 00 fc ff 14 04 c8 df
+I (142349) nrf: raw #3786: a5 0c 6f f1 04 10 f1 01 0d 00 ff ff 14 04 b4 01
+I (142349) nrf: raw #3787: a5 0c 6f f1 04 10 f1 03 3d 0c 6a 54 99 00 07 df
+I (142349) nrf: raw #3788: a5 0c 6f f1 04 00 53 ff 11 15 0c 81 05 7b dd 08
+I (142349) nrf: raw #3789: a5 0c 6f f1 04 10 f1 01 09 00 ff ff 11 04 e0 f8
+I (142349) nrf: raw #3790: a5 0c 6f f1 04 10 f1 01 0d 00 fc ff 15 04 59 a9
+I (142459) nrf: raw #3791: a5 0c 6f f1 04 00 52 ff ff ff b4 0d 03 ff b4 78
+I (142459) nrf: raw #3792: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (142459) nrf: LIGHT? value 50, aux 107
+I (142459) nrf: raw #3793: a5 0c 6f f1 04 10 f1 04 32 00 00 00 6b 00 bf 4e
+I (142459) nrf: raw #3794: a5 0c 6f f1 04 10 f1 0a 98 0e 00 00 00 00 65 03
+I (142459) nrf: raw #3795: a5 0c 6f f1 04 10 f1 01 08 00 fd ff 10 04 19 63
+I (142459) nrf: raw #3796: a5 0c 6f f1 04 10 f1 01 0d 00 fc ff 14 04 68 9a
+I (142459) nrf: raw #3797: a5 0c 6f f1 04 10 f1 03 3d 0c 61 54 99 00 18 c1
+I (142469) nrf: raw #3798: a5 0c 6f f1 04 00 53 ff 11 15 0c 81 05 7b dd 08
+I (142669) nrf: raw #3799: a5 0c 6f f1 04 10 f1 01 0e 00 f9 ff 15 04 fc db
+I (142669) nrf: raw #3800: a5 0c 6f f1 04 10 f1 01 0c 00 ff ff 11 04 e1 bb
+I (142669) nrf: raw #3801: a5 0c 6f f1 04 10 f1 01 08 00 fd ff 14 04 dd af
+I (142669) nrf: raw #3802: a5 0c 6f f1 04 10 f1 01 02 00 fd ff 10 04 1b e5
+I (142669) nrf: raw #3803: a5 0c 6f f1 04 10 f1 03 3c 0c 58 54 99 00 26 5b
+I (142669) nrf: raw #3804: a5 0c 6f f1 04 00 53 ff 12 15 0c 81 05 7b 3d c6
+I (142669) nrf: raw #3805: a5 0c 6f f1 04 00 52 ff ff ff b4 0d 03 ff b4 78
+I (142669) nrf: raw #3806: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (142859) nrf: raw #3807: a5 0c 6f f1 04 10 f1 04 32 00 00 00 6a 00 8e 7d
+I (142859) nrf: raw #3808: a5 0c 6f f1 04 10 f1 0a 9f 0e 00 00 00 00 24 cb
+I (142859) nrf: raw #3809: a5 0c 6f f1 04 10 f1 01 0d 00 ff ff 14 04 b4 01
+I (142859) nrf: raw #3810: a5 0c 6f f1 04 10 f1 01 10 00 fe ff 10 04 03 ef
+I (142859) nrf: raw #3811: a5 0c 6f f1 04 10 f1 01 0d 00 fc ff 18 04 05 df
+I (142859) nrf: raw #3812: a5 0c 6f f1 04 10 f1 01 11 00 01 00 14 04 a7 e2
+I (142859) nrf: raw #3813: a5 0c 6f f1 04 10 f1 03 3c 0c 4f 54 99 00 ac 11
+I (142869) nrf: raw #3814: a5 0c 6f f1 04 00 53 ff 12 15 0c 81 05 7b 3d c6
+I (143049) nrf: raw #3815: a5 0c 6f f1 04 10 f1 01 0e 00 ff ff 10 04 90 03
+I (143049) nrf: raw #3816: a5 0c 6f f1 04 10 f1 01 0b 00 ff ff 14 04 55 8c
+I (143049) nrf: raw #3817: a5 0c 6f f1 04 00 52 ff ff ff b4 0d 03 ff b4 78
+I (143049) nrf: raw #3818: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (143049) nrf: raw #3819: a5 0c 6f f1 04 10 f1 04 32 00 00 00 6c 00 28 d7
+I (143049) nrf: raw #3820: a5 0c 6f f1 04 10 f1 0a a1 0e 00 00 00 00 0b 64
+I (143049) nrf: raw #3821: a5 0c 6f f1 04 10 f1 01 0b 00 ff ff 0e 04 ed 60
+I (143049) nrf: raw #3822: a5 0c 6f f1 04 10 f1 01 08 00 01 00 14 04 c1 b0
+I (143269) nrf: raw #3823: a5 0c 6f f1 04 10 f1 03 3c 0c 45 54 99 00 07 79
+I (143269) nrf: raw #3824: a5 0c 6f f1 04 00 53 ff 12 15 0c 81 05 7b 3d c6
+I (143269) nrf: raw #3825: a5 0c 6f f1 04 10 f1 01 0e 00 fc ff 09 04 a7 21
+I (143269) nrf: raw #3826: a5 0c 6f f1 04 10 f1 01 10 00 fe ff 0a 04 bb 03
+I (143269) nrf: raw #3827: a5 0c 6f f1 04 10 f1 01 0c 00 f8 ff 0c 04 e3 9f
+I (143269) nrf: raw #3828: a5 0c 6f f1 04 10 f1 01 07 00 fb ff 0e 04 ff a1
+I (143269) nrf: raw #3829: a5 0c 6f f1 04 10 f1 03 3d 0c 3c 54 99 00 a5 8d
+I (143269) nrf: raw #3830: a5 0c 6f f1 04 00 53 ff 12 15 0c 81 05 7b 3d c6
+I (143449) nrf: raw #3831: a5 0c 6f f1 04 00 52 ff ff ff b4 0d 03 ff b4 78
+I (143449) nrf: raw #3832: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (143449) nrf: raw #3833: a5 0c 6f f1 04 10 f1 04 32 00 00 00 6c 00 28 d7
+I (143449) nrf: raw #3834: a5 0c 6f f1 04 10 f1 0a 99 0e 00 00 00 00 c5 46
+I (143449) nrf: raw #3835: a5 0c 6f f1 04 10 f1 01 10 00 fc ff 11 04 5a 31
+I (143449) nrf: raw #3836: a5 0c 6f f1 04 10 f1 01 0e 00 fe ff 16 04 82 df
+I (143449) nrf: raw #3837: a5 0c 6f f1 04 10 f1 01 10 00 ff ff 0d 04 98 ec
+I (143449) nrf: raw #3838: a5 0c 6f f1 04 10 f1 01 09 00 fe ff 0d 04 4a c8
+I (143569) nrf: raw #3839: a5 0c 6f f1 04 10 f1 03 3d 0c 32 54 99 00 ff 2f
+I (143569) nrf: raw #3840: a5 0c 6f f1 04 00 53 ff 12 15 0c 81 05 7b 3d c6
+I (143569) nrf: raw #3841: a5 0c 6f f1 04 10 f1 01 06 00 00 00 15 04 e7 75
+I (143569) nrf: raw #3842: a5 0c 6f f1 04 10 f1 01 0d 00 f9 ff 14 04 2d 26
+I (143569) nrf: #3843 id   0 sub 0x52 kind 4 | 52 ff ff ff b4 0d 03 ff
+I (143569) nrf: #3844 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (143569) nrf: #3845 id  16 sub 0xf1 kind 4 | f1 04 32 00 00 00 6c 00
+I (143569) nrf: #3846 id  16 sub 0xf1 kind 4 | f1 0a 9a 0e 00 00 00 00
+I (143849) nrf: #3847 id  16 sub 0xf1 kind 4 | f1 01 0c 00 fd ff 0d 04
+I (143849) nrf: #3848 id  16 sub 0xf1 kind 4 | f1 01 0e 00 01 00 10 04
+I (143849) nrf: #3849 id  16 sub 0xf1 kind 4 | f1 03 3d 0c 28 54 99 00
+I (143849) nrf: #3850 id   0 sub 0x53 kind 4 | 53 ff 13 15 0c 81 05 7b
+I (143849) nrf: #3851 id  16 sub 0xf1 kind 4 | f1 01 0b 00 fb ff 15 04
+I (143849) nrf: #3852 id  16 sub 0xf1 kind 4 | f1 01 11 00 fb ff 0c 04
+I (143849) nrf: #3853 id  16 sub 0xf1 kind 4 | f1 01 09 00 fc ff 09 04
+I (143849) nrf: #3854 id  16 sub 0xf1 kind 4 | f1 01 0d 00 fd ff 09 04
+I (143949) nrf: #3855 id  16 sub 0xf1 kind 4 | f1 03 3d 0c 1e 54 99 00
+I (143949) nrf: #3856 id   0 sub 0x53 kind 4 | 53 ff 13 15 0c 81 05 7b
+I (143949) nrf: #3857 id   0 sub 0x52 kind 4 | 52 ff ff ff b4 0d 03 ff
+I (143949) nrf: #3858 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (143949) nrf: #3859 id  16 sub 0xf1 kind 4 | f1 04 32 00 00 00 6f 00
+I (143949) nrf: #3860 id  16 sub 0xf1 kind 4 | f1 0a 98 0e 00 00 00 00
+I (143949) nrf: #3861 id  16 sub 0xf1 kind 4 | f1 01 11 00 01 00 12 04
+I (143949) nrf: #3862 id  16 sub 0xf1 kind 4 | f1 01 10 00 fb ff 10 04
+I (144059) cc700: baro 100485 Pa, 31.33 C, core alt 70 m
+I (144169) nrf: #3863 id  16 sub 0xf1 kind 4 | f1 01 0c 00 f9 ff 12 04
+I (144169) nrf: #3864 id  16 sub 0xf1 kind 4 | f1 01 09 00 fe ff 14 04
+I (144169) nrf: #3865 id  16 sub 0xf1 kind 4 | f1 03 3d 0c 16 54 99 00
+I (144169) nrf: #3866 id   0 sub 0x53 kind 4 | 53 ff 13 15 0c 81 05 7b
+I (144169) nrf: #3867 id  16 sub 0xf1 kind 4 | f1 01 10 00 f7 ff 12 04
+I (144169) nrf: #3868 id  16 sub 0xf1 kind 4 | f1 01 08 00 f9 ff 16 04
+I (144169) nrf: #3869 id   0 sub 0x52 kind 4 | 52 ff ff ff b4 0d 03 ff
+I (144169) nrf: #3870 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (144349) nrf: #3871 id  16 sub 0xf1 kind 4 | f1 04 32 00 00 00 6d 00
+I (144349) nrf: #3872 id  16 sub 0xf1 kind 4 | f1 0a 9f 0e 00 00 00 00
+I (144349) nrf: #3873 id  16 sub 0xf1 kind 4 | f1 01 0e 00 01 00 0d 04
+I (144349) nrf: #3874 id  16 sub 0xf1 kind 4 | f1 01 0e 00 fb ff 11 04
+I (144349) nrf: #3875 id  16 sub 0xf1 kind 4 | f1 03 3c 0c 0d 54 99 00
+I (144349) nrf: #3877 id  16 sub 0xf1 kind 4 | f1 01 13 00 fc ff 0e 04
+I (144349) nrf: #3878 id  16 sub 0xf1 kind 4 | f1 01 07 00 f9 ff 10 04
+I (144469) nrf: #3879 id  16 sub 0xf1 kind 4 | f1 01 10 00 f9 ff 11 04
+I (144469) nrf: #3880 id  16 sub 0xf1 kind 4 | f1 01 10 00 fe ff 15 04
+I (144469) nrf: #3881 id  16 sub 0xf1 kind 4 | f1 03 3d 0c 05 54 99 00
+I (144469) nrf: #3885 id  16 sub 0xf1 kind 4 | f1 04 32 00 00 00 6d 00
+I (144469) nrf: #3886 id  16 sub 0xf1 kind 4 | f1 0a 9e 0e 00 00 00 00
+I (144749) nrf: #3887 id  16 sub 0xf1 kind 4 | f1 01 10 00 f8 ff 10 04
+I (144749) nrf: #3888 id  16 sub 0xf1 kind 4 | f1 01 10 00 f8 ff 0d 04
+I (144749) nrf: #3889 id  16 sub 0xf1 kind 4 | f1 01 0e 00 fc ff 0c 04
+I (144749) nrf: #3890 id  16 sub 0xf1 kind 4 | f1 01 10 00 fe ff 0e 04
+I (144749) nrf: #3891 id  16 sub 0xf1 kind 4 | f1 03 3d 0c fe 53 99 00
+I (144749) nrf: #3892 id   0 sub 0x53 kind 4 | 53 ff 14 15 0c 81 05 7b
+I (144749) nrf: #3893 id  16 sub 0xf1 kind 4 | f1 01 09 00 fb ff 18 04
+I (144749) nrf: #3894 id  16 sub 0xf1 kind 4 | f1 01 09 00 fb ff 12 04
+W (144859) nrf: BATTERY? 3509 mV, 3 %
+I (144859) nrf: #3895 id   0 sub 0x52 kind 4 | 52 ff ff ff b5 0d 03 ff
+I (144859) nrf: #3897 id  16 sub 0xf1 kind 4 | f1 04 32 00 00 00 6c 00
+I (144859) nrf: #3898 id  16 sub 0xf1 kind 4 | f1 0a 9c 0e 00 00 00 00
+I (145669) nrf: #3934 id   0 sub 0x53 kind 4 | 53 ff 15 15 0c 81 05 7b
+W (145849) nrf: LIGHT? value 30, aux 95
+I (146059) cc700: baro 100485 Pa, 31.33 C, core alt 70 m
+I (146749) nrf: #3980 id   0 sub 0x53 kind 4 | 53 ff 16 15 0c 81 05 7b
+W (147659) nrf: LIGHT? value 600, aux 342
+I (147659) nrf: #4022 id   0 sub 0x53 kind 4 | 53 ff 17 15 0c 81 05 7b
+I (148059) cc700: baro 100484 Pa, 31.35 C, core alt 70 m
+I (148749) nrf: #4064 id   0 sub 0x53 kind 4 | 53 ff 18 15 0c 81 05 7b
+W (149149) nrf: LIGHT? value 2000, aux 1
+I (149659) nrf: #4110 id   0 sub 0x53 kind 4 | 53 ff 19 15 0c 81 05 7b
+W (149869) nrf: BATTERY? 3510 mV, 3 %
+I (149869) nrf: #4117 id   0 sub 0x52 kind 4 | 52 ff ff ff b6 0d 03 ff
+I (150059) cc700: baro 100480 Pa, 31.36 C, core alt 70 m
+W (150249) nrf: LIGHT? value 600, aux 1600
+I (150759) nrf: #4152 id   0 sub 0x53 kind 4 | 53 ff 1a 15 0c 81 05 7b
+W (151549) nrf: LIGHT? value 2000, aux 2
+I (151669) nrf: #4194 id   0 sub 0x53 kind 4 | 53 ff 1b 15 0c 81 05 7b
+I (152059) cc700: baro 100479 Pa, 31.36 C, core alt 70 m
+I (152869) nrf: #4240 id   0 sub 0x53 kind 4 | 53 ff 1c 15 0c 81 05 7b
+W (153549) nrf: LIGHT? value 600, aux 1593
+I (153759) nrf: #4282 id   0 sub 0x53 kind 4 | 53 ff 1d 15 0c 81 05 7b
+W (153759) nrf: BATTERY? 3511 mV, 3 %
+I (153759) nrf: #4285 id   0 sub 0x52 kind 4 | 52 ff ff ff b7 0d 03 ff
+I (154059) cc700: baro 100477 Pa, 31.37 C, core alt 71 m
+I (154669) nrf: #4324 id   0 sub 0x53 kind 4 | 53 ff 1e 15 0c 81 05 7b
+W (154859) nrf: LIGHT? value 2000, aux 1
+I (155849) nrf: #4370 id   0 sub 0x53 kind 4 | 53 ff 1f 15 0c 81 05 7b
+W (155949) nrf: LIGHT? value 600, aux 1596
+I (156059) cc700: baro 100477 Pa, 31.38 C, core alt 71 m
+I (156749) nrf: #4412 id   0 sub 0x53 kind 4 | 53 ff 20 15 0c 81 05 7b
+I (157669) nrf: #4454 id   0 sub 0x53 kind 4 | 53 ff 21 15 0c 81 05 7b
+W (157849) nrf: BATTERY? 3512 mV, 3 %
+I (157849) nrf: #4455 id   0 sub 0x52 kind 4 | 52 ff ff ff b8 0d 03 ff
+W (157959) nrf: LIGHT? value 2000, aux 2
+I (158059) cc700: baro 100477 Pa, 31.40 C, core alt 71 m
+I (158749) nrf: #4500 id   0 sub 0x53 kind 4 | 53 ff 22 15 0c 81 05 7b
+W (159259) nrf: LIGHT? value 600, aux 1593
+I (159659) nrf: #4542 id   0 sub 0x53 kind 4 | 53 ff 23 15 0c 81 05 7b
+I (160059) cc700: baro 100478 Pa, 31.42 C, core alt 71 m
+W (160359) nrf: LIGHT? value 2000, aux 1
+I (160739) nrf: #4584 id   0 sub 0x53 kind 4 | 53 ff 24 15 0c 81 05 7b
+I (161659) nrf: #4630 id   0 sub 0x53 kind 4 | 53 ff 25 15 0c 81 05 7b
+W (161859) nrf: BATTERY? 3513 mV, 3 %
+I (161859) nrf: #4637 id   0 sub 0x52 kind 4 | 52 ff ff ff b9 0d 03 ff
+I (162059) cc700: baro 100479 Pa, 31.43 C, core alt 71 m
+W (162639) nrf: LIGHT? value 600, aux 1587
+I (162759) nrf: #4672 id   0 sub 0x53 kind 4 | 53 ff 26 15 0c 81 05 7b
+I (163659) nrf: #4714 id   0 sub 0x53 kind 4 | 53 ff 27 15 0c 81 05 7b
+W (163659) nrf: LIGHT? value 2000, aux 0
+I (164059) cc700: baro 100480 Pa, 31.43 C, core alt 71 m
+I (164859) nrf: #4760 id   0 sub 0x53 kind 4 | 53 ff 28 15 0c 81 05 7b
+W (165039) nrf: LIGHT? value 600, aux 1589
+I (165759) nrf: #4802 id   0 sub 0x53 kind 4 | 53 ff 29 15 0c 81 05 7b
+W (165759) nrf: BATTERY? 3514 mV, 3 %
+I (165759) nrf: #4805 id   0 sub 0x52 kind 4 | 52 ff ff ff ba 0d 03 ff
+I (166059) cc700: baro 100480 Pa, 31.43 C, core alt 71 m
+I (166659) nrf: #4844 id   0 sub 0x53 kind 4 | 53 ff 2a 15 0c 81 05 7b
+W (167039) nrf: LIGHT? value 2000, aux 0
+I (167839) nrf: #4890 id   0 sub 0x53 kind 4 | 53 ff 2b 15 0c 81 05 7b
+I (168059) cc700: baro 100481 Pa, 31.44 C, core alt 71 m
+W (168339) nrf: LIGHT? value 600, aux 1591
+I (168739) nrf: #4932 id   0 sub 0x53 kind 4 | 53 ff 2c 15 0c 81 05 7b
+W (169439) nrf: LIGHT? value 2000, aux 2
+I (169659) nrf: #4974 id   0 sub 0x53 kind 4 | 53 ff 2d 15 0c 81 05 7b
+W (169839) nrf: BATTERY? 3515 mV, 3 %
+I (169839) nrf: #4975 id   0 sub 0x52 kind 4 | 52 ff ff ff bb 0d 03 ff
+I (170059) cc700: baro 100482 Pa, 31.44 C, core alt 71 m
+I (170739) nrf: #5020 id   0 sub 0x53 kind 4 | 53 ff 2e 15 0c 81 05 7b
+W (171649) nrf: LIGHT? value 600, aux 1585
+I (171659) nrf: #5062 id   0 sub 0x53 kind 4 | 53 ff 2f 15 0c 81 05 7b
+I (172059) cc700: baro 100482 Pa, 31.44 C, core alt 70 m
+I (172239) nrf: 115200 baud: 20864 byte(s), 1304 valid frame(s)
+W (172239) nrf: ---- summary: 5086 frames, 0 CRC rejects, 4 id/sub-tag pair(s) ----
+W (172239) nrf:   id  16 sub 0xf1 kind 4 dir 0xf1:   954 frame(s), every    31 ms | f1 01-0a 00-ef 00-ff 00-ff 00-ff 00-f0 00-ff 
+W (172239) nrf:       last as u16le: 497 11 65531 1042 
+W (172239) nrf:       last as u32le: 721393 68354043 
+W (172239) nrf:   id   0 sub 0x53 kind 4 dir 0xf1:   150 frame(s), every   199 ms | 53 ff 11-2f 15 0c 81 05 7b 
+W (172249) nrf:       last as u16le: 65363 5423 33036 31493 
+W (172249) nrf:       last as u32le: 355467091 2063958284 
+W (172249) nrf:   id   0 sub 0x52 kind 4 dir 0xf1:   100 frame(s), every   300 ms | 52 ff ff ff b4-bb 0d 03 ff 
+W (172249) nrf:       last as u16le: 65362 65535 3515 65283 
+W (172249) nrf:       last as u32le: 4294967122 4278390203 
+W (172249) nrf:   id  16 sub 0xf0 kind 4 dir 0xf1:   100 frame(s), every   300 ms | f0 02 00 00 00 00 00 00 
+W (172249) nrf:       last as u16le: 752 0 0 0 
+W (172249) nrf:       last as u32le: 752 0 
+W (172249) nrf: ---- end of summary ----
+W (172249) nrf: ==== window 6 of 6 starting ====
+I (172359) nrf: raw #5087: a5 0c 6f f1 04 10 f1 03 48 0c ca 52 99 00 4c 81
+I (172359) nrf: raw #5088: a5 0c 6f f1 04 00 53 ff 2f 15 0c 81 05 7b f2 a7
+I (172359) nrf: raw #5089: a5 0c 6f f1 04 10 f1 01 15 00 fb ff 18 04 ee 99
+I (172359) nrf: raw #5090: a5 0c 6f f1 04 10 f1 01 06 00 00 00 15 04 e7 75
+I (172359) nrf: raw #5091: a5 0c 6f f1 04 00 52 ff ff ff bb 0d 03 ff 5a ac
+I (172359) nrf: raw #5092: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (172359) nrf: raw #5093: a5 0c 6f f1 04 10 f1 04 d0 07 00 00 02 00 a1 98
+I (172359) nrf: raw #5094: a5 0c 6f f1 04 10 f1 0a a8 0e 00 00 00 00 e9 2c
+I (172639) nrf: raw #5095: a5 0c 6f f1 04 10 f1 01 09 00 f9 ff 15 04 bd 13
+I (172639) nrf: raw #5096: a5 0c 6f f1 04 10 f1 01 0d 00 01 00 11 04 35 0c
+I (172639) nrf: raw #5097: a5 0c 6f f1 04 10 f1 03 49 0c c8 52 99 00 84 29
+I (172639) nrf: raw #5098: a5 0c 6f f1 04 00 53 ff 2f 15 0c 81 05 7b f2 a7
+I (172639) nrf: raw #5099: a5 0c 6f f1 04 10 f1 01 0e 00 fc ff 11 04 7d ab
+I (172639) nrf: raw #5100: a5 0c 6f f1 04 10 f1 01 10 00 f7 ff 0c 04 6a 5a
+I (172649) nrf: raw #5101: a5 0c 6f f1 04 10 f1 01 0e 00 f8 ff 11 04 8c 61
+I (172649) nrf: raw #5102: a5 0c 6f f1 04 10 f1 01 07 00 00 00 11 04 83 fc
+I (172739) nrf: raw #5103: a5 0c 6f f1 04 10 f1 03 49 0c c5 52 99 00 02 10
+I (172739) nrf: raw #5104: a5 0c 6f f1 04 00 53 ff 30 15 0c 81 05 7b 75 78
+I (172739) nrf: raw #5105: a5 0c 6f f1 04 00 52 ff ff ff bb 0d 03 ff 5a ac
+I (172739) nrf: raw #5106: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+W (172739) nrf: LIGHT? value 2000, aux 2
+I (172739) nrf: raw #5107: a5 0c 6f f1 04 10 f1 04 d0 07 00 00 02 00 a1 98
+I (172739) nrf: raw #5108: a5 0c 6f f1 04 10 f1 0a ac 0e 00 00 00 00 48 2a
+I (172749) nrf: raw #5109: a5 0c 6f f1 04 10 f1 01 08 00 fb ff 21 04 24 72
+I (172749) nrf: raw #5110: a5 0c 6f f1 04 10 f1 01 09 00 fd ff 12 04 db 40
+I (172959) nrf: raw #5111: a5 0c 6f f1 04 10 f1 01 07 00 fc ff 18 04 07 59
+I (172959) nrf: raw #5112: a5 0c 6f f1 04 10 f1 01 04 00 fe ff 19 04 be 49
+I (172959) nrf: raw #5113: a5 0c 6f f1 04 10 f1 03 49 0c c1 52 99 00 f3 da
+I (172959) nrf: raw #5114: a5 0c 6f f1 04 00 53 ff 30 15 0c 81 05 7b 75 78
+I (172959) nrf: raw #5115: a5 0c 6f f1 04 10 f1 01 0c 00 f9 ff 15 04 bc 50
+I (172959) nrf: raw #5116: a5 0c 6f f1 04 10 f1 01 0e 00 fd ff 14 04 3c 22
+I (172959) nrf: raw #5117: a5 0c 6f f1 04 00 52 ff ff ff bb 0d 03 ff 5a ac
+I (172959) nrf: raw #5118: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (173139) nrf: raw #5119: a5 0c 6f f1 04 10 f1 04 d0 07 00 00 02 00 a1 98
+I (173139) nrf: raw #5120: a5 0c 6f f1 04 10 f1 0a a3 0e 00 00 00 00 4b ef
+I (173149) nrf: raw #5121: a5 0c 6f f1 04 10 f1 01 04 00 fc ff 0d 04 61 6b
+I (173149) nrf: raw #5122: a5 0c 6f f1 04 10 f1 01 0b 00 00 00 15 04 a4 3b
+I (173149) nrf: raw #5123: a5 0c 6f f1 04 10 f1 03 49 0c bc 52 99 00 00 a1
+I (173149) nrf: raw #5124: a5 0c 6f f1 04 00 53 ff 30 15 0c 81 05 7b 75 78
+I (173149) nrf: raw #5125: a5 0c 6f f1 04 10 f1 01 11 00 fe ff 0e 04 df 8a
+I (173149) nrf: raw #5126: a5 0c 6f f1 04 10 f1 01 0d 00 f9 ff 18 04 40 63
+I (173259) nrf: raw #5127: a5 0c 6f f1 04 10 f1 01 09 00 f9 ff 12 04 2a 8a
+I (173259) nrf: raw #5128: a5 0c 6f f1 04 10 f1 01 0d 00 fd ff 12 04 7a 46
+I (173259) nrf: raw #5129: a5 0c 6f f1 04 10 f1 03 4a 0c b7 52 99 00 ff 71
+I (173259) nrf: raw #5130: a5 0c 6f f1 04 00 53 ff 30 15 0c 81 05 7b 75 78
+I (173259) nrf: raw #5131: a5 0c 6f f1 04 00 52 ff ff ff bb 0d 03 ff 5a ac
+I (173259) nrf: raw #5132: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (173259) nrf: raw #5133: a5 0c 6f f1 04 10 f1 04 58 02 00 00 33 06 f6 34
+I (173259) nrf: raw #5134: a5 0c 6f f1 04 10 f1 0a a3 0e 00 00 00 00 4b ef
+I (173539) nrf: raw #5135: a5 0c 6f f1 04 10 f1 01 10 00 fe ff 19 04 9b 55
+I (173539) nrf: raw #5136: a5 0c 6f f1 04 10 f1 01 0c 00 fe ff 18 04 cd 77
+I (173539) nrf: raw #5137: a5 0c 6f f1 04 10 f1 01 10 00 fb ff 15 04 b3 ac
+I (173539) nrf: raw #5138: a5 0c 6f f1 04 10 f1 01 0c 00 00 00 12 04 72 6a
+I (173539) nrf: raw #5139: a5 0c 6f f1 04 10 f1 03 4a 0c b1 52 99 00 66 56
+I (173539) nrf: raw #5140: a5 0c 6f f1 04 00 53 ff 30 15 0c 81 05 7b 75 78
+I (173549) nrf: raw #5141: a5 0c 6f f1 04 10 f1 01 0c 00 f9 ff 11 04 78 9c
+I (173549) nrf: raw #5142: a5 0c 6f f1 04 10 f1 01 10 00 01 00 12 04 a1 0d
+I (173649) nrf: raw #5143: a5 0c 6f f1 04 00 52 ff ff ff bb 0d 03 ff 5a ac
+I (173659) nrf: raw #5144: a5 0c 6f f1 04 10 f0 02 00 00 00 00 00 00 55 db
+I (173659) nrf: raw #5145: a5 0c 6f f1 04 10 f1 04 58 02 00 00 36 06 03 cb
+I (173659) nrf: raw #5146: a5 0c 6f f1 04 10 f1 0a aa 0e 00 00 00 00 a9 a7
+I (173659) nrf: #5147 id  16 sub 0xf1 kind 4 | f1 01 0c 00 f9 ff 11 04
+I (173659) nrf: #5148 id  16 sub 0xf1 kind 4 | f1 01 08 00 fb ff 11 04
+I (173659) nrf: #5149 id  16 sub 0xf1 kind 4 | f1 03 48 0c ac 52 99 00
+I (173659) nrf: #5150 id   0 sub 0x53 kind 4 | 53 ff 31 15 0c 81 05 7b
+I (173859) nrf: #5151 id  16 sub 0xf1 kind 4 | f1 01 07 00 fd ff 10 04
+I (173859) nrf: #5152 id  16 sub 0xf1 kind 4 | f1 01 03 00 fb ff 15 04
+I (173859) nrf: #5153 id  16 sub 0xf1 kind 4 | f1 01 06 00 fe ff 11 04
+I (173859) nrf: #5154 id  16 sub 0xf1 kind 4 | f1 01 10 00 fd ff 1a 04
+I (173859) nrf: #5155 id  16 sub 0xf1 kind 4 | f1 03 4a 0c a6 52 99 00
+I (173859) nrf: #5156 id   0 sub 0x53 kind 4 | 53 ff 31 15 0c 81 05 7b
+I (173859) nrf: #5157 id   0 sub 0x52 kind 4 | 52 ff ff ff bb 0d 03 ff
+I (173859) nrf: #5158 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+W (174049) nrf: LIGHT? value 600, aux 1590
+I (174049) nrf: #5159 id  16 sub 0xf1 kind 4 | f1 04 58 02 00 00 36 06
+I (174049) nrf: #5160 id  16 sub 0xf1 kind 4 | f1 0a a5 0e 00 00 00 00
+I (174059) nrf: #5161 id  16 sub 0xf1 kind 4 | f1 01 0c 00 f8 ff 11 04
+I (174059) nrf: #5162 id  16 sub 0xf1 kind 4 | f1 01 0c 00 f3 ff 14 04
+I (174059) nrf: #5163 id  16 sub 0xf1 kind 4 | f1 01 0d 00 f9 ff 0e 04
+I (174059) nrf: #5164 id  16 sub 0xf1 kind 4 | f1 01 0c 00 fc ff 0d 04
+I (174059) nrf: #5165 id  16 sub 0xf1 kind 4 | f1 03 4a 0c a1 52 99 00
+I (174059) nrf: #5166 id   0 sub 0x53 kind 4 | 53 ff 31 15 0c 81 05 7b
+I (174059) cc700: baro 100482 Pa, 31.46 C, core alt 70 m
+I (174239) nrf: #5167 id  16 sub 0xf1 kind 4 | f1 01 09 00 fc ff 10 04
+I (174239) nrf: #5168 id  16 sub 0xf1 kind 4 | f1 01 09 00 f5 ff 12 04
+I (174239) nrf: #5169 id   0 sub 0x52 kind 4 | 52 ff ff ff bb 0d 03 ff
+I (174239) nrf: #5170 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (174239) nrf: #5171 id  16 sub 0xf1 kind 4 | f1 04 d0 07 00 00 01 00
+I (174239) nrf: #5172 id  16 sub 0xf1 kind 4 | f1 0a a8 0e 00 00 00 00
+I (174239) nrf: #5173 id  16 sub 0xf1 kind 4 | f1 01 04 00 fd ff 11 04
+I (174249) nrf: #5174 id  16 sub 0xf1 kind 4 | f1 01 10 00 fe ff 10 04
+I (174459) nrf: #5175 id  16 sub 0xf1 kind 4 | f1 03 48 0c 9b 52 99 00
+I (174459) nrf: #5177 id  16 sub 0xf1 kind 4 | f1 01 09 00 fb ff 11 04
+I (174459) nrf: #5178 id  16 sub 0xf1 kind 4 | f1 01 10 00 fe ff 0d 04
+I (174459) nrf: #5179 id  16 sub 0xf1 kind 4 | f1 01 0b 00 f3 ff 1c 04
+I (174459) nrf: #5180 id  16 sub 0xf1 kind 4 | f1 01 16 00 fb ff 06 04
+I (174459) nrf: #5181 id  16 sub 0xf1 kind 4 | f1 03 4a 0c 95 52 99 00
+I (174639) nrf: #5183 id   0 sub 0x52 kind 4 | 52 ff ff ff bb 0d 03 ff
+I (174639) nrf: #5184 id  16 sub 0xf0 kind 4 | f0 02 00 00 00 00 00 00
+I (174639) nrf: #5185 id  16 sub 0xf1 kind 4 | f1 04 d0 07 00 00 01 00
+I (174639) nrf: #5186 id  16 sub 0xf1 kind 4 | f1 0a ae 0e 00 00 00 00
+I (174639) nrf: #5187 id  16 sub 0xf1 kind 4 | f1 01 0d 00 f8 ff 10 04
+I (174639) nrf: #5188 id  16 sub 0xf1 kind 4 | f1 01 0b 00 f7 ff 11 04
+I (174639) nrf: #5189 id  16 sub 0xf1 kind 4 | f1 01 10 00 f9 ff 10 04
+I (174649) nrf: #5190 id  16 sub 0xf1 kind 4 | f1 01 09 00 fe ff 12 04
+I (174759) nrf: #5191 id  16 sub 0xf1 kind 4 | f1 03 4b 0c 91 52 99 00
+I (174759) nrf: #5192 id   0 sub 0x53 kind 4 | 53 ff 32 15 0c 81 05 7b
+I (174759) nrf: #5193 id  16 sub 0xf1 kind 4 | f1 01 17 00 f9 ff 1d 04
+I (174759) nrf: #5194 id  16 sub 0xf1 kind 4 | f1 01 0c 00 fb ff 09 04
+W (174759) nrf: BATTERY? 3516 mV, 3 %
+I (174759) nrf: #5195 id   0 sub 0x52 kind 4 | 52 ff ff ff bc 0d 03 ff
+I (174759) nrf: #5197 id  16 sub 0xf1 kind 4 | f1 04 d0 07 00 00 01 00
+I (174759) nrf: #5198 id  16 sub 0xf1 kind 4 | f1 0a a3 0e 00 00 00 00
+I (175039) nrf: #5199 id  16 sub 0xf1 kind 4 | f1 01 07 00 fb ff 08 04
+I (175039) nrf: #5200 id  16 sub 0xf1 kind 4 | f1 01 10 00 fc ff 0c 04
+I (175659) nrf: #5234 id   0 sub 0x53 kind 4 | 53 ff 33 15 0c 81 05 7b
+W (176049) nrf: LIGHT? value 2000, aux 2
+I (176059) cc700: baro 100481 Pa, 31.49 C, core alt 70 m
+I (176859) nrf: #5280 id   0 sub 0x53 kind 4 | 53 ff 34 15 0c 81 05 7b
+W (177159) nrf: LIGHT? value 600, aux 1588
+I (177759) nrf: #5322 id   0 sub 0x53 kind 4 | 53 ff 35 15 0c 81 05 7b
+I (178059) cc700: baro 100481 Pa, 31.48 C, core alt 70 m
+W (178449) nrf: LIGHT? value 2000, aux 3
+I (178659) nrf: #5364 id   0 sub 0x53 kind 4 | 53 ff 36 15 0c 81 05 7b
+W (178659) nrf: BATTERY? 3517 mV, 3 %
+I (178659) nrf: #5365 id   0 sub 0x52 kind 4 | 52 ff ff ff bd 0d 03 ff
+I (179839) nrf: #5410 id   0 sub 0x53 kind 4 | 53 ff 37 15 0c 81 05 7b
+I (180059) cc700: baro 100482 Pa, 31.48 C, core alt 70 m
+W (180459) nrf: LIGHT? value 600, aux 1582
+I (180739) nrf: #5452 id   0 sub 0x53 kind 4 | 53 ff 38 15 0c 81 05 7b
+I (181659) nrf: #5494 id   0 sub 0x53 kind 4 | 53 ff 39 15 0c 81 05 7b
+W (181839) nrf: LIGHT? value 2000, aux 2
+I (182059) cc700: baro 100482 Pa, 31.50 C, core alt 70 m
+I (182739) nrf: #5540 id   0 sub 0x53 kind 4 | 53 ff 3a 15 0c 81 05 7b
+W (182859) nrf: BATTERY? 3518 mV, 3 %
+I (182859) nrf: #5547 id   0 sub 0x52 kind 4 | 52 ff ff ff be 0d 03 ff
+W (182859) nrf: LIGHT? value 600, aux 1586
+I (183649) nrf: #5582 id   0 sub 0x53 kind 4 | 53 ff 3b 15 0c 81 05 7b
+I (184059) cc700: baro 100482 Pa, 31.50 C, core alt 70 m
+I (184739) nrf: #5624 id   0 sub 0x53 kind 4 | 53 ff 00 16 0c 81 05 7b
+W (184949) nrf: CLOCK 2023-06-01 12:22:00
+W (185139) nrf: LIGHT? value 2000, aux 2
+I (185649) nrf: #5670 id   0 sub 0x53 kind 4 | 53 ff 01 16 0c 81 05 7b
+I (186059) cc700: baro 100483 Pa, 31.52 C, core alt 70 m
+W (186239) nrf: LIGHT? value 600, aux 1588
+I (186749) nrf: #5712 id   0 sub 0x53 kind 4 | 53 ff 02 16 0c 81 05 7b
+W (186759) nrf: BATTERY? 3519 mV, 3 %
+I (186759) nrf: #5715 id   0 sub 0x52 kind 4 | 52 ff ff ff bf 0d 03 ff
+W (187539) nrf: LIGHT? value 2000, aux 2
+I (187659) nrf: #5754 id   0 sub 0x53 kind 4 | 53 ff 03 16 0c 81 05 7b
+I (188059) cc700: baro 100482 Pa, 31.55 C, core alt 70 m
+I (188859) nrf: #5800 id   0 sub 0x53 kind 4 | 53 ff 04 16 0c 81 05 7b
+W (189539) nrf: LIGHT? value 600, aux 1581
+I (189749) nrf: #5842 id   0 sub 0x53 kind 4 | 53 ff 05 16 0c 81 05 7b
+I (190059) cc700: baro 100481 Pa, 31.53 C, core alt 70 m
+I (190659) nrf: #5884 id   0 sub 0x53 kind 4 | 53 ff 06 16 0c 81 05 7b
+W (190659) nrf: BATTERY? 3520 mV, 3 %
+I (190659) nrf: #5885 id   0 sub 0x52 kind 4 | 52 ff ff ff c0 0d 03 ff
+W (190849) nrf: LIGHT? value 2000, aux 1
+I (191839) nrf: #5930 id   0 sub 0x53 kind 4 | 53 ff 07 16 0c 81 05 7b
+W (191939) nrf: LIGHT? value 600, aux 1587
+I (192059) cc700: baro 100479 Pa, 31.55 C, core alt 71 m
+I (192739) nrf: #5972 id   0 sub 0x53 kind 4 | 53 ff 08 16 0c 81 05 7b
+I (193659) nrf: #6014 id   0 sub 0x53 kind 4 | 53 ff 09 16 0c 81 05 7b
+W (193949) nrf: LIGHT? value 2000, aux 1
+I (194059) cc700: baro 100477 Pa, 31.56 C, core alt 71 m
+I (194739) nrf: #6060 id   0 sub 0x53 kind 4 | 53 ff 0a 16 0c 81 05 7b
+W (194859) nrf: BATTERY? 3521 mV, 3 %
+I (194859) nrf: #6067 id   0 sub 0x52 kind 4 | 52 ff ff ff c1 0d 03 ff
+W (195249) nrf: LIGHT? value 600, aux 1584
+I (195649) nrf: #6102 id   0 sub 0x53 kind 4 | 53 ff 0b 16 0c 81 05 7b
+I (196059) cc700: baro 100477 Pa, 31.55 C, core alt 71 m
+W (196349) nrf: LIGHT? value 2000, aux 2
+I (196739) nrf: #6144 id   0 sub 0x53 kind 4 | 53 ff 0c 16 0c 81 05 7b
+I (197649) nrf: #6190 id   0 sub 0x53 kind 4 | 53 ff 0d 16 0c 81 05 7b
+I (198059) cc700: baro 100478 Pa, 31.56 C, core alt 71 m
+W (198639) nrf: LIGHT? value 600, aux 1579
+I (198749) nrf: #6232 id   0 sub 0x53 kind 4 | 53 ff 0e 16 0c 81 05 7b
+I (199659) nrf: #6274 id   0 sub 0x53 kind 4 | 53 ff 0f 16 0c 81 05 7b
+W (199659) nrf: BATTERY? 3522 mV, 3 %
+I (199659) nrf: #6275 id   0 sub 0x52 kind 4 | 52 ff ff ff c2 0d 03 ff
+W (199659) nrf: LIGHT? value 2000, aux 2
+I (200059) cc700: baro 100480 Pa, 31.56 C, core alt 71 m
+I (200849) nrf: #6320 id   0 sub 0x53 kind 4 | 53 ff 10 16 0c 81 05 7b
+W (201029) nrf: LIGHT? value 600, aux 1584
+I (201749) nrf: #6362 id   0 sub 0x53 kind 4 | 53 ff 11 16 0c 81 05 7b
+I (202059) cc700: baro 100481 Pa, 31.56 C, core alt 71 m
+I (202329) nrf: 115200 baud: 20864 byte(s), 1304 valid frame(s)
+W (202339) nrf: ---- summary: 6390 frames, 0 CRC rejects, 4 id/sub-tag pair(s) ----
+W (202339) nrf:   id  16 sub 0xf1 kind 4 dir 0xf1:   953 frame(s), every    31 ms | f1 01-0a 01-ff 00-ff 00-ff 00-ff 00-e4 00-06 
+W (202339) nrf:       last as u16le: 497 7 65531 1038 
+W (202339) nrf:       last as u32le: 459249 68091899 
+W (202339) nrf:   id   0 sub 0x53 kind 4 dir 0xf1:   151 frame(s), every   199 ms | 53 ff 00-3b 15-16 0c 81 05 7b 
+W (202339) nrf:       last as u16le: 65363 5649 33036 31493 
+W (202339) nrf:       last as u32le: 370278227 2063958284 
+W (202339) nrf:   id   0 sub 0x52 kind 4 dir 0xf1:   100 frame(s), every   299 ms | 52 ff ff ff bb-c2 0d 03 ff 
+W (202339) nrf:       last as u16le: 65362 65535 3522 65283 
+W (202339) nrf:       last as u32le: 4294967122 4278390210 
+W (202339) nrf:   id  16 sub 0xf0 kind 4 dir 0xf1:   100 frame(s), every   299 ms | f0 02 00 00 00 00 00 00 
+W (202339) nrf:       last as u16le: 752 0 0 0 
+W (202339) nrf:       last as u32le: 752 0 
+W (202339) nrf: ---- end of summary ----
+W (202339) nrf: ==== capture finished: 6390 frames, 0 CRC rejects, 115200 baud. Nothing more will be logged; the monitor can be closed. ====
+W (203029) nrf: LIGHT? value 2000, aux 0
+W (203929) nrf: BATTERY? 3523 mV, 3 %
+I (204059) cc700: baro 100481 Pa, 31.57 C, core alt 71 m
+W (204329) nrf: LIGHT? value 600, aux 1579
+W (205429) nrf: LIGHT? value 2000, aux 1
+I (206059) cc700: baro 100483 Pa, 31.58 C, core alt 71 m
+W (207649) nrf: LIGHT? value 600, aux 1574
+W (207829) nrf: BATTERY? 3524 mV, 3 %
+I (208059) cc700: baro 100484 Pa, 31.60 C, core alt 70 m
+W (208729) nrf: LIGHT? value 2000, aux 2
+W (210039) nrf: LIGHT? value 600, aux 1577
+I (210059) cc700: baro 100484 Pa, 31.60 C, core alt 70 m
+W (211649) nrf: BATTERY? 3525 mV, 3 %
+W (212039) nrf: LIGHT? value 2000, aux 0
+I (212059) cc700: baro 100484 Pa, 31.60 C, core alt 70 m
+W (213149) nrf: LIGHT? value 600, aux 1579
+I (214059) cc700: baro 100483 Pa, 31.62 C, core alt 70 m
+W (214439) nrf: LIGHT? value 2000, aux 2
+W (215929) nrf: BATTERY? 3526 mV, 3 %
+I (216059) cc700: baro 100482 Pa, 31.61 C, core alt 70 m
+W (216449) nrf: LIGHT? value 600, aux 1573
+W (217829) nrf: LIGHT? value 2000, aux 4

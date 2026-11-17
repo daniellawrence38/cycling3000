@@ -210,9 +210,90 @@ static void test_battery_and_light_candidates(void)
     TEST_ASSERT_EQUAL(-1, fw_nrf_parse_light(&f, &l));
 }
 
+/* Key frames from outputs/nrf-capture-2.txt (17 November 2026), payloads as logged: power, left and
+ * right pressed once each, then power held for two seconds. */
+static const uint8_t K_PWR_CLICK[8] = {0x49, 0x00, 0, 0, 0, 0, 0x01, 0x80};
+static const uint8_t K_LEFT_CLICK[8] = {0x49, 0x01, 0, 0, 0, 0, 0x01, 0x80};
+static const uint8_t K_RIGHT_CLICK[8] = {0x49, 0x02, 0, 0, 0, 0, 0x01, 0x80};
+static const uint8_t K_PWR_HELD[8] = {0x49, 0x00, 0, 0, 0, 0, 0x04, 0x80};
+static const uint8_t K_PWR_END[8] = {0x49, 0x00, 0, 0, 0, 0, 0x05, 0x80};
+
+static int feed(fw_nrf_keys_t *ks, const uint8_t *payload, uint32_t now, fw_nrf_edge_t *out)
+{
+    fw_nrf_frame_t f = {.kind = 4, .id = 16, .payload = payload, .plen = 8};
+    fw_nrf_key_t k;
+    TEST_ASSERT_EQUAL(0, fw_nrf_parse_key(&f, &k));
+    return fw_nrf_keys_feed(ks, &k, now, out);
+}
+
+static void test_keys_as_captured(void)
+{
+    fw_nrf_keys_t ks;
+    memset(&ks, 0, sizeof ks);
+    fw_nrf_edge_t e[3];
+    /* A click is a press and a release at once, for each of the three buttons. */
+    const uint8_t *clicks[] = {K_PWR_CLICK, K_LEFT_CLICK, K_RIGHT_CLICK};
+    for (uint8_t i = 0; i < 3; i++) {
+        TEST_ASSERT_EQUAL(2, feed(&ks, clicks[i], 56579 + 2000u * i, e));
+        TEST_ASSERT_EQUAL(i, e[0].key);
+        TEST_ASSERT_EQUAL(1, e[0].down);
+        TEST_ASSERT_EQUAL(i, e[1].key);
+        TEST_ASSERT_EQUAL(0, e[1].down);
+    }
+    /* The hold exactly as it arrived: held at 64379 and 64679 ms, released at 64679 ms. */
+    TEST_ASSERT_EQUAL(1, feed(&ks, K_PWR_HELD, 64379, e));
+    TEST_ASSERT_EQUAL(0, e[0].key);
+    TEST_ASSERT_EQUAL(1, e[0].down);
+    TEST_ASSERT_EQUAL(0, feed(&ks, K_PWR_HELD, 64679, e)); /* a repeat is not a second press */
+    TEST_ASSERT_EQUAL(0, fw_nrf_keys_tick(&ks, 64679, e));
+    TEST_ASSERT_EQUAL(1, feed(&ks, K_PWR_END, 64679, e));
+    TEST_ASSERT_EQUAL(0, e[0].key);
+    TEST_ASSERT_EQUAL(0, e[0].down);
+    TEST_ASSERT_EQUAL(0, feed(&ks, K_PWR_END, 64700, e)); /* a second release is nothing */
+}
+
+static void test_keys_never_stick(void)
+{
+    fw_nrf_keys_t ks;
+    memset(&ks, 0, sizeof ks);
+    fw_nrf_edge_t e[3];
+    /* The repeats stop with no hold end: released one second after the last one, not before. */
+    TEST_ASSERT_EQUAL(1, feed(&ks, K_PWR_HELD, 1000, e));
+    TEST_ASSERT_EQUAL(0, feed(&ks, K_PWR_HELD, 1300, e));
+    TEST_ASSERT_EQUAL(0, fw_nrf_keys_tick(&ks, 2300, e));
+    TEST_ASSERT_EQUAL(1, fw_nrf_keys_tick(&ks, 2301, e));
+    TEST_ASSERT_EQUAL(0, e[0].key);
+    TEST_ASSERT_EQUAL(0, e[0].down);
+    TEST_ASSERT_EQUAL(0, fw_nrf_keys_tick(&ks, 5000, e));
+    /* A long hold stays down as long as the repeats keep coming, across a timer wrap too. */
+    uint32_t t = 0xFFFFFF00u;
+    TEST_ASSERT_EQUAL(1, feed(&ks, K_PWR_HELD, t, e));
+    for (int i = 1; i <= 20; i++) {
+        TEST_ASSERT_EQUAL(0, feed(&ks, K_PWR_HELD, t + 300u * (uint32_t)i, e));
+        TEST_ASSERT_EQUAL(0, fw_nrf_keys_tick(&ks, t + 300u * (uint32_t)i + 299u, e));
+    }
+    TEST_ASSERT_EQUAL(1, feed(&ks, K_PWR_END, t + 6300u, e));
+    /* A click arriving while a hold is open closes it with one release, not a press. */
+    TEST_ASSERT_EQUAL(1, feed(&ks, K_PWR_HELD, 100, e));
+    TEST_ASSERT_EQUAL(1, feed(&ks, K_PWR_CLICK, 200, e));
+    TEST_ASSERT_EQUAL(0, e[0].down);
+    /* Two buttons held together are tracked separately. */
+    static const uint8_t K_LEFT_HELD[8] = {0x49, 0x01, 0, 0, 0, 0, 0x04, 0x80};
+    TEST_ASSERT_EQUAL(1, feed(&ks, K_PWR_HELD, 10000, e));
+    TEST_ASSERT_EQUAL(1, feed(&ks, K_LEFT_HELD, 10100, e));
+    TEST_ASSERT_EQUAL(1, e[0].key);
+    TEST_ASSERT_EQUAL(1, fw_nrf_keys_tick(&ks, 11050, e)); /* only power has gone quiet */
+    TEST_ASSERT_EQUAL(0, e[0].key);
+    /* An index or an event code never seen on the unit produces nothing. */
+    static const uint8_t K_IDX3[8] = {0x49, 0x03, 0, 0, 0, 0, 0x01, 0x80};
+    static const uint8_t K_EVT2[8] = {0x49, 0x00, 0, 0, 0, 0, 0x02, 0x80};
+    TEST_ASSERT_EQUAL(0, feed(&ks, K_IDX3, 20000, e));
+    TEST_ASSERT_EQUAL(0, feed(&ks, K_EVT2, 20000, e));
+}
+
 static void test_key_event_layout(void)
 {
-    /* No key frame has been captured yet, so this pins only the vendor's field positions. */
+    /* The vendor's field positions, on a made-up frame with every byte different. */
     const uint8_t p[8] = {0x49, 0x02, 0xAA, 0xBB, 0xCC, 0x07, 0x04, 0xDD};
     fw_nrf_frame_t f = {.kind = 4, .id = 16, .payload = p, .plen = 8};
     fw_nrf_key_t k;
@@ -283,6 +364,8 @@ int main(void)
     RUN_TEST(test_clock_decodes_the_capture_date);
     RUN_TEST(test_battery_and_light_candidates);
     RUN_TEST(test_key_event_layout);
+    RUN_TEST(test_keys_as_captured);
+    RUN_TEST(test_keys_never_stick);
     RUN_TEST(test_stream_resynchronises);
     return UNITY_END();
 }

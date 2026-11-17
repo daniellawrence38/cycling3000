@@ -73,8 +73,10 @@
 #include "driver/uart.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 #include "freertos/task.h"
 #include "hal_baro.h"
+#include "hal_input.h"
 #include "hal_clock.h"
 #include "hal_nrf.h"
 #include "nrf_proto.h"
@@ -196,9 +198,37 @@ static void hexdump(char *out, size_t outsz, const uint8_t *p, size_t n)
         out[k - 1] = '\0';
 }
 
+/* The buttons. The nRF reports them as clicks (nrf_proto.h); fw_nrf_keys turns those into the down
+ * and up edges the core wants, and they wait in a queue for the core task's hal_input_poll(). */
+static QueueHandle_t key_queue;
+static fw_nrf_keys_t key_state;
+
+static void push_edges(const fw_nrf_edge_t *e, int n)
+{
+    /* Key index to button, confirmed on the unit: 0 power, 1 bottom left, 2 bottom right. */
+    static const hal_input_kind_t DOWN[FW_NRF_KEYS] = {HAL_PWR_DOWN, HAL_BTN_L_DOWN, HAL_BTN_R_DOWN};
+    for (int i = 0; i < n; i++) {
+        hal_input_event_t ev = {0};
+        ev.kind = (hal_input_kind_t)(DOWN[e[i].key] + (e[i].down ? 0 : 1));
+        if (!key_queue || xQueueSend(key_queue, &ev, 0) != pdTRUE)
+            ESP_LOGW(TAG, "key queue full or missing: a button edge was dropped");
+    }
+}
+
+int hal_input_poll(hal_input_event_t *ev)
+{
+    return key_queue && xQueueReceive(key_queue, ev, 0) == pdTRUE;
+}
+
 /* Every verified frame comes through here, whether or not the capture is still logging. */
 static void consume(const fw_nrf_frame_t *f)
 {
+    fw_nrf_key_t key;
+    if (fw_nrf_parse_key(f, &key) == 0) {
+        fw_nrf_edge_t edges[2];
+        push_edges(edges, fw_nrf_keys_feed(&key_state, &key, hal_clock_monotonic_ms(), edges));
+        /* No return: the bring-up log below still names the frame. */
+    }
     fw_nrf_baro_t b;
     if (fw_nrf_parse_baro(f, &b) == 0) {
         int32_t pa = fw_nrf_baro_pa(&b);
@@ -419,6 +449,8 @@ static uint32_t listen_at(uint32_t baud, uint32_t ms, int keep)
     while ((int32_t)(xTaskGetTickCount() - deadline) < 0) {
         uint8_t chunk[128];
         int n = uart_read_bytes(UART_NRF_PORT, chunk, sizeof chunk, pdMS_TO_TICKS(200));
+        fw_nrf_edge_t lost[FW_NRF_KEYS];
+        push_edges(lost, fw_nrf_keys_tick(&key_state, hal_clock_monotonic_ms(), lost));
         if (n <= 0)
             continue;
         bytes += (uint32_t)n;
@@ -514,5 +546,6 @@ static void nrf_task(void *arg)
 
 void hal_nrf_start(void)
 {
+    key_queue = xQueueCreate(16, sizeof(hal_input_event_t));
     xTaskCreatePinnedToCore(nrf_task, "nrf", 4096, NULL, 2, NULL, 0);
 }

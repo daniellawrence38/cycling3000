@@ -463,3 +463,66 @@ from the capture (the clock test asserts the capture's own date). With `NRF_DECO
 listener names each message in the log (`KEY`, `BATTERY?`, `LIGHT?`, `CLOCK`), so the next capture
 with the buttons pressed, the sensor covered and the cable out confirms or refutes each one in words.
 Only the barometer is wired through to the core so far.
+
+---
+
+# Confirmed on the unit, 17 November 2026 (`outputs/nrf-capture-2.txt`)
+
+Daniel flashed the build stamped `a990a63` and ran one capture: buttons in window 2, the light sensor
+covered then lit in window 3, the unit raised then put on the floor in window 4. 6390 frames, **0 CRC
+rejects**. Every layout the previous section read out of the vendor's code is what the wire shows.
+
+| Message | Result |
+| --- | --- |
+| Keys, id 16 / `0x49` | **Confirmed.** Daniel pressed power, left, right, then held power for two seconds. The three short presses gave `49 00 … 01 80`, `49 01 … 01 80`, `49 02 … 01 80`: so **index 0 is power, 1 is bottom left, 2 is bottom right**, event 1, one frame per press. Holding a button gave event 4 twice, 300 ms apart, then event 5 when it was let go. So **1 is a short press, 4 is "being held" (repeating), 5 is "released after a hold"**. There is no separate press and release for a short press: the nRF reports clicks, not edges. Payload byte 7 was `0x80` throughout. |
+| Battery, id 0 / `0x52` | **Confirmed.** 3477 mV and 2 % at boot, climbing a millivolt every four seconds to 3495 mV and 3 % on USB. On 4 November the same fields read 4290 and 100. Two states, both sensible. |
+| Barometer, id 16 / `0xF1` / `0x03` | **Confirmed end to end, through our own firmware.** `hal_baro_read_pa` fed the core, which reported 71 m. On the desk 100478 to 100480 Pa; raised above head height 100465 to 100468 (about 12 Pa lower, about 1 m); on the floor 100484 to 100486 (about 7 Pa higher, about 0.6 m). Sign and size both right at 12 Pa per metre. |
+| Light, id 16 / `0xF1` / `0x04` | **Confirmed as the light sensor, with one thing unexplained.** The uint32 read 600 in room light, fell to 30, 10 and 0 under a thumb, and rose to 6000 and 9000 under a torch. It moves in coarse steps (0, 10, 30, 50, 600, 2000, 6000, 9000), so it is a banded level, not raw lux. Unexplained: in steady room light it alternates between 600 with the uint16 near 1590 and 2000 with the uint16 near 2. |
+| Clock, id 0 / `0x53` | Layout confirmed again, and a new fact: it read **2023-06-01 12:20:00**. The battery had run flat and the nRF's clock restarted from a default. It is a clock that has to be set, not a source of time. |
+
+## Three things nobody predicted
+
+**1. The nRF has an "off" state, and it was in it.** For the first 64 seconds after boot the link
+carried only the battery message and `f0 02 00 …`, every 300 ms: no barometer, no light, no clock.
+The sensors started at the instant the held button was released:
+
+```
+49 00 00 00 00 00 04 80        key 0 held
+49 00 00 00 00 00 04 80        key 0 still held
+49 00 00 00 00 00 05 80        key 0 released
+e2 02 00 00 ff 05 00 ff        power event, code 5        (id 16)
+01 01 00 00 00 00 00 01 04 11  first id 1 message ever seen
+f1 03 f9 0b 23 4e 99 00        barometer starts
+```
+
+So **key 0 is the power button, and a long press of it switches the nRF's sensor side on without the
+ESP32 sending anything.** The `e2` frame is the event the vendor handler turns into
+`ArmSendPowerOnSysEvent` (code 5 or 6 is "power on", code 4 the other event). The 4 November captures
+had sensors from the start because the unit had been switched on normally before our firmware ran.
+
+**2. Why it was off: the battery had run flat.** 2 % and a clock reset to its default both say the
+unit ran until it died since 4 November. That is the cost of our firmware having no way to switch the
+unit off, seen for real.
+
+**3. Pressing on the case moves the barometer.** While the light sensor was covered with a thumb the
+pressure rose by up to 29 Pa (100478 to 100507) for about four seconds, the equivalent of 2.4 m of
+descent. A hand on the unit is a pressure event. The core's one-second mean and 0.25 filter will damp
+it, but it is worth knowing before blaming the altitude code for a blip.
+
+## What is still unknown on the link
+
+- `0xF1` / `0x0a`: an int16 around 3690 (`71 0e`), a little above the battery's millivolts and not
+  the same quantity. Unknown.
+- The id 1 message `01 01 00 00 00 00 00 01 04 11` that arrives with power-on.
+- What a long press of key 0 does when the sensors are already on (presumably the code 4 event, a
+  request to power off that the ESP32 is expected to answer with `SendPowerOffCmd`).
+- Ids 11, 17, 34, 35, 40, 120 to 123 and 128: still never seen.
+
+## The buttons are now an input
+
+`fw_nrf_keys_feed` (`fw/main/nrf_proto.c`) turns the clicks into the down and up edges the core's
+hold detection expects: a click is a press and a release at once; the first "held" frame is a press;
+"released after a hold" is the release; and if the repeats stop for more than a second with no
+release, the button is released anyway, so it can never stick. `hal_input_poll` serves them from a
+queue. `test_keys_as_captured` replays the capture's own frames at their own times. The consequence
+for hold timing is Q40.
