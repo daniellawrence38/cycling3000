@@ -270,21 +270,26 @@ int hal_power_ambient_lux(void)
     return (int)v;
 }
 
-void hal_power_off(void)
+int hal_power_off(void)
 {
     hal_display_backlight(0);
     if (!nrf_uart_up) {
-        ESP_LOGW(TAG, "hal_power_off: nRF UART not up");
-        return;
+        ESP_LOGW(TAG, "hal_power_off: nRF UART not up; nothing sent");
+        return HAL_POWER_OFF_NOT_SENT;
     }
     hal_nrf_gnss_power(FW_NRF_GNSS_OFF);
     uint8_t frame[FW_NRF_POWER_OFF_FRAME_LEN];
     int n = fw_nrf_build_power_off(frame);
-    if (n > 0) {
-        ESP_LOGW(TAG, "sending SendPowerOffCmd (%d bytes) to nRF", n);
-        uart_write_bytes(UART_NRF_PORT, frame, (size_t)n);
-        uart_wait_tx_done(UART_NRF_PORT, pdMS_TO_TICKS(200));
+    if (n <= 0)
+        return HAL_POWER_OFF_NOT_SENT;
+    ESP_LOGW(TAG, "sending SendPowerOffCmd (%d bytes) to nRF", n);
+    /* uart_write_bytes returns the bytes queued, or -1. Anything short of the whole frame is not a
+       power-off request the nRF can accept (its CRC covers every byte), so it counts as not sent. */
+    if (uart_write_bytes(UART_NRF_PORT, frame, (size_t)n) != n) {
+        ESP_LOGE(TAG, "hal_power_off: the frame was not queued in full");
+        return HAL_POWER_OFF_NOT_SENT;
     }
+    uart_wait_tx_done(UART_NRF_PORT, pdMS_TO_TICKS(200));
     /* Wait for the user to finish releasing the power button from the power-off hold, then drain any
      * queued edges. If the nRF cuts the 3.3 V rail (battery mode), execution stops here. If the 3.3 V
      * rail stays up (USB charge mode, stock ArmStateProcess State 8/9 FUN_420561ec), wait for the next

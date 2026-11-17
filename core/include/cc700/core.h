@@ -127,6 +127,10 @@ int cc_cmd_load_workout(const uint8_t id[8]);
 int cc_cmd_load_route(const uint8_t id[8]);
 void cc_cmd_unload_workout(void);
 void cc_cmd_unload_route(void);
+/* The host could not switch the unit off (hal_power_off returned): clears power_off_request, so the
+ * rider's next power-off request is a new one the host acts on, instead of a flag that stays set and
+ * is either resent every tick or ignored until reboot. The ride, if there was one, is already saved. */
+void cc_power_off_cancel(void);
 
 /* Fills the link server's host callbacks with the core's. */
 void cc_link_host_bind(cc_link_host_t *h);

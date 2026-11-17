@@ -438,9 +438,28 @@ static void test_ftp_only_when_stopped(void)
     TEST_ASSERT_EQUAL_UINT16(260, V()->ftp);
 }
 
+/* A power-off the host could not carry out is cancelled, and the next hold is a new request. Without
+ * this the request stays set for ever: the firmware either resends the frame every tick or ignores
+ * the rider's second attempt until a reboot (fw/main/main.c). */
+static void test_power_off_cancel(void)
+{
+    TEST_ASSERT_FALSE(V()->power_off_request);
+    apply(EV_PH);
+    TEST_ASSERT_TRUE(V()->power_off_request);
+    cc_power_off_cancel();
+    cc_tick(now); /* the view is refreshed by the tick */
+    TEST_ASSERT_FALSE(V()->power_off_request);
+    TEST_ASSERT_EQUAL_INT(CC_RS_READY, V()->state);
+    short_press(CC_BTN_PWR); /* a short press is not a power-off request */
+    TEST_ASSERT_FALSE(V()->power_off_request);
+    apply(EV_PH);
+    TEST_ASSERT_TRUE(V()->power_off_request);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_power_off_cancel);
     RUN_TEST(test_page_ring);
     RUN_TEST(test_state_table);
     RUN_TEST(test_files_after_finish_discard);

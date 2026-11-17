@@ -277,9 +277,22 @@ static void core_task(void *arg)
             last_saved_seq = v->saved_seq;
             apply_backlight();
             if (v->power_off_request && !power_off_sent) {
-                power_off_sent = 1;
+                /* hal_power_off blanks the backlight behind apply_backlight's back, so the next
+                   apply_backlight must set it again whatever it last set. */
                 last_backlight_pct = -1;
-                hal_power_off();
+                int rc = hal_power_off();
+                if (rc == HAL_POWER_OFF_SENT) {
+                    /* Written, and the power is expected to drop: never send it twice. */
+                    power_off_sent = 1;
+                } else {
+                    /* Still on. The latch stays open and the core's request is cleared, so the
+                       screen comes back on the next tick and the rider's next 2 s hold tries again.
+                       Latching here was the old behaviour: one failed attempt and power-off did
+                       nothing until a reboot. */
+                    ESP_LOGE(TAG, "power-off %s; the unit stays on",
+                             rc == HAL_POWER_OFF_UNCONFIRMED ? "sent but not confirmed" : "not sent");
+                    cc_power_off_cancel();
+                }
             }
         }
         if (ui_app_dirty())
