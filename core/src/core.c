@@ -56,6 +56,7 @@ typedef struct {
     uint32_t storage_since_ms;
     int lowbatt15, lowbatt5;
     cc_alerts_t al;
+    cc_hrhist_t hrh;              /* last 5 min of heart rate (the graph screen) */
     cc_ride_meta_t summary;
     uint32_t saved_seq;
     int power_off;
@@ -338,6 +339,7 @@ static void reset_ride(void)
     S.gps_alerted = 0;
     S.nextstep_active = 0;
     cc_alerts_init(&S.al);
+    cc_hrhist_reset(&S.hrh);
 }
 
 int cc_cmd_start(uint32_t now_ms)
@@ -726,6 +728,11 @@ static void second(uint32_t now_ms)
         S.elapsed_s++;
         S.paused_s++;
     }
+    /* The heart-rate graph's history: the same one-second value the FIT record takes (an empty
+       second is a gap, never the previous reading), kept while paused too so the graph shows the
+       recovery at a stop. Wall seconds, so the x axis is real time. */
+    if (recording || paused)
+        cc_hrhist_push(&S.hrh, hr_ok, hr);
 
     cc_alt_second(&S.alt, recording, S.dist_cm, spd_ok ? spd : 0, fix_ok, S.fix.alt_m);
 
@@ -950,6 +957,7 @@ static void fill_view(uint32_t now_ms)
     v->ride_id = S.ride_id;
     v->saved_seq = S.saved_seq;
     v->saved_ride_id = S.summary.ride_id;
+    v->hr_hist = S.hrh;
 }
 
 void cc_tick(uint32_t now_ms)
