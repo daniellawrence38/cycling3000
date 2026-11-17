@@ -5,14 +5,23 @@
  * touch controller. They arrive as framed messages from the nRF on UART1 (ESP port 2), the same link
  * that carries ANT+.
  *
- * It is a listener only. It never transmits, because a passive sniff cannot upset a
- * co-processor that is also holding the ANT+ radio and, on this unit, the buttons. */
+ * It is NOT receive-only any more (it was until Q38 was answered). The firmware transmits five
+ * command frames on it (three of them the GNSS modes), all kind 2, id 16, each 16 bytes (payloads in
+ * docs/NRF-PROTOCOL.md, "The
+ * senders, exactly" and "Additional outbound commands on id 16"); fw/main/hal_nrf_esp.c says exactly
+ * when each is sent:
+ *   SendPowerOnCmd    e2 02 00 00 00 01 00 00   at boot, retried while no barometer reading has
+ *                                                arrived, and on a wake after power-off
+ *   GNSS power        e2 02 07 00 00 <m> 00 00   m = 0 off, 1 on, 2 reset (hal_nrf_gnss_power)
+ *   SendPowerOffCmd   e2 02 00 00 00 00 00 00   from hal_power_off() only
+ * Nothing else is sent: no queries, no buzzer, nothing to the ANT+ side. */
 #ifndef CC700_HAL_NRF_H
 #define CC700_HAL_NRF_H
 #include <stdint.h>
 
-/* Starts the listener task. Harmless if the link is silent or the baud rate is wrong: it simply
- * reports that it found nothing. */
+/* Starts the link task, which sends the boot frames above and then searches for the baud rate. If the
+ * link is silent or the rate is not found it reports that it found nothing, and leaves the port at
+ * 115200 for transmitting. */
 void hal_nrf_start(void);
 
 /* The baud rate that produced frames with valid checksums, or 0 while still searching. */

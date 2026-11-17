@@ -25,6 +25,7 @@
 #include "esp_vfs_fat.h"
 #include "fs_null.h"
 #include "fw.h"
+#include "hal_clock.h"
 #include "hal_fs.h"
 #include "sdmmc_cmd.h"
 
@@ -109,13 +110,38 @@ static int sd_rename(hal_fs_t *fs, const char *from, const char *to)
     return rename(a, b) == 0 ? 0 : -1;
 }
 
+/* Free space, cached. esp_vfs_fat_info calls FatFs's f_getfree, which counts the free clusters by
+ * reading the whole FAT whenever it has no free count it trusts: 14,561 sectors per FAT on this unit's
+ * eMMC. With this build's settings (CONFIG_FATFS_DONT_TRUST_FREE_CLUSTER_CNT 0) FatFs trusts the
+ * FSINFO count and keeps it up to date itself, so the full scan should happen at most once, at mount.
+ * But sd_free runs on the core task, inside requests from the phone (OBJ_PUT_BEGIN asks it), and a
+ * scan there of a second or more could drop the BLE link. So this asks once at mount, again after a
+ * file is removed (free space went up), and otherwise at most once every FREE_REFRESH_MS. Between
+ * refreshes the figure can be high by what was written since; every caller wants a margin, not an
+ * exact count, so that is acceptable. */
+#define FREE_REFRESH_MS 10000u
+static int64_t free_cached = -1;
+static uint32_t free_at_ms;
+static int free_stale = 1;
+
+static void free_refresh(void)
+{
+    uint64_t total = 0, free_b = 0;
+    free_cached = esp_vfs_fat_info(SD_MOUNT, &total, &free_b) == ESP_OK ? (int64_t)free_b : -1;
+    free_at_ms = hal_clock_monotonic_ms();
+    free_stale = 0;
+}
+
 static int sd_remove(hal_fs_t *fs, const char *path)
 {
     (void)fs;
     char p[256];
     if (sd_full(path, p, sizeof p) != 0)
         return -1;
-    return unlink(p) == 0 ? 0 : -2;
+    if (unlink(p) != 0)
+        return -2;
+    free_stale = 1; /* recounted on the next sd_free, not here: retention removes several in a row */
+    return 0;
 }
 
 static int sd_mkdir(hal_fs_t *fs, const char *path)
@@ -124,9 +150,14 @@ static int sd_mkdir(hal_fs_t *fs, const char *path)
     char p[256];
     if (sd_full(path, p, sizeof p) != 0)
         return -1;
-    if (mkdir(p, 0755) == 0 || errno == EEXIST)
+    if (mkdir(p, 0755) == 0)
         return 0;
-    return -1;
+    if (errno != EEXIST)
+        return -1;
+    /* EEXIST only says the name is taken. A FILE called "objects" or "rides" would pass for the
+       directory and every later write into it would fail, so say so here instead. */
+    struct stat st;
+    return stat(p, &st) == 0 && S_ISDIR(st.st_mode) ? 0 : -1;
 }
 
 static int sd_list(hal_fs_t *fs, const char *dir, int (*cb)(void *, const hal_dirent_t *), void *ctx)
@@ -165,10 +196,9 @@ static int sd_list(hal_fs_t *fs, const char *dir, int (*cb)(void *, const hal_di
 static int64_t sd_free(hal_fs_t *fs)
 {
     (void)fs;
-    uint64_t total = 0, free_b = 0;
-    if (esp_vfs_fat_info(SD_MOUNT, &total, &free_b) != ESP_OK)
-        return -1;
-    return (int64_t)free_b;
+    if (free_stale || free_cached < 0 || hal_clock_monotonic_ms() - free_at_ms >= FREE_REFRESH_MS)
+        free_refresh();
+    return free_cached;
 }
 
 static hal_fs_t SD_FS = {
@@ -206,13 +236,29 @@ hal_fs_t *fw_fs_sdmmc(void)
         ESP_LOGE(TAG, "eMMC mount at %s failed (%s); falling back to null storage", SD_MOUNT, esp_err_to_name(e));
         return fw_fs_null();
     }
-    if (mkdir(CC700_ROOT, 0755) != 0 && errno != EEXIST) {
-        ESP_LOGE(TAG, "mkdir %s failed (errno %d); falling back to null storage", CC700_ROOT, errno);
+    struct stat rst;
+    int root_ok = mkdir(CC700_ROOT, 0755) == 0;
+    int err = errno;
+    if (!root_ok && err == EEXIST)
+        root_ok = stat(CC700_ROOT, &rst) == 0 && S_ISDIR(rst.st_mode); /* not a FILE named CC700 */
+    if (!root_ok) {
+        ESP_LOGE(TAG, "%s could not be created or is not a directory (errno %d); unmounting and falling "
+                      "back to null storage", CC700_ROOT, err);
+        /* Unmount, so a volume this code will not use is not left mounted with FatFs's buffers held
+           and the card initialised, and so nothing (a later call here included) writes to it. */
+        esp_err_t ue = esp_vfs_fat_sdcard_unmount(SD_MOUNT, card);
+        if (ue != ESP_OK)
+            ESP_LOGE(TAG, "unmount of %s failed (%s)", SD_MOUNT, esp_err_to_name(ue));
+        card = NULL;
         return fw_fs_null();
     }
     mounted = 1;
     uint64_t total = 0, free_b = 0;
     if (esp_vfs_fat_info(SD_MOUNT, &total, &free_b) == ESP_OK) {
+        /* The first sd_free answers from this, without asking FatFs again. */
+        free_cached = (int64_t)free_b;
+        free_at_ms = hal_clock_monotonic_ms();
+        free_stale = 0;
         ESP_LOGW(TAG, "mounted eMMC at %s (root %s): %" PRIu64 " MB total, %" PRIu64 " MB free",
                  SD_MOUNT, CC700_ROOT, total / (1024u * 1024u), free_b / (1024u * 1024u));
     } else {

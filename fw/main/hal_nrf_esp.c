@@ -58,9 +58,25 @@
  * That part runs for as long as the unit is on. The capture logging around it is bring-up scaffolding:
  * it runs for MAX_WINDOWS windows after boot and then goes quiet, while the decode carries on.
  *
- * RECEIVE ONLY. Nothing here ever writes to the port. A passive sniff cannot upset a co-processor
- * that is also holding the ANT+ radio and, on the evidence so far, the buttons; sending it a guessed
- * frame could.
+ * WHAT IT TRANSMITS. This started as a receive-only listener; since Q38 it sends command frames on TX
+ * GPIO 42, all kind 2, id 16, 16 bytes, built by nrf_proto.c and pinned byte for byte, CRC included,
+ * in core/tests/test_nrf_proto.c. Nothing else is ever written to the port. Exactly:
+ *
+ *   SendPowerOnCmd (e2 02 00 00 00 01 00 00), from nrf_send_power_on():
+ *     - nrf_task, once, as soon as the UART is up at boot;
+ *     - listen_at, again every second or more while no barometer reading has arrived, up to 5 times;
+ *     - hal_power_off, after the power-off frame, when a power-button press or a power-on event
+ *       arrives while the rail is still up, just before esp_restart().
+ *   GNSS power (e2 02 07 00 00 <mode> 00 00, mode 0 off, 1 on, 2 reset), from hal_nrf_gnss_power():
+ *     - nrf_task, "on", at boot right after the power-on frame, and listen_at with each power-on retry;
+ *     - hal_gnss_init (hal_gnss_esp.c), "on"; and hal_gnss_poll, "reset" then "on" 200 ms later, if
+ *       no byte has arrived from the receiver 3 s after init. These run on the core task. A call made
+ *       before the UART is up is held in pending_gnss_mode and sent from listen_at;
+ *     - hal_power_off, "off", just before the power-off frame.
+ *   SendPowerOffCmd (e2 02 00 00 00 00 00 00): hal_power_off() only, on the rider's power-off request.
+ *
+ * The rate is whatever the receive side is set to: 115200 at boot, the search candidate during the
+ * search, the locked rate after it, and 115200 again if the search finds nothing.
  *
  * This runs in its own low-priority task on core 0. The core task owns the core, the link and LVGL
  * and must not be made to wait on a serial line that may be silent for thirteen seconds at a time.

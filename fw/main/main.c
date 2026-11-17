@@ -10,6 +10,7 @@
  * Deliberately absent: nvs_flash_init (the stock NVS partition is left alone, Q29), TinyUSB, anything
  * that writes flash. */
 #include <inttypes.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "board_pins.h"
@@ -161,6 +162,24 @@ static void ui_start(uint32_t now)
     size_t sz = HAL_DISPLAY_W * 40 * 2;
     void *b1 = heap_caps_malloc(sz, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
     void *b2 = heap_caps_malloc(sz, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+    /* DMA-capable internal RAM is tight on this unit (the eMMC probe measured 70 KB free, the largest
+       block 31,744 bytes, with everything running), so these can fail. LVGL given a NULL buffer
+       writes through it on the first render, which would look like a random crash later. */
+    if (!b1) {
+        ESP_LOGE(TAG, "no DMA-capable RAM for the display buffer (%u bytes; DMA free %u, largest block %u): "
+                      "the UI cannot run, stopping here",
+                 (unsigned)sz, (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA),
+                 (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
+        abort();
+    }
+    if (!b2) {
+        /* One buffer works; LVGL then waits for each flush before drawing the next band. Slower, not
+           broken, so carry on rather than stop the unit, but say so. */
+        ESP_LOGE(TAG, "no DMA-capable RAM for the second display buffer (%u bytes; DMA free %u, largest "
+                      "block %u): drawing with one buffer",
+                 (unsigned)sz, (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA),
+                 (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
+    }
     lv_display_set_buffers(d, b1, b2, sz, LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_flush_cb(d, flush_cb);
     if (hal_touch_init() == 0) {
