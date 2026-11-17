@@ -9,10 +9,15 @@
  *   - Power and reset are behind the nRF co-processor on kind 2, id 16, sub-tag 0xE2 0x02, device 0x07
  *     (0x42155f84..0x42155fac: payload[5] = 0 off, 1 on, 2 reset).
  *
- * Power and reset are behind the nRF co-processor on kind 2, id 16, sub-tag 0xE2 0x02, device 0x07
- * (0x42155f84..0x42155fac: payload[5] = 0 off, 1 on, 2 reset). hal_gnss_init() requests GNSS power-on,
- * and if no bytes arrive on GPIO 0 within 3 s, hal_gnss_poll() issues a hardware reset pulse followed
- * by power-on (matching GpsPthreadMachine State 16 GpsHdRst at 0x421b8694). */
+ * WHAT IS SENT, AND WHAT IS NOT (Q38, amendment of 17 November 2026):
+ *   - nothing on UART0: TX GPIO 1 is not even configured. The vendor's four $PAIR set-up sentences
+ *     are not approved;
+ *   - no power frame from here at boot. The one GNSS power-on per boot is sent by the nRF handshake
+ *     (hal_nrf_esp.c) once the nRF is RUNNING, because the rail is the nRF's;
+ *   - the silence watchdog (fw_gnss_wd_*, nrf_proto.c), armed when that power-on was sent: after
+ *     5.1 s without a byte, ONE hardware-reset frame, as the vendor's GpsPthreadMachine state 15/16
+ *     does (GpsHdRst 0x421b8694, no power-on after it); at most every 5.1 s, at most 3 per boot. The
+ *     old reset-then-power-on pair 200 ms apart is gone: the vendor never sends it. */
 #include <inttypes.h>
 
 #include "board_pins.h"
@@ -30,9 +35,8 @@ static const char *TAG = "gnss";
 
 static int gnss_up;
 static fw_nmea_t nmea;
-static uint32_t init_ms;
 static uint32_t rx_bytes;
-static int reset_stage; /* 0 = none, 1 = reset sent, 2 = power-on resent */
+static fw_gnss_wd_t wd;
 #if GNSS_LOG
 static int logged_first_fix;
 #endif
@@ -61,11 +65,9 @@ int hal_gnss_init(void)
         ESP_LOGE(TAG, "uart0 config on RX GPIO %d failed", PIN_UART0_RX);
         return -1;
     }
-    init_ms = hal_clock_monotonic_ms();
     rx_bytes = 0;
-    reset_stage = 0;
+    fw_gnss_wd_init(&wd);
     gnss_up = 1;
-    hal_nrf_gnss_power(FW_NRF_GNSS_ON);
     ESP_LOGI(TAG, "listening on UART%d RX GPIO %d at %d baud (NMEA 0183)", UART_GNSS_PORT,
              PIN_UART0_RX, UART_GNSS_BAUD);
     return 0;
@@ -78,10 +80,20 @@ int hal_gnss_poll(hal_gnss_fix_t *fix)
     uint8_t buf[128];
     int got_fix = 0;
     hal_gnss_fix_t latest = {0};
+    uint32_t now = hal_clock_monotonic_ms();
+    uint32_t on_ms;
+    if (!wd.armed && hal_nrf_gnss_on_sent(&on_ms)) {
+        fw_gnss_wd_arm(&wd, on_ms);
+        ESP_LOGW(TAG, "silence watchdog armed (GNSS power-on sent at %" PRIu32 " ms); %" PRIu32 " byte(s) so far",
+                 on_ms, rx_bytes);
+    }
     for (;;) {
         int n = uart_read_bytes(UART_GNSS_PORT, buf, sizeof buf, 0);
         if (n <= 0)
             break;
+        fw_gnss_wd_bytes(&wd, now);
+        if (wd.resets && rx_bytes == 0)
+            ESP_LOGW(TAG, "first bytes from the receiver after %u reset(s)", wd.resets);
 #if GNSS_LOG
         if (rx_bytes == 0)
             ESP_LOGW(TAG, "first bytes received on UART0 RX GPIO %d", PIN_UART0_RX);
@@ -102,15 +114,15 @@ int hal_gnss_poll(hal_gnss_fix_t *fix)
             }
         }
     }
-    if (rx_bytes == 0) {
-        uint32_t elapsed = hal_clock_monotonic_ms() - init_ms;
-        if (reset_stage == 0 && elapsed >= 3000) {
-            reset_stage = 1;
-            hal_nrf_gnss_power(FW_NRF_GNSS_RESET);
-        } else if (reset_stage == 1 && elapsed >= 3200) {
-            reset_stage = 2;
-            hal_nrf_gnss_power(FW_NRF_GNSS_ON);
-        }
+    int w = fw_gnss_wd_tick(&wd, now);
+    if (w == FW_GNSS_WD_RESET) {
+        int rc = hal_nrf_gnss_reset();
+        ESP_LOGW(TAG, "receiver silent for %u ms: GNSS hardware reset %u of %d %s (%" PRIu32 " byte(s) this boot)",
+                 (unsigned)FW_GNSS_WD_SILENCE_MS, wd.resets, FW_GNSS_WD_MAX_RESETS, rc == 0 ? "sent" : "NOT sent",
+                 rx_bytes);
+    } else if (w == FW_GNSS_WD_GAVE_UP) {
+        ESP_LOGE(TAG, "receiver still silent after %d resets: no more resets this boot (GNSS unavailable)",
+                 FW_GNSS_WD_MAX_RESETS);
     }
     if (got_fix)
         *fix = latest;

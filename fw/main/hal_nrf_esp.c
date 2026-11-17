@@ -58,25 +58,29 @@
  * That part runs for as long as the unit is on. The capture logging around it is bring-up scaffolding:
  * it runs for MAX_WINDOWS windows after boot and then goes quiet, while the decode carries on.
  *
- * WHAT IT TRANSMITS. This started as a receive-only listener; since Q38 it sends command frames on TX
- * GPIO 42, all kind 2, id 16, 16 bytes, built by nrf_proto.c and pinned byte for byte, CRC included,
- * in core/tests/test_nrf_proto.c. Nothing else is ever written to the port. Exactly:
+ * WHAT IT TRANSMITS. This started as a receive-only listener. What it may send is the owner's decision
+ * in docs/QUESTIONS.md Q38, amendment of 17 November 2026, and it sends exactly that table and nothing
+ * else: four frames, all kind 2, 16 bytes, built by nrf_proto.c and pinned byte for byte, CRC included,
+ * in core/tests/test_nrf_proto.c. Every one goes through nrf_tx(), which sends only at 115200 (the
+ * only rate the nRF has ever been heard at) and never once a power-off has begun:
  *
- *   SendPowerOnCmd (e2 02 00 00 00 01 00 00), from nrf_send_power_on():
- *     - nrf_task, once, as soon as the UART is up at boot;
- *     - listen_at, again every second or more while no barometer reading has arrived, up to 5 times;
- *     - hal_power_off, after the power-off frame, when a power-button press or a power-on event
- *       arrives while the rail is still up, just before esp_restart().
- *   GNSS power (e2 02 07 00 00 <mode> 00 00, mode 0 off, 1 on, 2 reset), from hal_nrf_gnss_power():
- *     - nrf_task, "on", at boot right after the power-on frame, and listen_at with each power-on retry;
- *     - hal_gnss_init (hal_gnss_esp.c), "on"; and hal_gnss_poll, "reset" then "on" 200 ms later, if
- *       no byte has arrived from the receiver 3 s after init. These run on the core task. A call made
- *       before the UART is up is held in pending_gnss_mode and sent from listen_at;
- *     - hal_power_off, "off", just before the power-off frame.
- *   SendPowerOffCmd (e2 02 00 00 00 00 00 00): hal_power_off() only, on the rider's power-off request.
+ *   SendQuerySlaveModeCmd (id 1, 24 01 ff ff 00 ff ff ff): the boot handshake (fw_nrf_hs_*), every
+ *     200 ms from the first frame heard until the reply, at most 10 s. A "bootloader" reply stops all
+ *     transmitting for the rest of the boot; nothing of the vendor's co-processor upgrade is done.
+ *   SendPowerOnCmd (id 16, e2 02 00 00 00 01 00 00): the boot handshake, after an "in application"
+ *     reply, every 100 ms until the nRF's power event (or sensor frames after 1 s), at most 5 s.
+ *     It is NOT sent on a wake after power-off any more: the restart runs the handshake again.
+ *   GNSS power-on (id 16, e2 02 07 00 00 01 00 00): ONCE per boot, by the handshake, when it is in
+ *     RUNNING and the nRF's sensor side is known to be on (Q38: kept for now, to be tested).
+ *   GNSS reset (id 16, e2 02 07 00 00 02 00 00): hal_nrf_gnss_reset(), from the GNSS silence
+ *     watchdog in hal_gnss_esp.c: after 5.1 s without a byte from the receiver, at most every 5.1 s,
+ *     at most 3 per boot, and only after the GNSS power-on has been sent.
+ *   SendPowerOffCmd (id 16, e2 02 00 00 00 00 00 00): hal_power_off() only, after the caller has
+ *     closed the open files, every 1.5 s until the power drops, at most 30 times.
  *
- * The rate is whatever the receive side is set to: 115200 at boot, the search candidate during the
- * search, the locked rate after it, and 115200 again if the search finds nothing.
+ * Not sent, though nrf_proto.c can build it: GNSS power-off (the vendor sends none on the power-off
+ * path, and Q38 does not approve it). Never sent: SendCheckPowerOnReasonCmd, the buzzer, anything to
+ * the ANT+ side, anything on UART0 to the GNSS receiver ($PAIR is not approved).
  *
  * This runs in its own low-priority task on core 0. The core task owns the core, the link and LVGL
  * and must not be made to wait on a serial line that may be silent for thirteen seconds at a time.
@@ -91,6 +95,7 @@
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "hal_baro.h"
 #include "hal_clock.h"
@@ -213,38 +218,127 @@ static uint16_t bat_mv;
 static uint32_t bat_ms;
 static int32_t light_val = -1;
 static uint32_t light_ms;
+static int charge_state = -1; /* fw_nrf_parse_charge: 1 charging, 0 not, -1 never seen */
+static uint32_t charge_ms;
 static volatile int nrf_uart_up;
-static volatile int power_on_seen;
-static volatile int pending_gnss_mode = -1;
 static int boot_pwr_swallow;
 #define BATT_STALE_MS 5000
 #define LIGHT_STALE_MS 2000
+/* f0 02 arrives every 300 ms (both captures); the battery's staleness limit serves for it too. */
+#define CHARGE_STALE_MS BATT_STALE_MS
 /* How long hal_power_off waits for the power to drop after a frame it cannot confirm. A guess: the
    time from the frame to the rail dropping has never been measured. */
 #define POWER_OFF_UNCONFIRMED_WAIT_MS 3000
+/* The only rate the nRF has ever been heard at (all three captures). Nothing is sent at any other. */
+#define NRF_TX_BAUD 115200u
 
-static void nrf_send_power_on(void)
+/* The rate the port is set to now; 0 before the first set_baud() or after one failed. */
+static uint32_t port_baud;
+
+/* Every transmit takes tx_lock. hal_power_off sets power_off_active under it, so once that is set no
+   handshake or GNSS frame can follow the power-off frame onto the wire (the handshake runs on the nRF
+   task, the GNSS watchdog on the core task, the power-off on the core task). */
+static SemaphoreHandle_t tx_lock;
+static volatile int power_off_active;
+
+/* The boot handshake (nrf_proto.h). Owned by the nRF task: hs_run is called only from there. */
+static fw_nrf_hs_t hs;
+static volatile int gnss_on_sent;
+static volatile uint32_t gnss_on_ms;
+
+/* The wake decision during a power-off, and what it is initialised from. wake_mux guards all four. */
+static portMUX_TYPE wake_mux = portMUX_INITIALIZER_UNLOCKED;
+static uint8_t last_key0_event;
+static uint32_t last_key0_ms;
+static fw_nrf_wake_t wake_state;
+static int wake_active;
+static volatile int wake_result; /* FW_NRF_WAKE_KEY or _EVENT once decided */
+
+static const char *const FRAME_NAME[] = {"none", "SendQuerySlaveModeCmd", "SendPowerOnCmd", "GNSS power-on",
+                                         "GNSS reset", "SendPowerOffCmd"};
+#define TX_GNSS_RESET 4
+#define TX_POWER_OFF 5
+
+/* Builds and sends one approved frame. Returns 0 if the whole frame was queued, -1 if not sent. */
+static int nrf_tx(int what)
 {
     uint8_t frame[FW_NRF_CMD_FRAME_LEN];
-    int n = fw_nrf_build_power_on(frame);
-    if (n > 0 && nrf_uart_up) {
-        ESP_LOGW(TAG, "sending SendPowerOnCmd (%d bytes) to nRF", n);
-        uart_write_bytes(UART_NRF_PORT, frame, (size_t)n);
+    int n;
+    switch (what) {
+    case FW_NRF_HS_TX_QUERY: n = fw_nrf_build_query_slave_mode(frame); break;
+    case FW_NRF_HS_TX_POWER_ON: n = fw_nrf_build_power_on(frame); break;
+    case FW_NRF_HS_TX_GNSS_ON: n = fw_nrf_build_gnss_power(frame, FW_NRF_GNSS_ON); break;
+    case TX_GNSS_RESET: n = fw_nrf_build_gnss_power(frame, FW_NRF_GNSS_RESET); break;
+    case TX_POWER_OFF: n = fw_nrf_build_power_off(frame); break;
+    default: return -1;
+    }
+    if (n != FW_NRF_CMD_FRAME_LEN || !nrf_uart_up || !tx_lock)
+        return -1;
+    int rc = -1;
+    xSemaphoreTake(tx_lock, portMAX_DELAY);
+    if (port_baud == NRF_TX_BAUD && (what == TX_POWER_OFF || !power_off_active)) {
+        /* uart_write_bytes returns the bytes queued, or -1. Anything short of the whole frame fails the
+           nRF's CRC, so it counts as not sent. */
+        if (uart_write_bytes(UART_NRF_PORT, frame, (size_t)n) == n)
+            rc = 0;
+    }
+    xSemaphoreGive(tx_lock);
+    if (rc != 0)
+        ESP_LOGE(TAG, "%s not sent (port at %" PRIu32 " baud, power-off %s)", FRAME_NAME[what], port_baud,
+                 power_off_active ? "active" : "not active");
+    return rc;
+}
+
+/* One step of the boot handshake: f is a verified frame, or NULL for a timing-only call. */
+static void hs_run(const fw_nrf_frame_t *f)
+{
+    uint32_t now = hal_clock_monotonic_ms();
+    if (power_off_active && hs.fail != FW_NRF_HS_FAIL_STOPPED)
+        fw_nrf_hs_stop(&hs);
+    fw_nrf_hs_state_t before = hs.state;
+    int tx = fw_nrf_hs_step(&hs, now, f);
+    if (hs.state != before) {
+        if (hs.state == FW_NRF_HS_POWER_ON)
+            ESP_LOGW(TAG, "handshake: QUERY -> POWER_ON: nRF in its application (slave mode 1) after %u "
+                          "SendQuerySlaveModeCmd",
+                     hs.queries);
+        else if (hs.state == FW_NRF_HS_RUNNING)
+            ESP_LOGW(TAG, "handshake: %s -> RUNNING (%s) after %u SendQuerySlaveModeCmd and %u SendPowerOnCmd",
+                     fw_nrf_hs_state_name(before), fw_nrf_hs_on_name(hs.on), hs.queries, hs.power_ons);
+        else if (hs.fail == FW_NRF_HS_FAIL_BOOTLOADER)
+            ESP_LOGE(TAG, "handshake: nRF reports it is in its BOOTLOADER (slave mode 0). Transmitting nothing "
+                          "more this boot; no co-processor upgrade is attempted. Listening only.");
+        else if (hs.state == FW_NRF_HS_FAILED)
+            ESP_LOGE(TAG, "handshake: %s -> FAILED (%s) after %u SendQuerySlaveModeCmd and %u SendPowerOnCmd; "
+                          "transmitting nothing more from the handshake, listening only",
+                     fw_nrf_hs_state_name(before), fw_nrf_hs_fail_name(hs.fail), hs.queries, hs.power_ons);
+    }
+    if (tx == FW_NRF_HS_TX_NONE)
+        return;
+    if ((tx == FW_NRF_HS_TX_QUERY && hs.queries == 1) || (tx == FW_NRF_HS_TX_POWER_ON && hs.power_ons == 1))
+        ESP_LOGW(TAG, "handshake: sending %s (first; repeated until answered, bounded)", FRAME_NAME[tx]);
+    if (nrf_tx(tx) == 0 && tx == FW_NRF_HS_TX_GNSS_ON) {
+        gnss_on_ms = now;
+        gnss_on_sent = 1;
+        ESP_LOGW(TAG, "GNSS power-on sent (once this boot)");
     }
 }
 
-void hal_nrf_gnss_power(uint8_t mode)
+int hal_nrf_gnss_on_sent(uint32_t *at_ms)
 {
-    if (!nrf_uart_up) {
-        pending_gnss_mode = (int)mode;
-        return;
-    }
-    uint8_t frame[FW_NRF_CMD_FRAME_LEN];
-    int n = fw_nrf_build_gnss_power(frame, mode);
-    if (n > 0) {
-        ESP_LOGW(TAG, "sending GNSS power mode %u (%d bytes) to nRF", (unsigned)mode, n);
-        uart_write_bytes(UART_NRF_PORT, frame, (size_t)n);
-    }
+    if (!gnss_on_sent)
+        return 0;
+    *at_ms = gnss_on_ms;
+    return 1;
+}
+
+int hal_nrf_gnss_reset(void)
+{
+    /* The watchdog arms only after the power-on was sent, so this is belt and braces: a reset without
+       the rail known to be on means nothing. */
+    if (!gnss_on_sent)
+        return -1;
+    return nrf_tx(TX_GNSS_RESET);
 }
 
 int hal_power_battery_pct(void)
@@ -272,8 +366,18 @@ int hal_nrf_battery_mv(uint16_t *out)
 
 int hal_power_charging(void)
 {
-    /* No charging bit has been identified in id 0 / 0x52 (payload[7] is 0xFF on USB at both 2 % and 100 %). */
-    return 0;
+    /* From id 16 / f0 02 <c> (fw_nrf_parse_charge): c == 0 is "Chargeing" on the vendor's factory
+       screen. UNVERIFIED: only ever seen as 0, with the cable in; the unplug test has not been done.
+       No fresh frame reads as not charging, which is what this returned before. */
+    int c;
+    uint32_t at;
+    portENTER_CRITICAL(&pwr_mux);
+    c = charge_state;
+    at = charge_ms;
+    portEXIT_CRITICAL(&pwr_mux);
+    if (c < 0 || hal_clock_monotonic_ms() - at > CHARGE_STALE_MS)
+        return 0;
+    return c;
 }
 
 int hal_power_ambient_lux(void)
@@ -289,60 +393,86 @@ int hal_power_ambient_lux(void)
     return (int)v;
 }
 
+/* Ends a power-off attempt that did not take, so the unit can run on and the rider can try again. */
+static int power_off_abandon(int rc)
+{
+    portENTER_CRITICAL(&wake_mux);
+    wake_active = 0;
+    portEXIT_CRITICAL(&wake_mux);
+    power_off_active = 0;
+    return rc;
+}
+
+/* The vendor's power-off (RE-FINDINGS-2 2.4): files closed first (its state 15), then SendPowerOffCmd
+ * about every 1.5 s until the power goes (state 17), and no GNSS-off frame. PRECONDITION: the caller
+ * has closed every open file (main.c: the core has finished the ride and saved the settings, and the
+ * link server's upload session is aborted before this is called). The GNSS power-off that used to be
+ * sent first is gone: the vendor does not send it on this path and Q38 does not approve it. */
 int hal_power_off(void)
 {
     hal_display_backlight(0);
-    if (!nrf_uart_up) {
-        ESP_LOGW(TAG, "hal_power_off: nRF UART not up; nothing sent");
+    if (!nrf_uart_up || port_baud != NRF_TX_BAUD) {
+        ESP_LOGW(TAG, "hal_power_off: nRF UART not up at %u baud; nothing sent", (unsigned)NRF_TX_BAUD);
         return HAL_POWER_OFF_NOT_SENT;
     }
-    hal_nrf_gnss_power(FW_NRF_GNSS_OFF);
-    uint8_t frame[FW_NRF_POWER_OFF_FRAME_LEN];
-    int n = fw_nrf_build_power_off(frame);
-    if (n <= 0)
-        return HAL_POWER_OFF_NOT_SENT;
-    ESP_LOGW(TAG, "sending SendPowerOffCmd (%d bytes) to nRF", n);
-    /* uart_write_bytes returns the bytes queued, or -1. Anything short of the whole frame is not a
-       power-off request the nRF can accept (its CRC covers every byte), so it counts as not sent. */
-    if (uart_write_bytes(UART_NRF_PORT, frame, (size_t)n) != n) {
-        ESP_LOGE(TAG, "hal_power_off: the frame was not queued in full");
-        return HAL_POWER_OFF_NOT_SENT;
-    }
-    uart_wait_tx_done(UART_NRF_PORT, pdMS_TO_TICKS(200));
-    /* Waiting below for a wake is only safe when the link is known to work. Both ways out of that
-       wait are messages from the nRF (a power-button press, a power-on event), so they need a
-       receive path that has decoded frames at the port's rate. If the baud search never found a
-       valid frame (locked_baud is 0: still searching, or given up and back at 115200), nothing can
-       confirm that the nRF took the frame, and nothing could ever end the wait: the unit would sit
-       on a dark screen, unresponsive, until the battery died. So give
-       the power a few seconds to drop, which it will on battery if the nRF did take the frame, and
-       otherwise hand the unit back to the caller, which turns the screen back on. */
-    if (!locked_baud) {
-        vTaskDelay(pdMS_TO_TICKS(POWER_OFF_UNCONFIRMED_WAIT_MS));
-        ESP_LOGE(TAG, "hal_power_off: no frame has ever been received from the nRF, so the power-off "
-                      "frame is unconfirmed and no wake could be seen; the unit stays on");
-        return HAL_POWER_OFF_UNCONFIRMED;
-    }
-    /* Wait for the user to finish releasing the power button from the power-off hold, then drain any
-     * queued edges. If the nRF cuts the 3.3 V rail (battery mode), execution stops here. If the 3.3 V
-     * rail stays up (USB charge mode, stock ArmStateProcess State 8/9 FUN_420561ec), wait for the next
-     * power-button press or nRF power-on event and reboot cleanly. */
-    vTaskDelay(pdMS_TO_TICKS(1200));
+    /* From here no handshake or GNSS frame can be sent (nrf_tx checks this under tx_lock), and the nRF
+       task stops the handshake for good on its next step. */
+    xSemaphoreTake(tx_lock, portMAX_DELAY);
+    power_off_active = 1;
+    xSemaphoreGive(tx_lock);
+    portENTER_CRITICAL(&wake_mux);
+    fw_nrf_wake_init(&wake_state, last_key0_event, last_key0_ms);
+    wake_result = FW_NRF_WAKE_NONE;
+    wake_active = 1;
+    uint8_t key0_ev = last_key0_event;
+    int released = wake_state.released;
+    portEXIT_CRITICAL(&wake_mux);
+    ESP_LOGW(TAG, "power-off: start; last power-key event before it was %u (%s)", key0_ev,
+             released ? "hold already ended" : "hold still in progress");
+
+    uint32_t start = hal_clock_monotonic_ms();
+    uint32_t next = start;
+    int sends = 0;
     hal_input_event_t ev;
-    while (hal_input_poll(&ev)) {
-    }
-    power_on_seen = 0;
     for (;;) {
-        int wake = power_on_seen;
-        while (hal_input_poll(&ev)) {
-            if (ev.kind == HAL_PWR_DOWN)
-                wake = 1;
+        uint32_t now = hal_clock_monotonic_ms();
+        if (sends < FW_NRF_POWER_OFF_MAX_SENDS && (int32_t)(now - next) >= 0) {
+            if (nrf_tx(TX_POWER_OFF) != 0) {
+                if (sends == 0) {
+                    ESP_LOGE(TAG, "power-off: SendPowerOffCmd was not queued in full; the unit stays on");
+                    return power_off_abandon(HAL_POWER_OFF_NOT_SENT);
+                }
+            } else {
+                uart_wait_tx_done(UART_NRF_PORT, pdMS_TO_TICKS(100));
+            }
+            sends++;
+            next += FW_NRF_POWER_OFF_PERIOD_MS;
+            ESP_LOGW(TAG, "power-off: SendPowerOffCmd #%d at +%" PRIu32 " ms", sends, now - start);
+            if (sends == FW_NRF_POWER_OFF_MAX_SENDS)
+                ESP_LOGW(TAG, "power-off: power still up after %d frames (on USB, or the nRF is not acting on "
+                              "them); sending no more, waiting for the power key",
+                         sends);
         }
-        if (wake) {
-            ESP_LOGW(TAG, "power-on detected while off: sending SendPowerOnCmd and restarting");
-            nrf_send_power_on();
-            uart_wait_tx_done(UART_NRF_PORT, pdMS_TO_TICKS(100));
-            vTaskDelay(pdMS_TO_TICKS(50));
+        /* Waiting for a wake is only safe when the link is known to work: both ways out are messages
+           from the nRF. If the baud search never found a valid frame (locked_baud is 0), nothing can
+           confirm the nRF took the frame and nothing could end the wait, so give the power a few
+           seconds to drop and otherwise hand the unit back to the caller, which turns the screen on. */
+        if (!locked_baud && now - start >= POWER_OFF_UNCONFIRMED_WAIT_MS) {
+            ESP_LOGE(TAG, "hal_power_off: no frame has ever been received from the nRF, so the power-off "
+                          "frame is unconfirmed and no wake could be seen; the unit stays on");
+            return power_off_abandon(HAL_POWER_OFF_UNCONFIRMED);
+        }
+        /* The core task is parked here, so its button queue is drained to stop it overflowing. The
+           wake itself is decided from the raw key frames in consume(), not from these edges. */
+        while (hal_input_poll(&ev)) {
+        }
+        int w = wake_result;
+        if (w == FW_NRF_WAKE_KEY || w == FW_NRF_WAKE_EVENT) {
+            /* The power is still up (USB). Restart: the new boot runs the handshake, which sends the
+               query and the power-on itself, so nothing is sent from here. */
+            ESP_LOGW(TAG, "power-off: WAKE by %s after %d SendPowerOffCmd; restarting",
+                     w == FW_NRF_WAKE_KEY ? "a fresh power-key press" : "a manual power-on event", sends);
+            vTaskDelay(pdMS_TO_TICKS(50)); /* let the log line out */
             esp_restart();
         }
         vTaskDelay(pdMS_TO_TICKS(50));
@@ -386,11 +516,66 @@ int hal_input_poll(hal_input_event_t *ev)
 /* Every verified frame comes through here, whether or not the capture is still logging. */
 static void consume(const fw_nrf_frame_t *f)
 {
-    if (fw_nrf_is_power_on_event(f))
-        power_on_seen = 1;
+    hs_run(f);
+    uint32_t now_c = hal_clock_monotonic_ms();
+
+    /* Power events are rare (one at each power change); every one is logged, so a capture shows what
+       the nRF said and when, against the handshake and power-off lines. */
+    int pev = fw_nrf_power_event_code(f);
+    if (pev >= 0)
+        ESP_LOGW(TAG, "power event from nRF: code %d (%s), kind %u", pev,
+                 pev == FW_NRF_PWR_EV_CHARGER ? "woken by the charger"
+                 : (pev == FW_NRF_PWR_EV_MANUAL || pev == FW_NRF_PWR_EV_MANUAL2) ? "manual power-on"
+                                                                                   : "no meaning known",
+                 f->kind);
+    fw_nrf_version_t ver;
+    if (fw_nrf_parse_version(f, &ver) == 0)
+        ESP_LOGW(TAG, "nRF firmware version %u.%u%02u", ver.major, ver.minor, ver.patch);
+    int smode = fw_nrf_parse_slave_mode(f);
+    if (smode >= 0)
+        ESP_LOGW(TAG, "slave-mode reply from nRF: mode %d (%s)", smode,
+                 smode == FW_NRF_SLAVE_APP ? "in application" : smode == FW_NRF_SLAVE_BOOTLOADER ? "in bootloader" : "busy");
+    int chg = fw_nrf_parse_charge(f);
+    if (chg >= 0) {
+        portENTER_CRITICAL(&pwr_mux);
+        int was = charge_state;
+        charge_state = chg;
+        charge_ms = now_c;
+        portEXIT_CRITICAL(&pwr_mux);
+        if (was != chg)
+            ESP_LOGW(TAG, "charge state: %s (f0 02 %02x; Unverified: 0 = charging per the vendor's screen)",
+                     chg ? "charging" : "not charging", f->payload[2]);
+    }
+
+    /* The wake decision during a power-off, from the raw frames (nrf_proto.h says why not the edges). */
+    fw_nrf_key_t k0;
+    int is_key0 = fw_nrf_parse_key(f, &k0) == 0 && k0.index == 0;
+    if (is_key0 || pev >= 0) {
+        int w = FW_NRF_WAKE_NONE;
+        portENTER_CRITICAL(&wake_mux);
+        if (wake_active) {
+            w = fw_nrf_wake_feed(&wake_state, f, now_c);
+            if (w == FW_NRF_WAKE_KEY || w == FW_NRF_WAKE_EVENT) {
+                wake_result = w;
+                wake_active = 0;
+            }
+        } else if (is_key0) {
+            last_key0_event = k0.event;
+            last_key0_ms = now_c;
+        }
+        portEXIT_CRITICAL(&wake_mux);
+        if (w == FW_NRF_WAKE_RELEASED)
+            ESP_LOGW(TAG, "power-off: the power-key hold that asked for it has ended; the next press wakes");
+        else if (w == FW_NRF_WAKE_CHARGER)
+            ESP_LOGW(TAG, "power-off: charger event (code 4) while off: logged, not a wake");
+        else if (w == FW_NRF_WAKE_EVENT_IGNORED)
+            ESP_LOGW(TAG, "power-off: power-on event during or within %u ms of the requesting hold: not a wake",
+                     (unsigned)FW_NRF_WAKE_SAME_HOLD_MS);
+    }
+
     fw_nrf_key_t key;
     if (fw_nrf_parse_key(f, &key) == 0) {
-        uint32_t now_k = hal_clock_monotonic_ms();
+        uint32_t now_k = now_c;
         /* When the unit wakes from a power-button hold, the nRF continues sending FW_NRF_KEY_HELD
          * for key 0 until the user lifts their finger. Swallow a key-0 hold that started in the
          * first 2.5 s after boot so turning the unit ON does not immediately trigger a 2 s power-off. */
@@ -622,9 +807,6 @@ static int take_frame(const uint8_t *acc, size_t len, int keep)
     return used;
 }
 
-/* The rate the port is set to now; 0 before the first set_baud() or after one failed. */
-static uint32_t port_baud;
-
 /* Sets the port to baud, and does nothing if it is already there.
  *
  * WHY ONCE PER RATE. uart_param_config is not a cheap "set the divider". In ESP-IDF v5.5.6
@@ -682,26 +864,17 @@ static uint32_t listen_at(uint32_t baud, uint32_t ms, int keep)
     size_t acc_len = 0;
     TickType_t deadline = xTaskGetTickCount() + pdMS_TO_TICKS(ms);
     uint32_t bytes = 0;
-    static int wake_retries;
-    static uint32_t last_wake_ms;
 
     while ((int32_t)(xTaskGetTickCount() - deadline) < 0) {
         uint8_t chunk[128];
-        int n = uart_read_bytes(UART_NRF_PORT, chunk, sizeof chunk, pdMS_TO_TICKS(200));
+        /* While the handshake is sending (100 ms power-on cadence) the read must come back often
+           enough to keep the cadence even when the nRF is quiet; otherwise 200 ms is plenty. */
+        int busy = hs.state == FW_NRF_HS_QUERY || hs.state == FW_NRF_HS_POWER_ON;
+        int n = uart_read_bytes(UART_NRF_PORT, chunk, sizeof chunk, pdMS_TO_TICKS(busy ? 20 : 200));
         uint32_t now_l = hal_clock_monotonic_ms();
         fw_nrf_edge_t lost[FW_NRF_KEYS];
         push_edges(lost, fw_nrf_keys_tick(&key_state, now_l, lost));
-        if (pending_gnss_mode >= 0) {
-            int gm = pending_gnss_mode;
-            pending_gnss_mode = -1;
-            hal_nrf_gnss_power((uint8_t)gm);
-        }
-        if (baro_count == 0 && wake_retries < 5 && now_l - last_wake_ms >= 1000) {
-            wake_retries++;
-            last_wake_ms = now_l;
-            nrf_send_power_on();
-            hal_nrf_gnss_power(FW_NRF_GNSS_ON);
-        }
+        hs_run(NULL);
         if (n <= 0)
             continue;
         bytes += (uint32_t)n;
@@ -743,16 +916,20 @@ static void nrf_task(void *arg)
     /* 115200 before anything is sent: it is the first candidate, so the search's first listen_at
        finds the port already there and does not reset the FIFO under the frames sent just below. */
     set_baud(115200);
-    /* TX is GPIO 42; sends SendPowerOnCmd, GNSS power on/off/reset, and SendPowerOffCmd (Q38). */
+    /* TX is GPIO 42; it carries only the frames of Q38's approved table (header of this file). */
     if (uart_set_pin(UART_NRF_PORT, PIN_UART_NRF_TX, PIN_UART_NRF_RX, UART_PIN_NO_CHANGE,
                      UART_PIN_NO_CHANGE) != ESP_OK) {
         ESP_LOGE(TAG, "uart_set_pin failed");
         vTaskDelete(NULL);
         return;
     }
+    /* Nothing is sent here any more. The handshake starts with the first frame heard (inside
+       listen_at), so a silent or wrong-rate link is never transmitted into. */
+    fw_nrf_hs_init(&hs, hal_clock_monotonic_ms());
     nrf_uart_up = 1;
-    nrf_send_power_on();
-    hal_nrf_gnss_power(FW_NRF_GNSS_ON);
+    ESP_LOGW(TAG, "handshake: QUERY (waiting for the first frame; then SendQuerySlaveModeCmd every %u ms, "
+                  "at most %u s)",
+             (unsigned)FW_NRF_HS_QUERY_PERIOD_MS, (unsigned)(FW_NRF_HS_QUERY_MAX_MS / 1000u));
     ESP_LOGI(TAG, "listening on port %d, RX GPIO %d; %d candidate baud rates, %" PRIu32 " s each",
              UART_NRF_PORT, PIN_UART_NRF_RX, NCANDIDATES, (uint32_t)(SEARCH_MS / 1000));
 
@@ -804,5 +981,6 @@ static void nrf_task(void *arg)
 void hal_nrf_start(void)
 {
     key_queue = xQueueCreate(16, sizeof(hal_input_event_t));
+    tx_lock = xSemaphoreCreateMutex();
     xTaskCreatePinnedToCore(nrf_task, "nrf", 4096, NULL, 2, NULL, 0);
 }

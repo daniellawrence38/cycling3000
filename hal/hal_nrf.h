@@ -5,23 +5,31 @@
  * touch controller. They arrive as framed messages from the nRF on UART1 (ESP port 2), the same link
  * that carries ANT+.
  *
- * It is NOT receive-only any more (it was until Q38 was answered). The firmware transmits five
- * command frames on it (three of them the GNSS modes), all kind 2, id 16, each 16 bytes (payloads in
- * docs/NRF-PROTOCOL.md, "The
- * senders, exactly" and "Additional outbound commands on id 16"); fw/main/hal_nrf_esp.c says exactly
- * when each is sent:
- *   SendPowerOnCmd    e2 02 00 00 00 01 00 00   at boot, retried while no barometer reading has
- *                                                arrived, and on a wake after power-off
- *   GNSS power        e2 02 07 00 00 <m> 00 00   m = 0 off, 1 on, 2 reset (hal_nrf_gnss_power)
- *   SendPowerOffCmd   e2 02 00 00 00 00 00 00   from hal_power_off() only
- * Nothing else is sent: no queries, no buzzer, nothing to the ANT+ side. */
+ * It is NOT receive-only any more. What it transmits is exactly the table Daniel approved in
+ * docs/QUESTIONS.md Q38 (amendment of 17 November 2026): five frames, all kind 2, 16 bytes (payloads
+ * in docs/NRF-PROTOCOL.md, "The senders, exactly" and "Additional outbound commands on id 16"), each
+ * pinned whole in core/tests/test_nrf_proto.c. fw/main/hal_nrf_esp.c's header has the detail.
+ *   SendQuerySlaveModeCmd id 1,  24 01 ff ff 00 ff ff ff  boot handshake: every 200 ms from the first
+ *                                                        frame heard until answered, at most 10 s
+ *   SendPowerOnCmd        id 16, e2 02 00 00 00 01 00 00  boot handshake, after an "in application"
+ *                                                        reply: every 100 ms until the nRF's power
+ *                                                        event (or sensors after 1 s), at most 5 s
+ *   GNSS power-on         id 16, e2 02 07 00 00 01 00 00  once per boot, when the handshake is RUNNING
+ *                                                        and the sensor side is known to be on
+ *   GNSS reset            id 16, e2 02 07 00 00 02 00 00  hal_nrf_gnss_reset(): the silence watchdog,
+ *                                                        5.1 s without a byte, at most 3 per boot
+ *   SendPowerOffCmd       id 16, e2 02 00 00 00 00 00 00  hal_power_off(), after the files are closed:
+ *                                                        every 1.5 s until power drops, at most 30
+ * Nothing else is sent: no GNSS power-off, no SendCheckPowerOnReasonCmd, no buzzer, nothing to the ANT+
+ * side, no co-processor upgrade (a "bootloader" reply stops all transmitting), and nothing to the GNSS
+ * receiver on UART0. */
 #ifndef CC700_HAL_NRF_H
 #define CC700_HAL_NRF_H
 #include <stdint.h>
 
-/* Starts the link task, which sends the boot frames above and then searches for the baud rate. If the
- * link is silent or the rate is not found it reports that it found nothing, and leaves the port at
- * 115200 for transmitting. */
+/* Starts the link task, which searches for the baud rate and runs the boot handshake above from the
+ * first frame it hears. If the link is silent or the rate is not found it reports that it found
+ * nothing, sends nothing, and leaves the port at 115200. */
 void hal_nrf_start(void);
 
 /* The baud rate that produced frames with valid checksums, or 0 while still searching. */
@@ -39,6 +47,11 @@ int hal_nrf_baro_temp_c100(int16_t *out);
  * on this link too. */
 int hal_nrf_battery_mv(uint16_t *out);
 
-/* Sends the GNSS power/reset command on id 16 (0xE2 0x02 0x07, mode: 0 off, 1 on, 2 reset). */
-void hal_nrf_gnss_power(uint8_t mode);
+/* 1 and the send time in *at_ms once the boot handshake has sent the GNSS power-on, else 0. The GNSS
+ * silence watchdog arms from that moment: before it the receiver's rail may be off. */
+int hal_nrf_gnss_on_sent(uint32_t *at_ms);
+
+/* Sends the GNSS hardware reset (e2 02 07 00 00 02). Returns 0, or -1 if it was not sent (power-on not
+ * sent yet, a power-off in progress, or the port not at 115200). For the silence watchdog only. */
+int hal_nrf_gnss_reset(void);
 #endif

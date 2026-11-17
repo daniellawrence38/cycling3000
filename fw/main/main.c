@@ -300,6 +300,12 @@ static void core_task(void *arg)
                 /* hal_power_off blanks the backlight behind apply_backlight's back, so the next
                    apply_backlight must set it again whatever it last set. */
                 last_backlight_pct = -1;
+                /* Files closed before the power goes, as the vendor does (RE-FINDINGS-2 2.4). By now
+                   the core has finished and saved any ride (closing the writer even if that failed)
+                   and saved the settings. The link server's upload session is the only other file
+                   that stays open between calls: abort it. Nothing else opens files outside this
+                   task, and this task is parked inside hal_power_off from here on. */
+                cc_link_abort(&link_srv);
                 int rc = hal_power_off();
                 if (rc == HAL_POWER_OFF_SENT) {
                     /* Written, and the power is expected to drop: never send it twice. */
