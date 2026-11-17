@@ -410,6 +410,12 @@ the screen shows and (c) needs a number nobody has measured. `CC_HOLD_BOTTOM_MS`
 Why it matters: every hold in the product goes through this (previous page, pause, the pause menu,
 power). It also means a short press acts on release, not on press, on the real unit.
 Answer:
+Update 17 November 2026 (`outputs/handshake-2.txt`): (a) does not work for **power**. About 1.5 to
+1.9 s after its first "held" frame the nRF cuts or restarts the ESP by itself, before the core's 2 s
+ran out, so `SendPowerOffCmd` was never sent. For the power button only, the firmware now uses (c):
+the press is backdated by 1.5 s (`PWR_HOLD_HEAD_START_MS` in `fw/main/main.c`), so power-off fires
+0.5 s after the first held frame. The progress bar starts three-quarters full. The bottom buttons
+keep (a).
 
 ### Q41 · bring-up · answered 17 November 2026
 Question: The handshake (commit `e0e46b0`) sends only frames from the Q38 table, but it adds timing

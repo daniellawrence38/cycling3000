@@ -774,3 +774,29 @@ warnings.
 - `FS_EMMC_MODE` is back to 1 (read-only probe). Mode 2 (read-write mount) waits for the integrated
   build to pass its tests. The backup should also be copied off this PC before anything writes to the
   eMMC.
+
+## 17 November 2026 · Handshake confirmed; the power hold lost the race with the nRF
+
+`outputs/handshake-1.txt` and `outputs/handshake-2.txt`, firmware `fac8ff0`, on USB.
+
+- **The handshake works as built.** The nRF answered the first `SendQuerySlaveModeCmd` with slave
+  mode 1 (in application) within 20 ms. One `SendPowerOnCmd` was answered by power event 5
+  (manual), and the nRF reported version 1.704. The GNSS power-on was sent once.
+- **The GNSS receiver talks.** It sent 19 kB by 10 s and 78 kB by 40 s, with no watchdog resets.
+  There was no fix indoors.
+- **Memory.** DMA-capable free memory was 147,787 bytes, up from 70,875 before the PSRAM change.
+  LVGL holds 16 kB, all in PSRAM.
+- **Charge state.** It reads 1 (charging) with the cable in, consistent with `f0 02 00`.
+- **Power-off did not happen.** On each of three holds of power, the port vanished 1.5 to 1.9 s
+  after the first "held" frame, with no `SendPowerOffCmd` logged. The core's 2 s hold (Q40 (a))
+  had not finished, so the nRF cut the ESP by itself. On USB it then restarts the ESP with power
+  event 4 only (charger), no sensor frames and no GNSS. That is the stock firmware's
+  "off and charging" state, and this firmware showed its full UI in it ("it doesn't power off,
+  it just resets").
+- **Event 0 (kind 5)** arrives at each boot, before event 4 or 5. Its meaning is unknown, and it is
+  logged only.
+- **Fixed in the next build:**
+  - The power press is backdated by 1.5 s, so power-off fires 0.5 s after the first held frame
+    (Q40 update).
+  - In the charge-only state the screen stays dark and the buttons are ignored until the nRF
+    reports a manual power-on (`hal_nrf_charge_only`).

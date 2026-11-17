@@ -330,6 +330,13 @@ static void hs_run(const fw_nrf_frame_t *f)
     }
 }
 
+int hal_nrf_charge_only(void)
+{
+    /* Read across tasks without the lock: each field is one byte, and a stale answer only delays the
+       screen by one loop. */
+    return hs.state == FW_NRF_HS_RUNNING && hs.on == FW_NRF_HS_ON_CHARGER && !hs.manual && !hs.sensors;
+}
+
 int hal_nrf_gnss_on_sent(uint32_t *at_ms)
 {
     if (!gnss_on_sent)

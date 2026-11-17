@@ -46,6 +46,7 @@ static volatile int phone_state = -1; /* -1 nothing new, 0 disconnected, 1 conne
 static uint32_t last_saved_seq;
 static uint32_t lib_seen; /* link_srv.lib_changes at the last list refresh */
 static int last_backlight_pct = -1;
+#define PWR_HOLD_HEAD_START_MS 1500u /* see the power-down edge in the main loop */
 static int power_off_sent;
 
 /* ------------------------------------------------------------------ link glue */
@@ -130,7 +131,7 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 static void apply_backlight(void)
 {
     int pct = 100;
-    if (ui_app_blank()) {
+    if (ui_app_blank() || hal_nrf_charge_only()) {
         pct = 0;
     } else {
         switch (cc_view()->settings.brightness) {
@@ -258,7 +259,18 @@ static void core_task(void *arg)
             if (ie.kind <= HAL_PWR_UP)
                 ESP_LOGI(TAG, "button: %s", NAME[ie.kind]);
 #endif
-            if (ie.kind <= HAL_PWR_UP)
+            if (hal_nrf_charge_only())
+                continue; /* off and charging: the screen is dark; the nRF answers the power key itself */
+            if (ie.kind == HAL_PWR_DOWN)
+                /* The nRF reports a power hold only once it is already a long press, and about
+                   1.5 s after its first "held" frame it cuts or restarts the ESP by itself
+                   (outputs/handshake-2.txt: three holds, each cut 1.5 to 1.9 s after the first held
+                   frame, before CC_HOLD_POWER_MS ran out, so SendPowerOffCmd was never sent). The
+                   press is backdated so the core's 2 s power hold completes 0.5 s after the first
+                   held frame, leaving about a second for the ride to be saved and SendPowerOffCmd to
+                   go out. A click's down and up arrive together and are not affected (Q40). */
+                cc_on_button(now - PWR_HOLD_HEAD_START_MS, CC_BTN_PWR, 1);
+            else if (ie.kind <= HAL_PWR_UP)
                 cc_on_button(now, (cc_btn_t)(ie.kind / 2), (ie.kind % 2) == 0);
         }
         fw_sensors_tick(now);

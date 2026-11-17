@@ -47,6 +47,14 @@ int hal_nrf_baro_temp_c100(int16_t *out);
  * on this link too. */
 int hal_nrf_battery_mv(uint16_t *out);
 
+/* 1 while the nRF has started this boot only because the charger is connected (power event 4) and has
+ * not yet reported a manual power-on (5 or 6) or sent sensor frames: the unit is "off and charging".
+ * Seen on the unit (outputs/handshake-2.txt): on USB, a power-off or the nRF's own long-press cut
+ * restarts the ESP in this state, with no sensors. The stock firmware shows its charging screen here;
+ * this firmware keeps the screen dark and ignores the buttons. Pressing power makes the nRF send
+ * event 5, which ends it. */
+int hal_nrf_charge_only(void);
+
 /* 1 and the send time in *at_ms once the boot handshake has sent the GNSS power-on, else 0. The GNSS
  * silence watchdog arms from that moment: before it the receiver's rail may be off. */
 int hal_nrf_gnss_on_sent(uint32_t *at_ms);
