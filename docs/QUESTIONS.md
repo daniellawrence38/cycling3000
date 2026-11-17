@@ -411,6 +411,26 @@ Why it matters: every hold in the product goes through this (previous page, paus
 power). It also means a short press acts on release, not on press, on the real unit.
 Answer:
 
+### Q41 · bring-up · open
+Question: The handshake (commit `e0e46b0`) sends only frames from the Q38 table, but it adds timing
+and gating choices that Q38 does not specify. Which of these should stay?
+1. Event 5/6 wakes the unit from power-off only if it arrives more than 500 ms after the
+   requesting hold has been released. In capture 2 the event arrived in the same tick as the release.
+2. The caps: the slave-mode query gives up after 10 s, power-on after 5 s, power-off stops after 30
+   frames (45 s), and the GNSS gets at most 3 resets per boot.
+3. If the handshake fails (no reply, or no power event) and the nRF is later seen to be on (event 5/6
+   or sensor frames), it moves to RUNNING without sending anything, so the one GNSS power-on can still
+   go out.
+4. At power-off, a `.part` left open by a failed finish is closed, and the link's upload `.tmp` is
+   aborted (`cc_link_abort`).
+5. Outside power-off, a failed ride finish still leaves the writer open (this predates the review).
+   Should that be fixed?
+Default used: all of 1 to 4 as listed, and 5 left as it is. Each one transmits less than the vendor
+does, or closes files that would otherwise be left open.
+Why it matters: these decide how long the unit keeps sending to the nRF when something is wrong, and
+whether a charger plug-in can restart it.
+Answer:
+
 ## Document errors
 
 ### E5 · brief 5.6 (finish sequence)

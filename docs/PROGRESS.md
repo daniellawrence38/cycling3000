@@ -943,3 +943,44 @@ and route on every received Bluetooth packet; a touch that stays down froze the 
 UART was left at 9600 baud if the rate search failed, so a later power-off went out as garbage; a
 failed power-off could not be retried until reboot; a GNSS receiver's default 1980 date would have
 been accepted as the real time; and several tests did not pin what they claimed to.
+
+## Integration: memory relief, review fixes and the approved nRF handshake on one branch · 17 November 2026
+
+The main branch now holds three lines of work that were done in parallel, each built and tested
+together at `e0e46b0`:
+- **Memory relief (`ec0ce36`).** LVGL allocates from PSRAM first through a custom allocator
+  (`fw/main/mem_esp.c`, `CONFIG_LV_USE_CUSTOM_MALLOC=y`), with a single draw buffer, two queues in
+  PSRAM and FIT recovery on the heap. `MEM_LOG` reports free internal and DMA RAM. Delete
+  `fw/sdkconfig` before the first build after pulling this.
+- **The review fixes (`caa89f1`).** Lists are re-read only when the library changes, not on every
+  BLE packet. A held touch no longer freezes the ride screen. The nRF UART can no longer be left at
+  9600. A failed power-off can be retried (`hal_power_off` returns sent, not sent or unconfirmed). NMEA
+  accepts only a real fix dated 2025–2040. The baud change no longer resets the FIFOs. Golden frame
+  tests were added.
+- **The nRF handshake to Q38's approved table (`0dce480`, `561d411`, `e0e46b0`).** Only the approved
+  frames are sent, all through one function at 115200 baud.
+  - At boot: the slave-mode query every 200 ms once the nRF has been heard (10 s cap), then
+    `SendPowerOnCmd` every 100 ms until a power event or sensor frames arrive (5 s cap), then one GNSS
+    power-on.
+  - At power-off: the ride is finished and files are closed, then `SendPowerOffCmd` goes out every
+    1.5 s (at most 30).
+  - On wake: only a fresh press, or event 5/6 more than 500 ms after the hold ends. Code 4 (charger)
+    never wakes the unit.
+  - GNSS: one reset after 5.1 s of silence, at most 3 per boot.
+  - The choices Q38 does not cover are in Q41.
+
+The eMMC was backed up and verified (see `docs/BRINGUP-LOG.md`, sha256 `a2684835…ca55`), and
+`FS_EMMC_MODE` is back to 1.
+
+Verified on the host: the firmware builds for ESP32-S3 with no warnings (`app.bin` 1,308,448 bytes,
+15 %), the host tests pass 20/20, the ASan tests pass 18/18, and the Python tests pass 25/25. Every
+transmitted frame is pinned whole in `test_nrf_proto`, and the new query frame's CRC (0x2D41) was
+checked independently with Python.
+
+Not verified on the unit:
+- the slave-mode reply layout;
+- what the nRF answers `SendPowerOnCmd` with when it is already on;
+- `f0 02 <c>` as the charge state;
+- the new PSRAM allocator under the full UI.
+
+The next device test covers all four, using the log lines listed in the handshake commit.
