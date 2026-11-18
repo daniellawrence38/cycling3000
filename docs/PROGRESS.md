@@ -1050,3 +1050,46 @@ Not verified on the unit:
 - the redraw cost of the plot on the ESP32-S3.
 
 Nothing was flashed.
+
+## Phone link over real Bluetooth, sensors, touch and heart-rate zones · 18 November 2026
+
+**Phone link** (`9e595e4`, `7e89ed8`, `2b699b2`, app `a6e0028`; bond fix `128d993`). Confirmed on the
+unit, `outputs/phone-2.txt`:
+- Passkey pairing and workout upload work.
+- The bond is kept in `CC700/config/phone.a|b` and survives a reboot. NimBLE's store is re-applied
+  at host sync, because ESP-IDF resets the store at the first sync.
+- The phone reconnects by itself with no dialog.
+
+What changed:
+- On the unit, every link event and protocol message is logged under the tag `link`.
+- The app stops reconnecting after two refusals ("Not recognised"). A reconnect never starts a
+  pairing; only Add unit does.
+- Q43 to Q45 are answered: the defaults stand.
+
+Still to confirm: the protocol exchange after an automatic reconnect.
+
+**BLE sensors** (`46b8e51`). The H1 strap and the PM500 pair, stay connected together, are saved and
+reconnect. Q42.
+
+**Touch** (`684f5c5`). The panel is accurate. Two hit-mapping bugs are fixed: the Heart rate kebab,
+and Add sensor when only the strap is paired. Tap logging is available with `TOUCH_LOG_TAPS`.
+
+**nRF handshake** (`128d993`). The query window now counts from the first frame heard, not from
+boot.
+
+**Heart-rate graph** (Daniel's request, `hr-graph`, Q46). Tap HEART RATE while riding to see the
+last 5 minutes. A tap or LEFT closes it.
+
+**Heart-rate zones** (Daniel's request, `hr-zones`, Q47):
+- A max heart rate setting, 100 to 230 bpm and off by default, under Menu, Profile, Max heart rate.
+  It is stored in `config/profile.a|b`, and the settings record is unchanged.
+- Five zones as a share of max HR: Z1 50–60 %, Z2 60–70 %, Z3 70–80 %, Z4 80–90 %, Z5 90 % and up.
+- A zone chip on Main, and zone bands with a zone-coloured bpm number on the graph.
+- Footer SAVE now saves on the FTP editor as well.
+- Review PNGs are in `docs/hr-zones/`.
+- Not done: max HR over the phone link and in the FIT file, and hold-to-repeat on the steppers.
+
+Verified on the host:
+- host tests 23/23, ASan 21/21 (lint and walk included), Python 26;
+- `make vectors` reproduces the reference output unchanged;
+- `fw-build` has no warnings (`app.bin` 1,400,848 bytes, 17 %).
