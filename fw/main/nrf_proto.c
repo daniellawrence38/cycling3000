@@ -165,6 +165,8 @@ int fw_nrf_hs_step(fw_nrf_hs_t *hs, uint32_t now_ms, const fw_nrf_frame_t *f)
 {
     int ev = -1;
     if (f) {
+        if (!hs->heard)
+            hs->heard_ms = now_ms;
         hs->heard = 1;
         if (is_sensor_stream(f))
             hs->sensors = 1;
@@ -188,7 +190,9 @@ int fw_nrf_hs_step(fw_nrf_hs_t *hs, uint32_t now_ms, const fw_nrf_frame_t *f)
 
     switch (hs->state) {
     case FW_NRF_HS_QUERY:
-        if (now_ms - hs->init_ms >= FW_NRF_HS_QUERY_MAX_MS) {
+        if (!hs->heard)
+            return FW_NRF_HS_TX_NONE; /* nothing is sent into a link never heard, and silence is not a no */
+        if (now_ms - hs->heard_ms >= FW_NRF_HS_QUERY_MAX_MS) {
             hs_fail(hs, FW_NRF_HS_FAIL_NO_REPLY, now_ms);
             return FW_NRF_HS_TX_NONE;
         }

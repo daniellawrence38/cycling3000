@@ -118,8 +118,11 @@ int fw_nrf_parse_charge(const fw_nrf_frame_t *f);
  *   QUERY     waits for the first verified frame from the nRF (nothing is sent into a link that has
  *             never been heard), then sends the query every FW_NRF_HS_QUERY_PERIOD_MS.
  *             reply mode 1 -> POWER_ON; mode 0 -> FAILED (BOOTLOADER), nothing more is ever sent and no
- *             upgrade of any kind is attempted; FW_NRF_HS_QUERY_MAX_MS after init with no reply ->
- *             FAILED (NO_REPLY).
+ *             upgrade of any kind is attempted; FW_NRF_HS_QUERY_MAX_MS after the FIRST FRAME HEARD with
+ *             no reply -> FAILED (NO_REPLY). A link that is still silent waits in QUERY, sending
+ *             nothing: counting from init failed the handshake without a single query on a boot where
+ *             the nRF was first heard more than 10 s in (outputs/phone-1.txt, 18 November 2026), and
+ *             FAILED never switched the sensors on, so the barometer and GNSS stayed off all session.
  *   POWER_ON  sends SendPowerOnCmd every FW_NRF_HS_POWER_ON_PERIOD_MS until a power event arrives
  *             (any of 4, 5, 6, as the vendor's loop) -> RUNNING; or sensor frames (id 16 / 0xF1) have
  *             been seen and FW_NRF_HS_SENSOR_GRACE_MS has passed in this state -> RUNNING; after
@@ -194,6 +197,7 @@ typedef struct {
     fw_nrf_hs_fail_t fail;
     fw_nrf_hs_on_t on;
     uint32_t init_ms, state_ms, last_tx_ms;
+    uint32_t heard_ms;           /* when the first verified frame arrived; the query window counts from it */
     uint16_t queries, power_ons; /* frames asked for, for the log and the tests */
     uint8_t heard;               /* a verified frame has arrived */
     uint8_t sensors;             /* an id 16 / 0xF1 frame has arrived */

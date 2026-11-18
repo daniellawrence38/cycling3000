@@ -189,10 +189,12 @@ static int snapshot(void)
     return changed;
 }
 
+static volatile int bond_applying; /* bond_apply is writing: no snapshot per record */
+
 static int store_write(int obj_type, const union ble_store_value *val)
 {
     int rc = ble_store_config_write(obj_type, val);
-    if (rc == 0 && snapshot())
+    if (rc == 0 && !bond_applying && snapshot())
         bond_dirty = 1;
     return rc;
 }
@@ -205,46 +207,84 @@ static int store_delete(int obj_type, const union ble_store_key *key)
     return rc;
 }
 
-/* Core task, before the host starts: the stored phone into NimBLE's RAM store. */
-static void bond_load(void)
+/* WHY THE BOND IS LOADED AT SYNC, NOT BEFORE THE HOST STARTS. ESP-IDF's NimBLE (BLE_STATIC_TO_DYNAMIC)
+ * calls ble_store_config_init() from ble_hs_startup_go -> ble_hs_pvcy_set_default_irk at the first
+ * host sync. That empties the RAM store and puts back the plain store_write_cb/store_delete_cb, so a
+ * bond loaded before nimble_port_freertos_init was wiped and our wrappers were lost: on the unit the
+ * phone paired, no "bond: stored" line ever followed, and it had to pair again after every power-off
+ * (outputs/phone-1.txt, 18 November 2026). So: the file is read on the core task at start (bond_read),
+ * and on_sync, which runs after that reset and after ble_hs_misc_restore_irks, puts the wrappers back
+ * and writes the phone into the store (bond_apply). Peer keys go through ble_store_write_peer_sec,
+ * which also adds the phone's IRK to the controller's resolving list, so its private address is
+ * recognised when it reconnects. bond_apply runs on every sync, from the latest snapshot, so a host
+ * reset that empties the store again is repaired the same way. */
+
+/* Core task, before the host starts: the stored phone, read from the eMMC into bond_pending. */
+static void bond_read(void)
 {
     hal_fs_t *fs = cc_fs();
     if (!fs || !fw_bond_load(fs, &bond_io, &bond_slots)) {
         ESP_LOGW(TAG, "bond: no phone bond on the eMMC (config/phone.a|b absent or unreadable)");
         memset(&bond_io, 0, sizeof bond_io);
-        snapshot();
         return;
-    }
-    union ble_store_value v;
-    for (int i = 0; i < bond_io.nsec; i++) {
-        sec_from_fw(&bond_io.sec[i], &v.sec);
-        ble_store_config_write(bond_io.sec[i].kind == FW_BOND_PEER ? BLE_STORE_OBJ_TYPE_PEER_SEC
-                                                                  : BLE_STORE_OBJ_TYPE_OUR_SEC, &v);
-    }
-    for (int i = 0; i < bond_io.ncccd; i++) {
-        memset(&v, 0, sizeof v);
-        addr_from_fw(&bond_io.cccd[i].peer, &v.cccd.peer_addr);
-        v.cccd.chr_val_handle = bond_io.cccd[i].chr_val_handle;
-        v.cccd.flags = bond_io.cccd[i].flags;
-        v.cccd.value_changed = bond_io.cccd[i].value_changed;
-        ble_store_config_write(BLE_STORE_OBJ_TYPE_CCCD, &v);
-    }
-    if (bond_io.has_local_irk) {
-        memset(&v, 0, sizeof v);
-        addr_from_fw(&bond_io.local_addr, &v.local_irk.addr);
-        memcpy(v.local_irk.irk, bond_io.local_irk, 16);
-        ble_store_config_write(BLE_STORE_OBJ_TYPE_LOCAL_IRK, &v);
     }
     const fw_bond_addr_t *p = NULL;
     for (int i = 0; i < bond_io.nsec; i++)
         if (bond_io.sec[i].kind == FW_BOND_PEER && bond_io.sec[i].authenticated)
             p = &bond_io.sec[i].peer;
-    ESP_LOGW(TAG, "bond: loaded from the eMMC (slot %c, seq %" PRIu32 "): %d phone, ..:%02X:%02X, %u "
+    ESP_LOGW(TAG, "bond: read from the eMMC (slot %c, seq %" PRIu32 "): %d phone, ..:%02X:%02X, %u "
                   "subscription(s)", bond_slots.newest ? 'b' : 'a', bond_slots.seq, fw_bond_phone_count(&bond_io),
              p ? p->val[1] : 0, p ? p->val[0] : 0, bond_io.ncccd);
-    memset(&bond_io, 0, sizeof bond_io);
-    snapshot(); /* bond_pending now equals the file: nothing to write back */
+    xSemaphoreTake(bond_mtx, portMAX_DELAY);
+    bond_pending = bond_io;
+    xSemaphoreGive(bond_mtx);
     bond_dirty = 0;
+    memset(&bond_io, 0, sizeof bond_io);
+}
+
+/* Host task, from on_sync: the wrappers back in place, and the phone's records (the last snapshot,
+   which starts as the file) written into NimBLE's store. */
+static fw_bond_t bond_apply_buf;
+static void bond_apply(void)
+{
+    ble_hs_cfg.store_write_cb = store_write;
+    ble_hs_cfg.store_delete_cb = store_delete;
+    xSemaphoreTake(bond_mtx, portMAX_DELAY);
+    bond_apply_buf = bond_pending;
+    xSemaphoreGive(bond_mtx);
+    const fw_bond_t *b = &bond_apply_buf;
+    int phones = fw_bond_phone_count(b), fails = 0;
+    union ble_store_value v;
+    bond_applying = 1;
+    for (int i = 0; i < b->nsec; i++) {
+        sec_from_fw(&b->sec[i], &v.sec);
+        int rc = b->sec[i].kind == FW_BOND_PEER ? ble_store_write_peer_sec(&v.sec) : ble_store_write_our_sec(&v.sec);
+        fails += rc != 0;
+    }
+    for (int i = 0; i < b->ncccd; i++) {
+        memset(&v, 0, sizeof v);
+        addr_from_fw(&b->cccd[i].peer, &v.cccd.peer_addr);
+        v.cccd.chr_val_handle = b->cccd[i].chr_val_handle;
+        v.cccd.flags = b->cccd[i].flags;
+        v.cccd.value_changed = b->cccd[i].value_changed;
+        fails += ble_store_write_cccd(&v.cccd) != 0;
+    }
+    if (b->has_local_irk) {
+        memset(&v, 0, sizeof v);
+        addr_from_fw(&b->local_addr, &v.local_irk.addr);
+        memcpy(v.local_irk.irk, b->local_irk, 16);
+        fails += ble_store_config_write(BLE_STORE_OBJ_TYPE_LOCAL_IRK, &v) != 0;
+    }
+    bond_applying = 0;
+    memset(&bond_apply_buf, 0, sizeof bond_apply_buf);
+    memset(&v, 0, sizeof v);
+    /* The store now holds what bond_pending held, so there is nothing new to write back. If a record
+       was refused the snapshot differs, and the next flush rewrites the file from what the store has. */
+    if (snapshot() && fails == 0)
+        bond_dirty = 0;
+    if (phones)
+        ESP_LOGW(TAG, "bond: %d phone put into the BLE store at sync%s", phones,
+                 fails ? " (some records refused)" : "");
 }
 
 /* Core task: writes a changed snapshot, or removes the files once no phone is bonded. */
@@ -740,6 +780,7 @@ void fw_link_tick(uint32_t now_ms)
 /* ------------------------------------------------------------------ host start */
 static void on_sync(void)
 {
+    bond_apply(); /* first: before anything can connect or bond (see bond_read) */
     ble_hs_util_ensure_addr(0);
     ble_hs_id_infer_auto(0, &own_addr_type);
     advertise();
@@ -775,11 +816,12 @@ void fw_link_start(void)
     ble_svc_gatt_init();
     ESP_ERROR_CHECK(ble_gatts_count_cfg(SERVICES));
     ESP_ERROR_CHECK(ble_gatts_add_svcs(SERVICES));
-    /* NimBLE's RAM store, with its write and delete wrapped so the phone's bond reaches the eMMC (Q43),
-       then the stored phone loaded into it before the host task starts. */
+    /* NimBLE's RAM store, with its write and delete wrapped so the phone's bond reaches the eMMC (Q43).
+       The wrappers and the stored phone are (re)applied in on_sync, because the host's first sync
+       resets the store (bond_read says why); here the file is only read. */
     ble_store_config_init();
     ble_hs_cfg.store_write_cb = store_write;
     ble_hs_cfg.store_delete_cb = store_delete;
-    bond_load();
+    bond_read();
     nimble_port_freertos_init(host_task);
 }

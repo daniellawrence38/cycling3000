@@ -703,7 +703,8 @@ static void test_handshake_no_reply(void)
     TEST_ASSERT_EQUAL(10, l.query);
 }
 
-/* A silent link: not one frame is sent into it. */
+/* A silent link: not one frame is sent into it, and silence alone never fails the handshake. When the
+   nRF is first heard late (outputs/phone-1.txt: after more than 10 s), the query window starts then. */
 static void test_handshake_silent_link(void)
 {
     fw_nrf_hs_t hs;
@@ -711,9 +712,25 @@ static void test_handshake_silent_link(void)
     txlog_init(&l);
     fw_nrf_hs_init(&hs, 500);
     run(&hs, 500, 500 + 60000u, NULL, 0, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_QUERY, hs.state);
+    TEST_ASSERT_EQUAL(0, l.query + l.power_on + l.gnss_on);
+    /* First heard at 60.5 s: the queries start, and the reply moves it on. */
+    fw_nrf_frame_t beat[2] = {mk(4, 0, P_BATT2, 8), mk(4, 16, P_CHARGE, 8)};
+    run(&hs, 60500u, 61500u, beat, 2, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_QUERY, hs.state);
+    TEST_ASSERT_TRUE(l.query >= 4);
+    feed1(&hs, 61500u, mk(4, 1, P_SLAVE_APP, 8), &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_POWER_ON, hs.state);
+    /* Heard late and never answering: FAILED 10 s after it was first heard, not before. */
+    fw_nrf_hs_init(&hs, 0);
+    txlog_init(&l);
+    run(&hs, 0, 30000u, NULL, 0, &l);
+    run(&hs, 30000u, 39900u, beat, 2, &l);
+    TEST_ASSERT_EQUAL(FW_NRF_HS_QUERY, hs.state);
+    run(&hs, 39900u, 41000u, beat, 2, &l);
     TEST_ASSERT_EQUAL(FW_NRF_HS_FAILED, hs.state);
     TEST_ASSERT_EQUAL(FW_NRF_HS_FAIL_NO_REPLY, hs.fail);
-    TEST_ASSERT_EQUAL(0, l.query + l.power_on + l.gnss_on);
+    TEST_ASSERT_EQUAL(50, l.query);
 }
 
 /* Bootloader: stop at once and for good, whatever arrives afterwards. */
