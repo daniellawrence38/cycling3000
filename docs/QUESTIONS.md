@@ -629,6 +629,42 @@ Why it matters: new settings, a new screen and new text outside the spec; Daniel
 screenshots in `docs/hr-zones/`.
 Answer:
 
+### Q48 · route planner on the phone (Daniel's request) · open
+Question: On 18 November 2026 Daniel asked for "a way to generate route plans ... from your location
+based on how long you want it, gives a few options then outputs a gpx, with preference for cycle
+paths", with an AI model able to choose the route. START-HERE puts "a routing engine or rerouting" out
+of v1 scope. This is read as scope for the **unit**: the planner runs only on the phone, makes an
+ordinary GPX, and hands it to the existing import, so the unit, CR1 and the protocol are unchanged and
+there is no rerouting. His request authorises it. The choices made where he did not say:
+1. **Routing service.** OpenRouteService round trips (`options.round_trip`, length and seed), behind a
+   `RoutingEngine` interface so an offline engine can replace it. Six seeds per plan; loops more than
+   15 % off the target length and near-duplicates (over 70 % of one within 60 m of the other) are
+   dropped; the best three are kept. Road riders who favour cycle paths get `cycling-regular`, others
+   `cycling-road`; gravel `cycling-regular`; MTB `cycling-mountain`.
+2. **Ranking.** Share of cycleway (plus path and track off road), quiet streets, main roads, unpaved
+   (penalised on road only), steep (category 4 and 5), doubling back, and length error. The weights are
+   a first guess to be tuned on real rides.
+3. **Minutes to km.** 22 km/h road, 16 gravel, 12 MTB, or a speed set in Settings. Not yet derived
+   from his rides.
+4. **AI model.** Daniel chose OpenRouter with DeepSeek V4.1 Flash (`deepseek/deepseek-v4.1-flash`,
+   editable in Settings). The model gets tools that return route and place **ids with stats**; it never
+   sees coordinates, so it cannot invent a route and neither his position nor any geometry is sent to
+   OpenRouter. It must finish by naming ids a tool returned; if it stops without doing so, the best
+   three by score are shown. At most 8 model calls and 20 routing calls per plan.
+5. **Keys.** The ORS and OpenRouter keys are entered by Daniel on the phone and stored like the
+   Intervals.icu key (Tink, Android Keystore), each in its own slot (rule 2).
+6. **Location.** `ACCESS_FINE_LOCATION` loses its `maxSdkVersion="30"` and `ACCESS_COARSE_LOCATION` is
+   added, both asked for only when Plan is used; `BLUETOOTH_SCAN` stays `neverForLocation`.
+7. **Update, same day.** Daniel reported that loops did not favour cycle paths. The default router is
+   now BRouter (brouter.de, no key, `safety` profile for road with cycle paths favoured), with
+   OpenRouteService kept as an option. BRouter receives the start point. "Traffic-free" counts
+   footway and path as well as cycleway. Map previews use OpenStreetMap tiles, cached on the phone
+   with attribution shown.
+Options: as built; another routing service (GraphHopper) or offline BRouter; no AI step.
+Default used: as built, above.
+Why it matters: new phone features, two new outside services and a wider location permission.
+Answer:
+
 ## Document errors
 
 ### E5 · brief 5.6 (finish sequence)

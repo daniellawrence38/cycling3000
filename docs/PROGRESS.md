@@ -1093,3 +1093,76 @@ Verified on the host:
 - host tests 23/23, ASan 21/21 (lint and walk included), Python 26;
 - `make vectors` reproduces the reference output unchanged;
 - `fw-build` has no warnings (`app.bin` 1,400,848 bytes, 17 %).
+
+## Route planner on the phone (Daniel's request) · 18 November 2026
+
+Branch `worktree-route-planner`. Phone only: the unit, CR1 and the protocol are unchanged. Q48 records
+the choices.
+
+**What it does.** Routes tab, Plan a ride:
+- Pick a ride length (30 to 240 min), a bike (road, gravel, MTB) and Favour cycle paths.
+- Plan from here (one location fix) or from typed coordinates.
+- Three loops come back from OpenRouteService, each with distance, climbing, time, and the share of
+  cycle path, quiet streets and main road.
+- **Use** opens the loop in the same preview a GPX import shows, so Save and Send work as before.
+  **GPX** saves the file.
+
+**Ask AI** (optional) takes a request in plain words, such as "mostly cycle paths, café stop
+halfway". It uses OpenRouter, by default `deepseek/deepseek-v4.1-flash`. The model works only with
+route and place ids and their stats, and never sees coordinates or the position.
+
+**Code.**
+- `android/core`, `cc700.route.plan`: `OrsClient` (round trips, routes, place search), `Scorer`,
+  `Planner`, `GpxWriter`.
+- `android/core`, `cc700.route.assist.AssistPlanner`: OpenRouter tool loop, through OkHttp and
+  kotlinx-serialization. No new libraries.
+- App:
+  - `KeyStore` has slots (Intervals, ORS, OpenRouter). The Intervals file is unchanged.
+  - `Here` gives the location fix.
+  - New settings: speed, bike, model.
+  - New screens: the Plan section and the Settings keys.
+
+**Verified on the host:**
+- `:core`, `:testing` and `:sync` tests pass (new: `RoutePlanTest`, `AssistPlannerTest`,
+  `PlannedRouteTest`), all offline against MockWebServer, with no real keys.
+- `:app:compileDebugKotlin` is clean.
+- Not run on a phone yet.
+
+**Daniel's checks:**
+1. Add the ORS key, then plan 60 min from home. Check that the three options differ and that the GPX
+   opens in a map app.
+2. Add the OpenRouter key, then Ask AI.
+3. On the test ride, send a planned loop to the unit and check that the Nav screen follows it. This
+   also covers "routes over the link untested".
+
+### Follow-up: map preview and cycle-path routing
+
+Daniel tried the first build and found two problems: he could not see where a loop went, and the loops
+ignored cycle paths, with Ask AI and without it. Since it was the same without AI, the cause was
+upstream of the model.
+
+**Cause.**
+- OpenRouteService's round trip places points on a rough circle and routes between them. Loops are
+  pulled through whatever streets those points land on, and ranking six of them cannot help when all
+  six are on roads.
+- The share was also undercounted. For road it counted only `highway=cycleway`, while most UK shared
+  paths are tagged footway or path.
+
+**Changes.**
+- **BRouter is now the default router.** It uses brouter.de and needs no key. Profiles: `safety` for
+  road with Favour cycle paths, `fastbike` for road without it, `trekking` for gravel and MTB. Loops
+  use BRouter's round trip, and each seed heads out on its own bearing (60° apart), so the three
+  options go in genuinely different directions.
+- BRouter's per-stretch OSM tags are mapped to the scorer's codes.
+- OpenRouteService stays available under Settings, Router.
+- **"Traffic-free"** replaces "cycle path". It counts cycleway, path and footway for every bike. Tracks
+  count for gravel and MTB, and for road only where paved.
+- **Map preview.** Each option, and the import preview, shows an OpenStreetMap map with the route
+  line, a green start dot and direction arrows. The map is drawn from tiles cached for 30 days, with
+  no new library.
+
+**Not yet compared.** BRouter against OpenRouteService on the same start is untested: that needs
+Daniel's ORS key.
+
+**Verified.** `BRouterTest` uses a fixture in the format of a real brouter.de response (4 tests). All
+JVM tests pass and the APK builds. The map has not been looked at on a screen yet.
