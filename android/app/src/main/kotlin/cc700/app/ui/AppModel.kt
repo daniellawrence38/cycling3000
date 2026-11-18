@@ -189,7 +189,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
                 }
                 _busy.value = "Asking ${settings.value.assistModel.substringAfter('/')}"
                 val ap = withContext(Dispatchers.IO) {
-                    AssistPlanner(g.http, { g.assistKey.get() }, g.routing, g.routing, settings.value.assistModel)
+                    AssistPlanner(g.http, { g.assistKey.get() }, g.router(), g.places(), settings.value.assistModel)
                         .plan(from, minutes, request, prefs())
                 }
                 _plan.value = Plan(ap.targetM, ap.options.map { it.scored }, 0)
@@ -239,7 +239,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
                     return@launch
                 }
                 _busy.value = "Planning ${minutes} min loops"
-                val p = withContext(Dispatchers.IO) { Planner(g.routing).plan(from, minutes, prefs()) }
+                val p = withContext(Dispatchers.IO) { Planner(g.router(), parallelism = 2).plan(from, minutes, prefs()) }
                 _plan.value = p
                 _reasons.value = emptyMap()
                 if (p.options.isEmpty()) _message.value = "No loops came back. Try a different length or start."
@@ -248,7 +248,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
             } catch (e: RoutingError) {
                 _message.value = e.message
             } catch (e: java.io.IOException) {
-                _message.value = "Could not reach OpenRouteService. Check the connection."
+                _message.value = "Could not reach the routing service. Check the connection."
             } finally {
                 _busy.value = null
             }

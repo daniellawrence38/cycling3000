@@ -45,10 +45,14 @@ object Scorer {
             for (s in spans) if (pick(s.value)) for (i in s.from until minOf(s.to, seg.size)) if (i >= 0) d += seg[i]
             return d / total
         }
-        val pathTypes = if (profile == BikeProfile.ROAD) setOf(WayType.CYCLEWAY)
-        else setOf(WayType.CYCLEWAY, WayType.PATH, WayType.TRACK)
+        // Traffic-free: cycleways, and paths and footways the router chose to ride (in the UK most shared-use
+        // paths are tagged footway or path with bicycle=yes, not cycleway). Tracks count for gravel and MTB
+        // always, for road only where paved.
+        val free = setOf(WayType.CYCLEWAY, WayType.PATH, WayType.FOOTWAY)
+        val pavedTrack = trackPaved(c)
         return Breakdown(
-            cyclePath = share(c.wayTypes) { it in pathTypes },
+            cyclePath = share(c.wayTypes) { it in free } +
+                if (profile == BikeProfile.ROAD) pavedTrack / total else share(c.wayTypes) { it == WayType.TRACK },
             quietRoad = share(c.wayTypes) { it == WayType.STREET },
             busyRoad = share(c.wayTypes) { it == WayType.STATE_ROAD },
             unpaved = share(c.surfaces) { Surface.isUnpaved(it) },
@@ -72,6 +76,16 @@ object Scorer {
     }
 
     private fun segmentLengths(p: List<Pt>) = DoubleArray(max(0, p.size - 1)) { haversineM(p[it], p[it + 1]) }
+
+    /** Metres of track whose surface is paved. */
+    private fun trackPaved(c: Candidate): Double {
+        val seg = segmentLengths(c.points)
+        val paved = BooleanArray(seg.size)
+        for (s in c.surfaces) if (Surface.isPaved(s.value)) for (i in s.from until minOf(s.to, seg.size)) if (i >= 0) paved[i] = true
+        var d = 0.0
+        for (s in c.wayTypes) if (s.value == WayType.TRACK) for (i in s.from until minOf(s.to, seg.size)) if (i >= 0 && paved[i]) d += seg[i]
+        return d
+    }
 
     /** The share of distance (sampled every ~50 m) that lies within 25 m of a part of the route at
      * least 500 m away along it: out-and-back legs and repeated laps. */

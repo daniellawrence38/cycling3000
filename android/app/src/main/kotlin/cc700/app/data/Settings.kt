@@ -24,6 +24,12 @@ import kotlinx.coroutines.runBlocking
 
 private val Context.store by preferencesDataStore("settings")
 
+/** The route planner's routing service: BRouter (keeps to cycle paths, no key) or OpenRouteService. */
+enum class RouterChoice(val label: String) {
+    BROUTER("BRouter: keeps to cycle paths, no key"),
+    ORS("OpenRouteService: needs a key"),
+}
+
 /** How the app reaches the unit: Bluetooth, or simunit on the development machine (brief WP6). */
 enum class ConnectionMode { BLE, SIMULATED }
 
@@ -43,6 +49,8 @@ data class AppSettings(
     val planFavourPaths: Boolean = true,
     val planMinutes: Int = 60,
     val planSpeedKmh: Double? = null,
+    /** Which routing service makes the loops. */
+    val planRouter: RouterChoice = RouterChoice.BROUTER,
     /** The OpenRouter model for "Ask AI" route planning. */
     val assistModel: String = AssistPlanner.DEFAULT_MODEL,
 )
@@ -66,6 +74,7 @@ class SettingsRepo(private val ctx: Context, scope: CoroutineScope) : PairingSto
         val planMinutes = intPreferencesKey("plan_minutes")
         val planSpeed = doublePreferencesKey("plan_speed_kmh")
         val assistModel = stringPreferencesKey("assist_model")
+        val planRouter = stringPreferencesKey("plan_router")
     }
 
     private fun read(p: Preferences): AppSettings {
@@ -85,6 +94,7 @@ class SettingsRepo(private val ctx: Context, scope: CoroutineScope) : PairingSto
             planMinutes = p[K.planMinutes] ?: d.planMinutes,
             planSpeedKmh = p[K.planSpeed],
             assistModel = p[K.assistModel]?.takeIf { it.isNotBlank() } ?: d.assistModel,
+            planRouter = p[K.planRouter]?.let { runCatching { RouterChoice.valueOf(it) }.getOrNull() } ?: d.planRouter,
         )
     }
 
@@ -108,6 +118,7 @@ class SettingsRepo(private val ctx: Context, scope: CoroutineScope) : PairingSto
             val speed = s.planSpeedKmh
             if (speed == null) p.remove(K.planSpeed) else p[K.planSpeed] = speed
             p[K.assistModel] = s.assistModel
+            p[K.planRouter] = s.planRouter.name
         }
     }
 

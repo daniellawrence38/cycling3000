@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cc700.app.data.ConnectionMode
 import cc700.app.data.Here
+import cc700.app.data.RouterChoice
 import cc700.link.ObjInfo
 import cc700.route.assist.AssistPlanner
 import cc700.route.cr1HasProfile
@@ -304,6 +305,7 @@ fun RoutesScreen(m: AppModel) {
                         else if (b.fromFile) "Elevation: from file"
                         else "Elevation: ${settings.elevation.label}",
                         color = if (b.hasElevation) Tok.muted else Tok.warn, fontSize = 13.sp)
+                    RouteMap(b.points, Modifier.fillMaxWidth().padding(top = 8.dp), height = 240.dp)
                     ProfileChart(b.profileM, b.step, b.climbs, Modifier.fillMaxWidth().heightIn(min = 120.dp).padding(vertical = 8.dp))
                     val t = settings.thresholds
                     Text("Climbs: at least ${t.minLenM} m long, ${t.minAscentM} m up, ${t.minGradePct} % average (Settings)",
@@ -359,8 +361,8 @@ private fun PlanForm(m: AppModel) {
         else m.say("Location was not allowed. Type a start point instead.")
     }
     Column(Modifier.padding(horizontal = 16.dp)) {
-        if (!hasKey) {
-            Note("Planning uses OpenRouteService. Add a free key in Settings to start.")
+        if (s.planRouter == RouterChoice.ORS && !hasKey) {
+            Note("OpenRouteService is chosen in Settings but no key is saved. Add one, or switch to BRouter.")
             return@Column
         }
         Text("${minutes.roundToInt()} min, about ${"%.0f".format(minutes / 60 * m.prefs(s).speedKmh)} km", color = Tok.text)
@@ -391,7 +393,7 @@ private fun PlanForm(m: AppModel) {
                 Text("Plan from there")
             }
         }
-        Note("Your start point is sent to OpenRouteService to make the loops. Nothing else is.")
+        Note("Your start point is sent to ${if (s.planRouter == RouterChoice.ORS) "OpenRouteService" else "BRouter (brouter.de)"} to make the loops. Nothing else is.")
         if (hasAssist) {
             var ask by remember { mutableStateOf("") }
             OutlinedTextField(ask, { ask = it.take(500) }, label = { Text("Ask AI") }, minLines = 2,
@@ -431,10 +433,11 @@ private fun PlanOptions(m: AppModel) {
             val b = o.breakdown
             val mins = (c.distanceM / 1000 / speed * 60).roundToInt()
             val sub = "${km(c.distanceM.toLong())}, ${c.ascentM.roundToInt()} m up, about ${hms(mins * 60L)}\n" +
-                "${pct(b.cyclePath)} cycle path, ${pct(b.quietRoad)} quiet streets, ${pct(b.busyRoad)} main road" +
+                "${pct(b.cyclePath)} traffic-free, ${pct(b.quietRoad)} quiet streets, ${pct(b.busyRoad)} main road" +
                 (if (b.unpaved >= 0.05) ", ${pct(b.unpaved)} unpaved" else "") +
                 (if (b.backtrack >= 0.1) ", ${pct(b.backtrack)} doubles back" else "") +
                 (reasons[c.id]?.takeIf { it.isNotBlank() }?.let { "\nAI: $it" } ?: "")
+            RouteMap(c.points, Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp))
             RowItem("Option $n", sub, trailing = {
                 Row {
                     TextButton(onClick = { m.usePlanned(o, n) }) { Text("Use") }
@@ -622,7 +625,12 @@ private fun RoutePlannerSettings(m: AppModel) {
             Button(onClick = { m.saveOrsKey(key); key = "" }, enabled = key.isNotBlank()) { Text("Save key") }
             if (hasKey) OutlinedButton(onClick = { m.clearOrsKey() }) { Text("Remove key") }
         }
-        Note("Free from openrouteservice.org (sign up, then Dashboard, then Tokens). Stored encrypted on this phone only.")
+        Note("Free from openrouteservice.org (sign up, then Dashboard, then Tokens). Stored encrypted on this phone only. " +
+            "Needed only if OpenRouteService is the router below, or for Ask AI to find named places.")
+        Text("Router", color = Tok.text, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+        for (r in RouterChoice.entries) RowItem(r.label,
+            trailing = { RadioButton(s.planRouter == r, { m.updateSettings { it.copy(planRouter = r) } }) },
+            onClick = { m.updateSettings { it.copy(planRouter = r) } })
         val speed = s.planSpeedKmh ?: defaultSpeedKmh(s.planProfile)
         NumberField("Average speed for planning (km/h)", speed.roundToInt()) { v ->
             if (v in 5..50) m.updateSettings { it.copy(planSpeedKmh = v.toDouble()) }

@@ -1134,3 +1134,35 @@ route and place ids and their stats, and never sees coordinates or the position.
 2. Add the OpenRouter key, then Ask AI.
 3. On the test ride, send a planned loop to the unit and check that the Nav screen follows it. This
    also covers "routes over the link untested".
+
+### Follow-up: map preview and cycle-path routing
+
+Daniel tried the first build and found two problems: he could not see where a loop went, and the loops
+ignored cycle paths, with Ask AI and without it. Since it was the same without AI, the cause was
+upstream of the model.
+
+**Cause.**
+- OpenRouteService's round trip places points on a rough circle and routes between them. Loops are
+  pulled through whatever streets those points land on, and ranking six of them cannot help when all
+  six are on roads.
+- The share was also undercounted. For road it counted only `highway=cycleway`, while most UK shared
+  paths are tagged footway or path.
+
+**Changes.**
+- **BRouter is now the default router.** It uses brouter.de and needs no key. Profiles: `safety` for
+  road with Favour cycle paths, `fastbike` for road without it, `trekking` for gravel and MTB. Loops
+  use BRouter's round trip, and each seed heads out on its own bearing (60° apart), so the three
+  options go in genuinely different directions.
+- BRouter's per-stretch OSM tags are mapped to the scorer's codes.
+- OpenRouteService stays available under Settings, Router.
+- **"Traffic-free"** replaces "cycle path". It counts cycleway, path and footway for every bike. Tracks
+  count for gravel and MTB, and for road only where paved.
+- **Map preview.** Each option, and the import preview, shows an OpenStreetMap map with the route
+  line, a green start dot and direction arrows. The map is drawn from tiles cached for 30 days, with
+  no new library.
+
+**Not yet compared.** BRouter against OpenRouteService on the same start is untested: that needs
+Daniel's ORS key.
+
+**Verified.** `BRouterTest` uses a fixture in the format of a real brouter.de response (4 tests). All
+JVM tests pass and the APK builds. The map has not been looked at on a screen yet.

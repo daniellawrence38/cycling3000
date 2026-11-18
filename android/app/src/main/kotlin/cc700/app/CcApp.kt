@@ -18,7 +18,12 @@ import cc700.app.data.RoomRideStore
 import cc700.app.data.SettingsRepo
 import cc700.app.work.UploadWorker
 import cc700.link.LinkTransport
+import cc700.app.data.RouterChoice
+import cc700.app.data.TileCache
+import cc700.route.plan.BRouterClient
 import cc700.route.plan.OrsClient
+import cc700.route.plan.PlaceSearch
+import cc700.route.plan.RoutingEngine
 import cc700.sync.Connector
 import cc700.sync.FoundUnit
 import cc700.sync.RideSync
@@ -61,6 +66,14 @@ class Graph(private val ctx: Context) {
     val http: OkHttpClient = OkHttpClient.Builder().callTimeout(90, TimeUnit.SECONDS).build()
     /** Route planning on the phone; the key is read from [orsKey] for each request and kept nowhere else. */
     val routing = OrsClient(http, { orsKey.get() })
+    /** BRouter: the default route planner, which keeps to cycle paths and needs no key. */
+    val brouter = BRouterClient(http)
+    /** The planner's routing service as chosen in Settings. */
+    fun router(): RoutingEngine = if (settings.settings.value.planRouter == RouterChoice.ORS) routing else brouter
+    /** Place search ("a café", "Richmond Park") for Ask AI: OpenRouteService geocoding, only with its key. */
+    fun places(): PlaceSearch? = if (orsKey.hasKey()) routing else null
+    /** Map tiles for route previews. */
+    val tiles = TileCache(ctx, http)
     val library = RoomLibraryStore(db.library())
     val elevationCache = RoomElevationCache(db.elevation())
 

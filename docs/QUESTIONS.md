@@ -655,6 +655,11 @@ there is no rerouting. His request authorises it. The choices made where he did 
    Intervals.icu key (Tink, Android Keystore), each in its own slot (rule 2).
 6. **Location.** `ACCESS_FINE_LOCATION` loses its `maxSdkVersion="30"` and `ACCESS_COARSE_LOCATION` is
    added, both asked for only when Plan is used; `BLUETOOTH_SCAN` stays `neverForLocation`.
+7. **Update, same day.** Daniel reported that loops did not favour cycle paths. The default router is
+   now BRouter (brouter.de, no key, `safety` profile for road with cycle paths favoured), with
+   OpenRouteService kept as an option. BRouter receives the start point. "Traffic-free" counts
+   footway and path as well as cycleway. Map previews use OpenStreetMap tiles, cached on the phone
+   with attribution shown.
 Options: as built; another routing service (GraphHopper) or offline BRouter; no AI step.
 Default used: as built, above.
 Why it matters: new phone features, two new outside services and a wider location permission.
