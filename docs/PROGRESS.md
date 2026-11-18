@@ -1017,7 +1017,7 @@ The next device test covers all four, using the log lines listed in the handshak
 
 Daniel asked for "a screen when in a ride that i can tap and i will get a time series plot of the
 heart rate over the last 5 minutes". It is not in the spec or the mockups. The details and the choices
-made are in QUESTIONS Q43.
+made are in QUESTIONS Q46.
 
 - **Core.** `core/include/cc700/hrhist.h` and `core/src/hrhist.c` hold a 300-entry ring of one-second
   heart rates, where each entry is a reading or "no reading". It lives in `cc_view_t.hr_hist`. Each
@@ -1032,7 +1032,7 @@ made are in QUESTIONS Q43.
   - **Right button and pause.** Right is still lap, and holding it still pauses. A pause closes the
     graph.
   - **Not done.** There are no HR zone bands, because no HR zones exist. The graph cannot be reached
-    with the buttons alone, which is left as a follow-up in Q43.
+    with the buttons alone, which is left as a follow-up in Q46.
 - **Scenarios.** HrGraph:data, :gaps, :lost and :empty. `make shots` now renders 52 scenarios. The
   ride walk adds 10 checks and 3 shots (tap to open, a tap on CADENCE does nothing, lap, left short and
   held, tap to close, the hold bar, and the pause closing it). The PNGs for Daniel's review are in

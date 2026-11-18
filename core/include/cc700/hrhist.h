@@ -1,5 +1,5 @@
 /* hrhist.h: the last five minutes of heart rate at 1 Hz, for the heart-rate graph screen (QUESTIONS
- * Q43 or later: added at Daniel's request, 18 November 2026; not in spec 0.5).
+ * Q46: added at Daniel's request, 18 November 2026; not in spec 0.5).
  *
  * A ring of CC_HRHIST_N one-second entries. Each entry is either a reading (1..254 bpm) or "no
  * reading" (CC_HRHIST_NONE), so a gap is never confused with a value. The core pushes one entry per

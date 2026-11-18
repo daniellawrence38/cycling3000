@@ -539,7 +539,7 @@ Defaults used:
    only serve a stray central. Raise it if a log ever shows a connection refused for want of a slot.
 Answer:
 
-### Q43 · heart-rate graph (new screen, Daniel's request) · open
+### Q46 · heart-rate graph (new screen, Daniel's request) · open
 Question: On 18 November 2026 Daniel asked: "could you also add a screen when in a ride that i can tap
 and i will get a time series plot of the heart rate over the last 5 minutes". The spec has no such
 screen (START-HERE rule 4: no new screen not in the mockups; spec 4: touch has no job while riding).
