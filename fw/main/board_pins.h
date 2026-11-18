@@ -99,6 +99,7 @@
 #define TOUCH_SWAP_XY 0
 #define TOUCH_INVERT_X 0
 #define TOUCH_INVERT_Y 0
+#define TOUCH_LOG_TAPS 1 /* every tap: down/up point, wander, duration, and what the UI did with it */
 #define TOUCH_LOG_PRESSES 1 /* log the first presses, raw and mapped, so the axes can be checked */
 #define BARO_LOG 1 /* log pressure every two seconds, for the height-change check during bring-up */
 #define NRF_DECODE_LOG 1 /* name key, battery, light and clock messages in the log, to confirm them */

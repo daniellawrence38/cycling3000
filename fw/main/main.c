@@ -122,6 +122,28 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
     data->point.y = y;
     data->state = down == 1 ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
     ui_app_touch(down == 1, x, y);
+#if TOUCH_LOG_TAPS
+    /* Every tap: where it went down and came up, how far it wandered, how long it lasted. With
+       the "tap:" line after it (what the UI did), that is enough to tell an offset panel from a
+       jittery one from a target that is simply too small. */
+    static int was_down;
+    static int16_t x0, y0, xl, yl;
+    static int wander;
+    static uint32_t t0;
+    if (down == 1) {
+        if (!was_down) {
+            x0 = x; y0 = y; wander = 0; t0 = hal_clock_monotonic_ms();
+        } else {
+            int d = abs(x - x0) > abs(y - y0) ? abs(x - x0) : abs(y - y0);
+            if (d > wander) wander = d;
+        }
+        xl = x; yl = y;
+    } else if (was_down) {
+        ESP_LOGW(TAG, "touch: down %d,%d up %d,%d, wandered %d px, %" PRIu32 " ms", x0, y0, xl, yl, wander,
+                 hal_clock_monotonic_ms() - t0);
+    }
+    was_down = down == 1;
+#endif
 #if TOUCH_LOG_PRESSES
     if (touch_dot) {
         if (down == 1) {
@@ -410,6 +432,15 @@ static void core_task(void *arg)
 #endif
         uint32_t wait = lv_timer_handler();
         ui_app_post_touch();
+#if TOUCH_LOG_TAPS
+        static uint32_t tap_seen;
+        uint32_t tap_now;
+        const char *tap_what = ui_app_last_tap(&tap_now);
+        if (tap_now != tap_seen) {
+            tap_seen = tap_now;
+            ESP_LOGW(TAG, "tap: %s", tap_what);
+        }
+#endif
         if (ui_app_dirty())
             ui_app_render();
         if (wait > 10)

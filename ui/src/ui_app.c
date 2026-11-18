@@ -62,6 +62,21 @@ static int ui_big_mem(void)
 ui_screen_id_t ui_app_top(void) { return U.stack[U.depth - 1]; }
 int ui_app_blank(void) { return U.blank; }
 int ui_app_dirty(void) { return U.dirty; }
+
+/* What the last released tap did, for the firmware's bring-up tap log (fw/main/main.c). Written by
+   on_click, tap_xy and the release path; a sequence number says when it changed. */
+static char tap_what[48];
+static uint32_t tap_seq;
+static void tap_note(const char *what, int a, int b)
+{
+    snprintf(tap_what, sizeof tap_what, "%s %d %d", what, a, b);
+    tap_seq++;
+}
+const char *ui_app_last_tap(uint32_t *seq)
+{
+    if (seq) *seq = tap_seq;
+    return tap_what;
+}
 ui_model_t *ui_app_model(void) { return &U.m; }
 
 int ui_app_take_input(void)
@@ -627,6 +642,7 @@ static void on_click(lv_event_t *e)
 {
     int idx = (int)(uintptr_t)lv_event_get_user_data(e);
     U.tap_pending = 0;
+    tap_note(U.touch_dragged ? "click-ignored-drag item/screen" : "click item/screen", idx, (int)ui_app_top());
     if (U.touch_dragged) return;
     U.had_input = 1;
     U.last_input_ms = U.now;
@@ -653,6 +669,7 @@ static void on_click(lv_event_t *e)
 /* Fallback coordinate dispatcher if a screen rebuild during a tap cleared LVGL's active press object. */
 static void tap_xy(int16_t x, int16_t y)
 {
+    tap_note("fallback-by-position screen/state", (int)ui_app_top(), (int)cc_view()->state);
     U.had_input = 1;
     U.last_input_ms = U.now;
     U.dirty = 1;
@@ -772,6 +789,8 @@ void ui_app_touch(int down, int16_t x, int16_t y)
             U.tap_pending = 1;
             U.tap_x = x;
             U.tap_y = y;
+        } else {
+            tap_note("release-after-drag dx/dy", (int)x - (int)U.touch_x0, (int)y - (int)U.touch_y0);
         }
     }
 }

@@ -172,10 +172,13 @@ void ui_header44(lv_obj_t *r, int y, const char *title, const lv_font_t *f, int 
         lv_obj_remove_style_all(k);
         lv_obj_set_scrollable(k, false);
         lv_obj_set_clickable(k, true);
-        lv_obj_set_pos(k, 196, y);
-        lv_obj_set_size(k, 44, 44);
+        /* 56 px wide rather than 44: on the unit the corner target was hard to hit (Daniel, 18
+           November 2026), and the title is clipped at 152 px anyway, so nothing else is here. The
+           icon stays where it was drawn. */
+        lv_obj_set_pos(k, 184, y);
+        lv_obj_set_size(k, 56, 44);
         lv_obj_set_user_data(k, (void *)KEBAB_TAG);
-        ui_icon(k, &ic_kebab_20, 12, 12, C_TEXT);
+        ui_icon(k, &ic_kebab_20, 24, 12, C_TEXT);
     }
     ui_hline(r, 0, y + 43, 240, C_DIV);
 }

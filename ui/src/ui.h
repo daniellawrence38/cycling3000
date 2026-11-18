@@ -231,6 +231,7 @@ ui_model_t *ui_app_model(void);
 void ui_app_refresh_lists(void);       /* reloads workout, route and ride lists from the store */
 void ui_app_touch(int down, int16_t x, int16_t y); /* feeds pointer state for drag scroll, swipe and tap */
 void ui_app_post_touch(void);          /* dispatches a released tap if LVGL's click event did not fire */
+const char *ui_app_last_tap(uint32_t *seq); /* what the last tap did, for a bring-up log */
 
 /* ------------------------------------------------------------------ scenarios (screenshot tool) */
 typedef struct { const char *board; const char *scenario; ui_screen_id_t id; void (*fill)(ui_model_t *m); } ui_scenario_t;
