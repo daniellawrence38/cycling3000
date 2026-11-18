@@ -11,6 +11,7 @@ typedef struct {
 } fw_pkt_t;
 
 void fw_link_start(void);             /* NimBLE init, GATT service, advertising */
+void fw_link_tick(uint32_t now_ms);   /* core task, 10 Hz: bond file, pairing window, idle link */
 int fw_link_take(fw_pkt_t *p);        /* 1 if a packet was waiting (core task) */
 int fw_link_connected(void);
 int fw_link_pairing(void);            /* the 60 s pairing window is open */
