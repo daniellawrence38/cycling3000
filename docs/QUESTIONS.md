@@ -509,7 +509,7 @@ Options: as built; or a page in the ring (button-reachable); or zone bands after
 Default used: as built, above. A stray tap (rain, glove) can open or close the graph; both are
 harmless and undone by one more tap or the left button.
 Why it matters: a new screen and new on-screen text outside the spec; Daniel reviews the screenshots
-(`ui/out/lvgl/HrGraph__*.png`) and the walk shots before it is golden.
+(`docs/hr-graph/`: the four scenarios and three walk shots) before it is golden.
 Answer: Daniel asked for the screen (18 November 2026). Review of the details pending.
 
 ## Document errors
