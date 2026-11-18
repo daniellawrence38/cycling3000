@@ -82,6 +82,12 @@ void scr_main(lv_obj_t *r, const ui_model_t *m)
     ui_fmt_hms(lap, sizeof lap, v->lap_s);
     const int *ys = MAIN_ROWS;
     main_cell(r, 0, ys[0], ys[1] - ys[0], "HEART RATE", hr, "bpm", 1, 1);
+    /* Heart-rate zone chip, as power's (QUESTIONS Q47): only once a max HR is set and there is a
+       reading, so the board without zones is unchanged */
+    if (v->hr_zone >= 1) {
+        int ch = lv_font_get_line_height(&font_b700_12) + 2;
+        ui_zone_chip(r, 112, ys[0] + 4, ch, &font_b700_12, v->hr_zone, cc_hr_zone_rgb[v->hr_zone]);
+    }
     main_cell(r, 120, ys[0], ys[1] - ys[0], "CADENCE", cad, "rpm", 0, 1);
     main_cell(r, 0, ys[1], ys[2] - ys[1], "SPEED", spd, mi ? "mph" : "km/h", 1, 1);
     main_cell(r, 120, ys[1], ys[2] - ys[1], "DISTANCE", dist, mi ? "mi" : "km", 0, 1);

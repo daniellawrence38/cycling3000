@@ -583,6 +583,52 @@ Why it matters: a new screen and new on-screen text outside the spec; Daniel rev
 (`docs/hr-graph/`: the four scenarios and three walk shots) before it is golden.
 Answer: Daniel, 18 November 2026: "all ok". The defaults stand, except point 4: he asked for coloured heart-rate zones, five of them, worked out from a max heart rate entered the way FTP is (being built; see the next entry).
 
+### Q47 · heart-rate zones (Daniel's request) · open
+Question: On 18 November 2026 Daniel asked: "the heart rate zones, could you add coloured zones and add
+an option to input max heart rate which is then used to calculate zones, same as how the ftp works but
+only 5 zones for heart rate". The spec has no max HR, no heart-rate zones and no screen to set them
+(rule 4); his request authorises them. The choices made where he did not say:
+1. **Zones.** Z1 50 to 60 %, Z2 60 to 70 %, Z3 70 to 80 %, Z4 80 to 90 %, Z5 90 to 100 % of max HR.
+   A zone starts at its exact percentage, in integers: Z2 starts at the smallest bpm with
+   100 × bpm ≥ 60 × max, which is `(max × 60 + 99) // 100` (`cc_hr_zone_floor`, `cc_floordiv`). So at
+   185: Z2 from 111, Z3 from 130, Z4 from 148, Z5 from 167. Below 50 % is still Z1 and above max is Z5
+   (power's Z1 and Z7 are open-ended too); there is no "Z0". No reading means no zone.
+2. **Max HR.** 100 to 230 bpm, or off. **Off is the default**, so a unit that has never been told shows
+   no zones rather than zones from a guessed max (220 − age would be wrong for many riders, and the
+   unit does not know the age). From off, the first step starts at 180 (a −5 gives 175, a +5 185); a
+   step down from 100 turns the zones off again. Changeable only when stopped, like FTP.
+3. **Storage.** Not in the settings record: brief 5.9 fixes that record (magic `CS`, version 2, 39
+   bytes), and changing it would make older firmware (any bring-up build flashed back) refuse the
+   whole file and fall back to FTP 200 and ride counter 0. Max HR has its own two-slot record,
+   `config/profile.a|b`: magic `CP`, version 1, seq, max_hr u16, CRC-32 (13 bytes), saved by the
+   same rules (never renamed, fsynced, a power cut at any byte keeps the previous value). A unit
+   without the file loads with max HR off; the settings files are not touched. Out of range with a
+   good CRC loads as off. A longer version-1 record is accepted, so later profile values can follow.
+4. **Profile screen.** Board 12 has no room for a second value with its four steppers. Menu, Profile
+   now opens a short list in the Sensors layout ("ProfileMenu"): FTP and Max heart rate rows, and the
+   five zones with their bpm ranges below once max HR is set. FTP opens board 12 unchanged; Max heart
+   rate opens the same layout for bpm ("MaxHr"): the value large, −5 −1 +1 +5, CHANGED chip and the
+   "was" line, SAVE applies, BACK discards. Off shows "--" with "off" (the large digits have no
+   letters). FTP editing is one step deeper than the mockup (Menu, Profile, FTP).
+5. **Colours.** Grey, blue, green, yellow, red: power's Z1 to Z4 and Z6 colours, so a colour means about
+   the same effort on both. Main: a zone chip (as power's) on the HEART RATE field, only once max HR is
+   set and there is a reading, so Main without zones is the mockup. Heart-rate graph: the bpm value in
+   its zone colour with a zone chip, and faint zone bands behind the grid and line (each band one
+   opaque rectangle, the colour mixed 22 % into the background, so nothing is alpha-blended at 1 Hz).
+6. **A touch fix on FTP too.** A tap on the footer's SAVE ran the focused stepper instead (after a tap on
+   −5, SAVE stepped −5 again). On FTP and Max heart rate, a footer tap on SAVE / DONE now saves. The
+   right button still activates the focused item (the focus model). Spec 12's "holding a stepper
+   repeats" is not built for FTP and is not built here either.
+7. **Not done, follow-ups.** The phone link has FTP_GET / FTP_SET but no max HR message, so max HR is set
+   on the unit only and the app does not see it (needs a protocol addition). The FIT file records no FTP
+   or zones today, so max HR is not written to it either (a `user_profile` / `zones_target` message
+   would be the place).
+Options: as built; zones from threshold HR or heart-rate reserve instead; a different default.
+Default used: as built, above.
+Why it matters: new settings, a new screen and new text outside the spec; Daniel reviews the
+screenshots in `docs/hr-zones/`.
+Answer:
+
 ## Document errors
 
 ### E5 · brief 5.6 (finish sequence)

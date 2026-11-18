@@ -213,7 +213,8 @@ void scr_menu(lv_obj_t *r, const ui_model_t *m)
     ui_header36(r, 22, "Menu", "");
     snprintf(a, sizeof a, "%d of %d", m->n_workouts, CC_MAX_WORKOUTS);
     snprintf(b, sizeof b, "%d saved", m->n_routes);
-    snprintf(c, sizeof c, "FTP %u W", m->v.ftp);
+    if (m->v.max_hr) snprintf(c, sizeof c, "FTP %u \xC2\xB7 HR %u", m->v.ftp, m->v.max_hr);
+    else snprintf(c, sizeof c, "FTP %u W", m->v.ftp);
     snprintf(d, sizeof d, "%d ride%s", m->rides_total, m->rides_total == 1 ? "" : "s");
     const char *sens = m->pm_paired && m->hr_paired ? "Power \xC2\xB7 HR" : m->pm_paired ? "Power" : m->hr_paired ? "HR" : "None";
     const char *names[7] = {"Workouts", "Routes", "Sensors", "Profile", "History", "Phone", "Settings"};
@@ -366,6 +367,82 @@ void scr_profile(lv_obj_t *r, const ui_model_t *m)
     }
     ui_text(r, 8, 238, 224, 16, &font_b500_12, C_MUTED, LV_TEXT_ALIGN_LEFT, 0,
             "Workouts and zones on this unit use this value. The phone app can set it too.");
+    ui_footer(r, "BACK", FOOT_BACK, changed ? "SAVE" : "DONE", FOOT_PLAIN);
+}
+
+/* ------------------------------------------------------------------ Profile menu (not a board, Q47)
+ * Menu, Profile opens this list: FTP (the board 12 editor) and Max heart rate (the same editor for
+ * bpm), with the five heart-rate zones below, as the Sensors list is laid out. */
+void scr_profile_menu(lv_obj_t *r, const ui_model_t *m)
+{
+    char t[64];
+    int mx = m->v.max_hr;
+    ui_status(r, m);
+    ui_header36(r, 22, "Profile", "");
+    snprintf(t, sizeof t, "%u W \xC2\xB7 workouts and power zones", m->v.ftp);
+    ui_chev(ui_row46(r, LIST_Y, "FTP", t, m->focus == 0, C_TEXT));
+    if (mx) snprintf(t, sizeof t, "%d bpm \xC2\xB7 heart-rate zones", mx);
+    else snprintf(t, sizeof t, "Off \xC2\xB7 set it to show zones");
+    ui_chev(ui_row46(r, LIST_Y + 46, "Max heart rate", t, m->focus == 1, C_TEXT));
+    int y = LIST_Y + 92 + 10;
+    ui_caps(r, 8, y, 0, LV_TEXT_ALIGN_LEFT, "HEART-RATE ZONES");
+    if (!mx) {
+        ui_text(r, 8, y + 20, 224, 16, &font_b500_12, C_MUTED, LV_TEXT_ALIGN_LEFT, 0,
+                "Set a max heart rate to see five zones. They colour HEART RATE on Main and the heart-rate graph.");
+    } else {
+        ui_caps(r, 232, y, 0, LV_TEXT_ALIGN_RIGHT, "OF MAX");
+        static const char *pct[CC_HR_ZONES] = {"below 60 %", "60\xE2\x80\x93" "70 %", "70\xE2\x80\x93" "80 %",
+                                               "80\xE2\x80\x93" "90 %", "90 % and up"};
+        for (int z = 1; z <= CC_HR_ZONES; z++) {
+            int ry = y + 18 + (z - 1) * 21;
+            ui_zone_chip(r, 40, ry + 1, 18, &font_b700_12, z, cc_hr_zone_rgb[z]);
+            int lo = cc_hr_zone_floor(mx, z), hi = z < CC_HR_ZONES ? cc_hr_zone_floor(mx, z + 1) - 1 : 0;
+            if (z == 1) snprintf(t, sizeof t, "up to %d bpm", hi);
+            else if (z == CC_HR_ZONES) snprintf(t, sizeof t, "%d bpm and up", lo);
+            else snprintf(t, sizeof t, "%d\xE2\x80\x93%d bpm", lo, hi);
+            ui_text(r, 50, ry, 0, 20, &font_b600_14, C_TEXT, LV_TEXT_ALIGN_LEFT, 0, t);
+            ui_text(r, 232, ry, 0, 20, &font_b500_13, C_MUTED, LV_TEXT_ALIGN_RIGHT, 0, pct[z - 1]);
+        }
+    }
+    ui_footer(r, "BACK", FOOT_BACK, "OPEN", FOOT_PLAIN);
+}
+
+/* ------------------------------------------------------------------ Max heart rate (not a board, Q47)
+ * Laid out as board 12 (Profile, FTP): the value large, four steppers, SAVE applies, BACK discards.
+ * "--" with "off" is not set: the large digits have no letters (fonts/gen_fonts.py LARGE_SET). */
+void scr_max_hr(lv_obj_t *r, const ui_model_t *m)
+{
+    char t[64];
+    int cur = m->v.max_hr, ed = m->maxhr_edit;
+    int changed = ed != cur;
+    ui_status(r, m);
+    ui_header44(r, 22, "Profile", &font_b700_18, 0);
+    ui_caps(r, 8, 75, 0, LV_TEXT_ALIGN_LEFT, "MAX HEART RATE");
+    ui_chip(r, 232, 74, 16, &font_b700_10, changed ? CHIP_PENDING : CHIP_OUTLINE, NULL, changed ? "CHANGED" : "CURRENT");
+    if (ed) snprintf(t, sizeof t, "%d", ed);
+    else snprintf(t, sizeof t, "--");
+    const char *unit = ed ? "bpm" : "off";
+    int nw = ui_text_w(&font_c700_64, 0, t), uw = ui_text_w(&font_b600_20, 0, unit);
+    int x0 = 120 - (nw + 6 + uw) / 2;
+    ui_text(r, x0, 90, 0, 64, &font_c700_64, ed ? C_TEXT : C_MUTED, LV_TEXT_ALIGN_LEFT, 0, t);
+    ui_text_base(r, x0 + nw + 6, ui_last_baseline, &font_b600_20, C_MUTED, LV_TEXT_ALIGN_LEFT, 0, unit);
+    if (!changed) snprintf(t, sizeof t, ed ? "No change" : "Zones off");
+    else if (!cur) snprintf(t, sizeof t, "was off \xC2\xB7 zones on");
+    else if (!ed) snprintf(t, sizeof t, "was %d bpm \xC2\xB7 zones off", cur);
+    else snprintf(t, sizeof t, "was %d bpm \xC2\xB7 %s%d bpm", cur, ed > cur ? "+" : "\xE2\x88\x92", ed > cur ? ed - cur : cur - ed);
+    ui_text(r, 0, 154, 240, 14, &font_b500_12, C_MUTED, LV_TEXT_ALIGN_CENTER, 0, t);
+    static const char *st[] = {"\xE2\x88\x92" "5", "\xE2\x88\x92" "1", "+1", "+5"};
+    for (int i = 0; i < 4; i++) {
+        lv_obj_t *b2 = ui_hit(r, 8 + i * 58, 178, 50, 48);
+        lv_obj_set_style_bg_color(b2, lv_color_hex(C_PANEL), 0);
+        lv_obj_set_style_bg_opa(b2, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(b2, 10, 0);
+        lv_obj_set_style_border_width(b2, 1, 0);
+        lv_obj_set_style_border_color(b2, lv_color_hex(m->focus == i ? C_TEXT : C_BORDER), 0);
+        ui_text(b2, -1, -1, 50, 48, &font_c700_24, C_TEXT, LV_TEXT_ALIGN_CENTER, 0, st[i]);
+    }
+    ui_text(r, 8, 238, 224, 16, &font_b500_12, C_MUTED, LV_TEXT_ALIGN_LEFT, 0,
+            "Five heart-rate zones, 50 to 100 % of this. Step below 100 bpm to turn them off.");
     ui_footer(r, "BACK", FOOT_BACK, changed ? "SAVE" : "DONE", FOOT_PLAIN);
 }
 

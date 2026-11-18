@@ -311,6 +311,22 @@ static void f_hrg_lost(ui_model_t *m)
     hrg_fill(m, CC_HRHIST_N, CC_HRHIST_N - 30, CC_HRHIST_N, 0, 0);
     m->v.hr_state = CC_SENS_LOST;
 }
+/* Heart-rate zones (QUESTIONS Q47): max HR 185, so Z2 from 111, Z3 from 130, Z4 from 148, Z5 from 167 */
+static void hr_zones_on(ui_model_t *m)
+{
+    m->v.max_hr = 185;
+    m->v.hr_zone = m->v.hr_ok ? cc_zone_of_hr(m->v.hr, m->v.max_hr) : 0;
+}
+static void f_hrg_zones(ui_model_t *m) { f_hrg_data(m); hr_zones_on(m); }
+static void f_hrg_zones_gaps(ui_model_t *m) { f_hrg_gaps(m); hr_zones_on(m); }
+static void f_main_hrz(ui_model_t *m) { ui_model_demo(m); hr_zones_on(m); } /* 152 bpm: Z4 */
+static void f_pmenu_set(ui_model_t *m) { f_list(m); m->v.max_hr = 185; }
+static void f_pmenu_off(ui_model_t *m) { f_list(m); m->v.max_hr = 0; m->focus = 1; }
+static void f_maxhr_same(ui_model_t *m) { f_list(m); m->v.max_hr = 185; m->maxhr_edit = 185; }
+static void f_maxhr_ch(ui_model_t *m) { f_list(m); m->v.max_hr = 185; m->maxhr_edit = 190; m->focus = 3; }
+static void f_maxhr_off(ui_model_t *m) { f_list(m); m->v.max_hr = 0; m->maxhr_edit = 0; }
+static void f_maxhr_to_off(ui_model_t *m) { f_list(m); m->v.max_hr = 185; m->maxhr_edit = 0; m->focus = 1; }
+
 /* No strap paired: nothing recorded */
 static void f_hrg_empty(ui_model_t *m)
 {
@@ -376,5 +392,15 @@ const ui_scenario_t ui_scenarios[] = {
     {"HrGraph", "gaps", SCR_HR_GRAPH, f_hrg_gaps},
     {"HrGraph", "lost", SCR_HR_GRAPH, f_hrg_lost},
     {"HrGraph", "empty", SCR_HR_GRAPH, f_hrg_empty},
+    /* heart-rate zones (QUESTIONS Q47); not mockup boards */
+    {"HrGraph", "zones", SCR_HR_GRAPH, f_hrg_zones},
+    {"HrGraph", "zonesgaps", SCR_HR_GRAPH, f_hrg_zones_gaps},
+    {"Main", "hrzones", SCR_MAIN, f_main_hrz},
+    {"ProfileMenu", "set", SCR_PROFILE_MENU, f_pmenu_set},
+    {"ProfileMenu", "off", SCR_PROFILE_MENU, f_pmenu_off},
+    {"MaxHr", "unchanged", SCR_MAX_HR, f_maxhr_same},
+    {"MaxHr", "changed", SCR_MAX_HR, f_maxhr_ch},
+    {"MaxHr", "off", SCR_MAX_HR, f_maxhr_off},
+    {"MaxHr", "turnoff", SCR_MAX_HR, f_maxhr_to_off},
 };
 const int ui_n_scenarios = (int)(sizeof ui_scenarios / sizeof ui_scenarios[0]);
