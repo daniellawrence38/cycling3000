@@ -539,6 +539,50 @@ Defaults used:
    only serve a stray central. Raise it if a log ever shows a connection refused for want of a slot.
 Answer:
 
+### Q43 · heart-rate graph (new screen, Daniel's request) · open
+Question: On 18 November 2026 Daniel asked: "could you also add a screen when in a ride that i can tap
+and i will get a time series plot of the heart rate over the last 5 minutes". The spec has no such
+screen (START-HERE rule 4: no new screen not in the mockups; spec 4: touch has no job while riding).
+His request authorises it. What it does, and the choices made where he did not say:
+1. **Data.** The core keeps 300 one-second entries (`cc_hrhist_t`, `core/include/cc700/hrhist.h`), each
+   a reading or "no reading", in `cc_view_t.hr_hist`. An entry is the same one-second value the FIT
+   record and the HEART RATE field use, so the graph never disagrees with the file: an empty second
+   repeats the last bin only if the last sample is under 2 s old (V§6.4, as today), otherwise it is a
+   gap. 0 bpm is stored as no reading (a strap sends 0 without skin contact; it would wreck the scale).
+   Readings above 254 are clamped, as in FIT.
+2. **When it records.** While recording and while paused (including the pause menu and Confirm), in
+   wall seconds, so the x axis is real time and a stop shows the recovery. Not before START, not after
+   Finish. Reset at START.
+3. **Opening and closing.** While recording, a tap on Main's HEART RATE field (120 × 53 px) opens it.
+   A tap anywhere on it, or the left button (short or held), closes it back to Main; left does not
+   also change the page. Right keeps its ride meaning (short lap, hold 1 s pause). Banners and the
+   hold bar show over the graph as over any ride page. A pause (by hand or auto) shows Paused as
+   always and closes the graph, so the resume returns to Main. The Paused screen has no heart-rate
+   field, so the graph is not opened from there. With no strap paired the tap still opens it, with an
+   empty state.
+4. **Layout** (240 × 320, ride-page style): status bar; header "Heart rate" / "LAST 5 MIN"; the
+   current bpm at 56 px (the field's value, "--" when invalid) with a NO STRAP or SEARCHING chip when
+   the strap is not delivering; MIN / AVG / MAX of the window (half-up mean, "--" with no readings);
+   the plot, x from −5:00 to NOW with a −2:30 mark, y on whole tens with the readings strictly inside,
+   at least 40 bpm tall, grid every 10, 20, 40 or 50 bpm (`cc_hrhist_axis`); footer BACK. The line is
+   white, 2 px, broken at every gap; a lone reading between gaps is a dot; the newest reading has the
+   climb profile's ringed marker. Early in a ride the line starts part-way across. Empty state: "No
+   heart rate", with "No strap is paired. Pair one in Menu, Sensors, when stopped." (no strap) or
+   "Put the strap on to wake it. The graph fills as readings arrive." (searching or lost).
+5. **No zone bands.** There are no heart-rate zones in the profile or settings (only power zones from
+   FTP), so none are drawn. Adding them needs a max HR or threshold HR setting first.
+6. **Not reachable without touch.** Spec 4 says every action can be reached with the buttons alone.
+   The graph is the one exception: making it a page in the ring means changing the core's page ring
+   (spec 5, decided provisional) and the page dots. Left as a follow-up if Daniel wants it.
+7. **Cost.** The screen is rebuilt once a second like every ride page; the plot is one object with a
+   draw callback over a static 300-entry table (no allocation per frame). Not measured on the unit.
+Options: as built; or a page in the ring (button-reachable); or zone bands after an HR-zone setting.
+Default used: as built, above. A stray tap (rain, glove) can open or close the graph; both are
+harmless and undone by one more tap or the left button.
+Why it matters: a new screen and new on-screen text outside the spec; Daniel reviews the screenshots
+(`docs/hr-graph/`: the four scenarios and three walk shots) before it is golden.
+Answer: Daniel asked for the screen (18 November 2026). Review of the details pending.
+
 ## Document errors
 
 ### E5 · brief 5.6 (finish sequence)

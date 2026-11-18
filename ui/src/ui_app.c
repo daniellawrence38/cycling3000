@@ -39,6 +39,7 @@ typedef struct {
     int tap_pending;
     int16_t touch_x0, touch_y0, touch_last_y;
     int16_t tap_x, tap_y;
+    int hr_graph;         /* the heart-rate graph is open over the ride pages (recording only) */
     lv_obj_t *scr;
     lv_group_t *grp;
 } ui_app_t;
@@ -285,6 +286,7 @@ ui_screen_id_t ui_app_visible(void)
     const cc_view_t *v = &U.m.v;
     switch (v->state) {
     case CC_RS_RECORDING: {
+        if (U.hr_graph) return SCR_HR_GRAPH;
         if (U.m.page >= v->ring_n) U.m.page = 0;
         cc_page_t p = v->ring[U.m.page];
         if (p == CC_PAGE_WORKOUT) return SCR_WORKOUT;
@@ -340,7 +342,8 @@ void ui_app_render(void)
         lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
     } else {
         ui_build(id, scr, &U.m);
-        int ride_page = id == SCR_MAIN || id == SCR_WORKOUT || id == SCR_CLIMB || id == SCR_NAV || id == SCR_EMPTY;
+        int ride_page = id == SCR_MAIN || id == SCR_WORKOUT || id == SCR_CLIMB || id == SCR_NAV || id == SCR_EMPTY ||
+                        id == SCR_HR_GRAPH; /* banners and the hold bar show over the graph too */
         if (ride_page && U.m.v.state == CC_RS_RECORDING) ui_overlays(scr, &U.m);
         /* Footer touch targets (BACK / MENU on the left, OPEN / CHANGE / LOAD / DONE / ... on the right).
          * Placed on scr in ui_app_render rather than ui_footer so ui_focus_group indices and layout lint
@@ -592,7 +595,11 @@ static void gestures(void)
         U.dirty = 1;
         const cc_view_t *v = cc_view();
         if (v->state == CC_RS_RECORDING) {
-            if (g.btn == CC_BTN_L) {
+            if (g.btn == CC_BTN_L && U.hr_graph) {
+                /* Left closes the graph, short or held, back to the page it was opened from; it does
+                   not also change the page. Right keeps its ride meaning (the core: lap, hold pause). */
+                U.hr_graph = 0;
+            } else if (g.btn == CC_BTN_L) {
                 int n = v->ring_n ? v->ring_n : 1;
                 U.m.page = g.hold ? (U.m.page + n - 1) % n : (U.m.page + 1) % n;
             }
@@ -680,7 +687,14 @@ static void tap_xy(int16_t x, int16_t y)
     U.dirty = 1;
     if (U.blank) { U.blank = 0; return; }
     const cc_view_t *v = cc_view();
-    if (v->state == CC_RS_RECORDING) return;
+    if (v->state == CC_RS_RECORDING) {
+        /* Touch while riding has one job besides none (spec 4, extended at Daniel's request): a tap on
+           the HEART RATE field of Main opens the heart-rate graph, and a tap anywhere on the graph
+           closes it. Swipes still do nothing (ui_app_touch). */
+        if (U.hr_graph) U.hr_graph = 0;
+        else if (ui_app_visible() == SCR_MAIN && ui_hr_field_hit(x, y)) U.hr_graph = 1;
+        return;
+    }
     if (y >= 282) {
         if (x < 108) foot_press(CC_BTN_L);
         else if (x >= 132) foot_press(CC_BTN_R);
@@ -840,6 +854,9 @@ void ui_app_step(uint32_t now_ms)
     if (v->state != U.last_state) {
         if (v->state == CC_RS_READY && U.last_state != 0xFF) { reset_to(SCR_READY); ui_app_refresh_lists(); }
         if (v->state == CC_RS_RECORDING && U.last_state == CC_RS_READY) U.m.page = 0;
+        /* A pause (by hand or auto-pause) shows Paused as always and closes the graph, so a resume
+           returns to the ride page it was opened from. */
+        if (v->state != CC_RS_RECORDING) U.hr_graph = 0;
         U.last_state = v->state;
         U.last_input_ms = now_ms;
         U.dirty = 1;

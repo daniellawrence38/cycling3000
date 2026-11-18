@@ -46,6 +46,12 @@ static void main_cell(lv_obj_t *r, int x, int y, int h, const char *lbl, const c
     (void)n;
 }
 
+/* Main's 2 x 3 grid rows (scr_main) and the HEART RATE cell's touch area: the left cell of the
+   first row, 120 x 53 px (spec 12: touch targets at least 44 px). */
+static const int MAIN_ROWS[4] = {140, 193, 247, 300};
+
+int ui_hr_field_hit(int x, int y) { return x >= 0 && x < 120 && y >= MAIN_ROWS[0] && y < MAIN_ROWS[1]; }
+
 void scr_main(lv_obj_t *r, const ui_model_t *m)
 {
     const cc_view_t *v = &m->v;
@@ -74,7 +80,7 @@ void scr_main(lv_obj_t *r, const ui_model_t *m)
     ui_fmt_dist(dist, sizeof dist, v->dist_m, mi);
     ui_fmt_hms(el, sizeof el, v->timer_s);
     ui_fmt_hms(lap, sizeof lap, v->lap_s);
-    int ys[4] = {140, 193, 247, 300};
+    const int *ys = MAIN_ROWS;
     main_cell(r, 0, ys[0], ys[1] - ys[0], "HEART RATE", hr, "bpm", 1, 1);
     main_cell(r, 120, ys[0], ys[1] - ys[0], "CADENCE", cad, "rpm", 0, 1);
     main_cell(r, 0, ys[1], ys[2] - ys[1], "SPEED", spd, mi ? "mph" : "km/h", 1, 1);

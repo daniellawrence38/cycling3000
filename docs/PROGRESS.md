@@ -1012,3 +1012,41 @@ The next device test covers all four, using the log lines listed in the handshak
 - Transmit anything to the nRF outside the Q38 table. `$PAIR` and nRF firmware upgrades are not
   approved.
 - Anything that writes outside `/sdcard/CC700`, or formats the volume.
+
+## Heart-rate graph screen (Daniel's request) · 18 November 2026
+
+Daniel asked for "a screen when in a ride that i can tap and i will get a time series plot of the
+heart rate over the last 5 minutes". It is not in the spec or the mockups. The details and the choices
+made are in QUESTIONS Q43.
+
+- **Core.** `core/include/cc700/hrhist.h` and `core/src/hrhist.c` hold a 300-entry ring of one-second
+  heart rates, where each entry is a reading or "no reading". It lives in `cc_view_t.hr_hist`. Each
+  entry is the same one-second value that the FIT record and the HEART RATE field use. It is recorded
+  while recording and while paused, and reset at START. `cc_hrhist_axis` gives the y axis: whole tens,
+  at least 40 bpm tall, with a grid every 10, 20, 40 or 50 bpm.
+- **UI.** The new screen is `SCR_HR_GRAPH` ("HrGraph", `ui/src/screens_hrgraph.c`). It shows the
+  current bpm, MIN / AVG / MAX for the window, and the plot from −5:00 to NOW. Gaps break the line,
+  and there is an empty state for no strap or no readings. Banners and the hold bar show over it.
+  - **Opening and closing.** While recording, a tap on Main's HEART RATE field opens it. A tap
+    anywhere on the graph, or the left button (short or held), closes it back to Main.
+  - **Right button and pause.** Right is still lap, and holding it still pauses. A pause closes the
+    graph.
+  - **Not done.** There are no HR zone bands, because no HR zones exist. The graph cannot be reached
+    with the buttons alone, which is left as a follow-up in Q43.
+- **Scenarios.** HrGraph:data, :gaps, :lost and :empty. `make shots` now renders 52 scenarios. The
+  ride walk adds 10 checks and 3 shots (tap to open, a tap on CADENCE does nothing, lap, left short and
+  held, tap to close, the hold bar, and the pause closing it). The PNGs for Daniel's review are in
+  `docs/hr-graph/`.
+
+Verified on the host:
+- the host tests pass 22/22, including ui_lint (52 scenarios, 0 problems) and ui_walk (0 failures);
+- the ASan tests pass 20/20, including the new `test_hrhist` (wrap-around, gaps, clamping, statistics,
+  the axis, and in-core recording while paused, not before START, and reset at the next START);
+- the Python tests pass 26/26;
+- `make fw-build` has no warnings (`app.bin` 1,383,344 bytes, 16 %).
+
+Not verified on the unit:
+- the touch hit on the HEART RATE field;
+- the redraw cost of the plot on the ESP32-S3.
+
+Nothing was flashed.

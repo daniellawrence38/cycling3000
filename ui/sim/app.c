@@ -113,6 +113,15 @@ static void press(cc_btn_t b, uint32_t ms)
     step();
 }
 
+/* A tap (down and up at one point), then one step */
+static void tap(int16_t x, int16_t y)
+{
+    ui_app_touch(1, x, y);
+    ui_app_touch(0, x, y);
+    ui_app_post_touch();
+    step();
+}
+
 static fx_t fx;
 static int fx_row;
 static uint32_t fx_base;
@@ -314,6 +323,57 @@ int app_walk(const char *dir, int perf)
     ride_for(1);
     expect(m->page == page_before && cc_view()->state == CC_RS_RECORDING,
            "a swipe while recording does not change the page");
+
+    /* The heart-rate graph (Daniel's request of 18 November 2026, QUESTIONS): a tap on HEART RATE
+     * on Main opens it; left (short or held) or a tap anywhere closes it back to Main without
+     * changing the page; right keeps its ride meaning; a pause closes it. */
+    press(CC_BTN_L, 100);
+    ride_for(1);
+    expect(ui_app_visible() == SCR_MAIN && m->page == 0, "back on Main for the heart-rate graph");
+    tap(200, 165);
+    ride_for(1);
+    expect(ui_app_visible() == SCR_MAIN, "a tap on CADENCE does nothing");
+    tap(60, 165);
+    expect(ui_app_visible() == SCR_HR_GRAPH, "a tap on HEART RATE opens the heart-rate graph");
+    ride_for(2);
+    {
+        const cc_hrhist_t *h = &cc_view()->hr_hist;
+        expect(h->n >= 90 && cc_view()->hr_ok && cc_hrhist_at(h, 0) == (int)cc_view()->hr,
+               "the graph holds the ride's seconds and ends at the HEART RATE value");
+    }
+    shot("hr_graph");
+    press(CC_BTN_R, 100);
+    run_ms(200);
+    /* lap_s restarts at a lap (the LAP banner may queue behind a workout banner, so it is not the check) */
+    expect(ui_app_visible() == SCR_HR_GRAPH && cc_view()->lap_s <= 1,
+           "right on the graph is still a lap, and the graph stays open");
+    shot("hr_graph_lap");
+    press(CC_BTN_L, 100);
+    expect(ui_app_visible() == SCR_MAIN && m->page == 0, "left closes the graph to Main, not the next page");
+    tap(60, 165);
+    ride_for(1);
+    tap(120, 220);
+    expect(ui_app_visible() == SCR_MAIN, "a tap anywhere on the graph closes it");
+    tap(60, 165);
+    cc_on_button(sim_now, CC_BTN_L, 1);
+    run_ms(1100);
+    cc_on_button(sim_now, CC_BTN_L, 0);
+    step();
+    expect(ui_app_visible() == SCR_MAIN && m->page == 0, "hold left closes the graph to Main, not the previous page");
+    tap(60, 165);
+    cc_on_button(sim_now, CC_BTN_R, 1);
+    run_ms(600);
+    expect(ui_app_visible() == SCR_HR_GRAPH && cc_view()->hold.active, "the hold bar shows over the graph");
+    shot("hr_graph_hold");
+    run_ms(500);
+    cc_on_button(sim_now, CC_BTN_R, 0);
+    step();
+    expect(cc_view()->state == CC_RS_PAUSED && ui_app_visible() == SCR_PAUSED, "hold right on the graph pauses");
+    run_ms(2000);
+    press(CC_BTN_R, 100);
+    ride_for(1);
+    expect(cc_view()->state == CC_RS_RECORDING && ui_app_visible() == SCR_MAIN,
+           "after the resume the graph is closed and Main shows");
 
     /* Manual pause, the pause menu moved with the power key only, Finish and save */
     cc_on_button(sim_now, CC_BTN_R, 1);

@@ -9,6 +9,7 @@
 #include "cc700/alerts.h"
 #include "cc700/altitude.h"
 #include "cc700/fit.h"
+#include "cc700/hrhist.h"
 #include "cc700/link.h"
 #include "cc700/nav.h"
 #include "cc700/sensors.h"
@@ -99,6 +100,9 @@ typedef struct {
     int ride_count;
     uint32_t saved_seq;               /* increments each time a ride is saved (EVENT_RIDE_SAVED) */
     uint32_t saved_ride_id;
+    /* Heart rate over the last 5 min of this ride, one entry a second while recording or paused,
+       reset at START (hrhist.h). The heart-rate graph draws it; read it with cc_hrhist_at. */
+    cc_hrhist_t hr_hist;
 } cc_view_t;
 
 int cc_init(hal_fs_t *fs, uint32_t now_ms);
