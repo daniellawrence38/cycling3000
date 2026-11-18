@@ -89,7 +89,7 @@ static int load_slots(hal_fs_t *fs, const char *a, const char *b, decode_fn dec,
                       cc_slots_t *slots)
 {
     uint8_t buf[SLOT_MAX];
-    union { cc_settings_t s; cc_bonds_t b; } tmp[2];
+    union { cc_settings_t s; cc_bonds_t b; cc_profile_t p; } tmp[2];
     uint32_t seq[2];
     int ok[2];
     const char *paths[2] = {a, b};
@@ -145,6 +145,65 @@ int cc_settings_save(hal_fs_t *fs, const cc_settings_t *s, cc_slots_t *slots)
     uint32_t seq = slots->newest >= 0 ? slots->seq + 1 : 1;
     cc_settings_encode(s, seq, rec);
     return save_slots(fs, CC_SETTINGS_A, CC_SETTINGS_B, rec, SET_LEN, slots, seq);
+}
+
+/* ---------------------------------------------------------------- rider profile */
+int cc_max_hr_valid(int32_t v)
+{
+    return v == CC_MAXHR_OFF || (v >= CC_MAXHR_MIN_BPM && v <= CC_MAXHR_MAX_BPM);
+}
+
+void cc_profile_defaults(cc_profile_t *p)
+{
+    memset(p, 0, sizeof *p);
+    p->max_hr = CC_MAXHR_DEFAULT_BPM;
+}
+
+size_t cc_profile_encode(const cc_profile_t *p, uint32_t seq, uint8_t *b)
+{
+    b[0] = 'C'; b[1] = 'P'; b[2] = 1;
+    cc_put_u32(b + 3, seq);
+    cc_put_u16(b + 7, p->max_hr);
+    cc_put_u32(b + 9, cc_crc32(b, 9));
+    return CC_PROFILE_LEN;
+}
+
+int cc_profile_decode(const uint8_t *b, size_t len, cc_profile_t *p, uint32_t *seq)
+{
+    if (len < CC_PROFILE_LEN || b[0] != 'C' || b[1] != 'P' || b[2] != 1)
+        return 0;
+    if (cc_get_u32(b + 9) != cc_crc32(b, 9))
+        return 0;
+    *seq = cc_get_u32(b + 3);
+    cc_profile_defaults(p);
+    p->max_hr = cc_get_u16(b + 7);
+    /* Out of range falls back to "not set" rather than refusing the record, as settings do */
+    if (!cc_max_hr_valid(p->max_hr)) p->max_hr = CC_MAXHR_DEFAULT_BPM;
+    return 1;
+}
+
+static int dec_profile(const uint8_t *b, size_t len, void *out, uint32_t *seq)
+{
+    return cc_profile_decode(b, len, out, seq);
+}
+
+int cc_profile_load(hal_fs_t *fs, cc_profile_t *p, cc_slots_t *slots)
+{
+    cc_profile_t tmp;
+    if (load_slots(fs, CC_PROFILE_A, CC_PROFILE_B, dec_profile, &tmp, sizeof tmp, slots)) {
+        *p = tmp;
+        return 1;
+    }
+    cc_profile_defaults(p);
+    return 0;
+}
+
+int cc_profile_save(hal_fs_t *fs, const cc_profile_t *p, cc_slots_t *slots)
+{
+    uint8_t rec[CC_PROFILE_LEN];
+    uint32_t seq = slots->newest >= 0 ? slots->seq + 1 : 1;
+    cc_profile_encode(p, seq, rec);
+    return save_slots(fs, CC_PROFILE_A, CC_PROFILE_B, rec, CC_PROFILE_LEN, slots, seq);
 }
 
 /* ---------------------------------------------------------------- bonds */

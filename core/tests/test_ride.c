@@ -465,6 +465,43 @@ static void test_ftp_only_when_stopped(void)
     TEST_ASSERT_EQUAL_UINT16(260, V()->ftp);
 }
 
+/* Max HR (QUESTIONS Q47): set like FTP, only when stopped, survives a restart, and gives the view's
+   heart-rate zone. */
+static void test_max_hr_and_hr_zone(void)
+{
+    TEST_ASSERT_EQUAL_UINT16(CC_MAXHR_OFF, V()->max_hr); /* a new unit: not set */
+    cc_on_sensor_state(2, CC_SENS_OK);
+    cc_on_hr_sample(now, 150);
+    tick_to(now + 1000);
+    TEST_ASSERT_TRUE(V()->hr_ok);
+    TEST_ASSERT_EQUAL_INT(0, V()->hr_zone); /* no zones until max HR is set */
+    TEST_ASSERT_EQUAL_INT(0, cc_cmd_set_max_hr(185));
+    cc_on_hr_sample(now, 150);
+    tick_to(now + 1000);
+    TEST_ASSERT_EQUAL_UINT16(185, V()->max_hr);
+    TEST_ASSERT_EQUAL_INT(4, V()->hr_zone); /* 150 >= 148 */
+    TEST_ASSERT_EQUAL_INT(-2, cc_cmd_set_max_hr(99));
+    TEST_ASSERT_EQUAL_INT(-2, cc_cmd_set_max_hr(231));
+    apply(EV_START);
+    TEST_ASSERT_EQUAL_INT(-1, cc_cmd_set_max_hr(190));
+    cc_on_hr_sample(now, 170);
+    tick_to(now + 1000);
+    TEST_ASSERT_EQUAL_UINT16(185, V()->max_hr);
+    TEST_ASSERT_EQUAL_INT(5, V()->hr_zone);
+    /* the strap goes quiet: no reading, no zone */
+    tick_to(now + 6000);
+    TEST_ASSERT_FALSE(V()->hr_ok);
+    TEST_ASSERT_EQUAL_INT(0, V()->hr_zone);
+    /* survives a restart, and Off is a value it can be set back to */
+    cc_init(fs, now);
+    TEST_ASSERT_EQUAL_UINT16(185, V()->max_hr);
+    TEST_ASSERT_EQUAL_INT(0, cc_cmd_set_max_hr(CC_MAXHR_OFF));
+    cc_init(fs, now);
+    TEST_ASSERT_EQUAL_UINT16(CC_MAXHR_OFF, V()->max_hr);
+    /* it lives in the profile record, not in the settings record */
+    TEST_ASSERT_TRUE(memfs_exists(fs, CC_PROFILE_A) || memfs_exists(fs, CC_PROFILE_B));
+}
+
 /* A power-off the host could not carry out is cancelled, and the next hold is a new request. Without
  * this the request stays set for ever: the firmware either resends the frame every tick or ignores
  * the rider's second attempt until a reboot (fw/main/main.c). */
@@ -493,6 +530,7 @@ int main(void)
     RUN_TEST(test_files_after_finish_discard);
     RUN_TEST(test_hold_bar);
     RUN_TEST(test_ftp_only_when_stopped);
+    RUN_TEST(test_max_hr_and_hr_zone);
     RUN_TEST(test_indoor_never_pauses);
     RUN_TEST(test_redlight_pauses);
     RUN_TEST(test_climb_gradient_ascent);

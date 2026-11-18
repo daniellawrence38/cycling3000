@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "cc700/hrhist.h"
+#include "cc700/zones.h"
 #include "ui.h"
 
 /* Plot box (screen pixels) */
@@ -96,14 +97,19 @@ void scr_hr_graph(lv_obj_t *r, const ui_model_t *m)
     ui_header36(r, 22, "Heart rate", "LAST 5 MIN");
 
     /* Now: the same value as the Main page's HEART RATE field */
+    /* coloured by its heart-rate zone once a max HR is set (QUESTIONS Q47), with the zone chip */
     snprintf(t, sizeof t, v->hr_ok ? "%d" : "--", (int)v->hr);
-    ui_text(r, 8, 60, 0, 58, &font_c700_56, v->hr_ok ? C_TEXT : C_MUTED, LV_TEXT_ALIGN_LEFT, 0, t);
+    uint32_t vc = !v->hr_ok ? C_MUTED : v->hr_zone >= 1 ? cc_hr_zone_rgb[v->hr_zone] : C_TEXT;
+    ui_text(r, 8, 60, 0, 58, &font_c700_56, vc, LV_TEXT_ALIGN_LEFT, 0, t);
     int b = ui_last_baseline;
     ui_text_base(r, 8 + ui_text_w(&font_c700_56, 0, t) + 6, b, &font_b600_18, C_MUTED, LV_TEXT_ALIGN_LEFT, 0, "bpm");
     if (v->hr_state != CC_SENS_OK) {
         int lh = lv_font_get_line_height(&font_b700_12) + 6;
         ui_chip(r, 232, 60 + (58 - lh) / 2, lh, &font_b700_12, v->hr_state == CC_SENS_OFF ? CHIP_OUTLINE : CHIP_PENDING,
                 NULL, v->hr_state == CC_SENS_OFF ? "NO STRAP" : "SEARCHING");
+    } else if (v->hr_zone >= 1) {
+        int zh = lv_font_get_line_height(&font_b700_20) + 2;
+        ui_zone_chip(r, 232, 60 + (58 - zh) / 2, zh, &font_b700_20, v->hr_zone, cc_hr_zone_rgb[v->hr_zone]);
     }
     ui_hline(r, 0, 119, 240, C_DIV);
 
@@ -133,6 +139,23 @@ void scr_hr_graph(lv_obj_t *r, const ui_model_t *m)
     } else {
         int lo, hi, step;
         cc_hrhist_axis(st.min, st.max, &lo, &hi, &step);
+        /* Faint zone bands behind the grid and the line, once a max HR is set (QUESTIONS Q47). Each
+           is one opaque rectangle in the zone colour mixed into the background: no alpha to blend
+           at the once-a-second redraw. Zone z covers [floor z, floor z+1) bpm; Z1 and Z5 are open. */
+        if (v->max_hr) {
+            for (int z = 1; z <= CC_HR_ZONES; z++) {
+                int zlo = z == 1 ? lo : cc_hr_zone_floor(v->max_hr, z);
+                int zhi = z == CC_HR_ZONES ? hi : cc_hr_zone_floor(v->max_hr, z + 1);
+                if (zlo < lo) zlo = lo;
+                if (zhi > hi) zhi = hi;
+                if (zhi <= zlo) continue;
+                int ytop = HRG_Y + (HRG_H - 1) - (HRG_H - 1) * (zhi - lo) / (hi - lo);
+                int ybot = HRG_Y + (HRG_H - 1) - (HRG_H - 1) * (zlo - lo) / (hi - lo);
+                if (z == 1 || zlo == lo) ybot = HRG_Y + HRG_H - 1;
+                ui_rect(r, HRG_X, ytop, HRG_W, ybot - ytop + 1, ui_mix_bg(cc_hr_zone_rgb[z], 56), 0);
+            }
+            ui_vline(r, HRG_X + HRG_W / 2, HRG_Y, HRG_H, C_DIV); /* the −2:30 mark, over the bands */
+        }
         for (int g = ((lo + step - 1) / step) * step; g <= hi; g += step) {
             int y = HRG_Y + (HRG_H - 1) - (HRG_H - 1) * (g - lo) / (hi - lo);
             ui_hline(r, HRG_X, y, HRG_W, C_DIV);

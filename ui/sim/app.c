@@ -13,6 +13,7 @@
 #include "cc700/nav.h"
 #include "cc700/provisional.h"
 #include "cc700/store.h"
+#include "cc700/zones.h"
 #include "dirfs.h"
 #include "player.h"
 
@@ -277,6 +278,76 @@ int app_walk(const char *dir, int perf)
     expect(ui_app_top() == SCR_READY && cc_view()->route_loaded, "LOAD returns to Ready with the route loaded");
     shot("ready_loaded");
 
+    /* Max heart rate and the heart-rate zones (Daniel's request of 18 November 2026, QUESTIONS Q47):
+     * Menu, Profile, Max heart rate, edited with the buttons (BACK discards) and then by touch (SAVE
+     * on the footer saves whichever stepper was touched last); the same footer fix on FTP. */
+    press(CC_BTN_L, 100);
+    for (int i = 0; i < 3; i++) press(CC_BTN_PWR, 100);
+    press(CC_BTN_R, 100);
+    expect(ui_app_top() == SCR_PROFILE_MENU && cc_view()->max_hr == CC_MAXHR_OFF,
+           "Menu, Profile opens the Profile menu, max HR not set");
+    shot("profile_menu_off");
+    press(CC_BTN_PWR, 100);
+    press(CC_BTN_R, 100);
+    expect(ui_app_top() == SCR_MAX_HR && m->maxhr_edit == CC_MAXHR_OFF, "Max heart rate opens its editor, off");
+    press(CC_BTN_R, 100);
+    expect(m->maxhr_edit == CC_MAXHR_START_BPM - 5, "the first step from off starts at 180 (-5: 175)");
+    for (int i = 0; i < 3; i++) press(CC_BTN_PWR, 100);
+    press(CC_BTN_R, 100);
+    press(CC_BTN_R, 100);
+    expect(m->focus == 3 && m->maxhr_edit == 185, "power moves to +5, right steps it: 185");
+    shot("max_hr_changed");
+    press(CC_BTN_L, 100);
+    expect(ui_app_top() == SCR_PROFILE_MENU && cc_view()->max_hr == CC_MAXHR_OFF && m->focus == 1,
+           "BACK discards the change, back on the Max heart rate row");
+    press(CC_BTN_R, 100);
+    for (int i = 0; i < 4; i++) press(CC_BTN_PWR, 100);
+    press(CC_BTN_R, 100);
+    expect(ui_app_top() == SCR_PROFILE_MENU && cc_view()->max_hr == CC_MAXHR_OFF, "DONE with no change keeps off");
+    tap(120, 58 + 46 + 23);
+    expect(ui_app_top() == SCR_MAX_HR, "a tap on the Max heart rate row opens the editor");
+    tap(8 + 3 * 58 + 25, 200);
+    tap(8 + 3 * 58 + 25, 200);
+    tap(8 + 1 * 58 + 25, 200);
+    expect(m->maxhr_edit == 189, "taps on the steppers: off, +5 (185), +5 (190), -1 (189)");
+    tap(200, 300);
+    expect(ui_app_top() == SCR_PROFILE_MENU && cc_view()->max_hr == 189, "a tap on footer SAVE saves 189");
+    tap(120, 58 + 46 + 23);
+    for (int i = 0; i < 89; i++) tap(8 + 1 * 58 + 25, 200);
+    expect(m->maxhr_edit == CC_MAXHR_MIN_BPM, "-1 stops at 100");
+    tap(8 + 1 * 58 + 25, 200);
+    expect(m->maxhr_edit == CC_MAXHR_OFF, "one more step down turns the zones off");
+    shot("max_hr_turn_off");
+    tap(20, 40);
+    expect(ui_app_top() == SCR_PROFILE_MENU && cc_view()->max_hr == 189, "the header back discards: still 189");
+    press(CC_BTN_R, 100);
+    for (int i = 0; i < 3; i++) press(CC_BTN_PWR, 100);
+    for (int i = 0; i < 4; i++) press(CC_BTN_R, 100);
+    expect(m->maxhr_edit == 209, "right four times on +5: 209");
+    press(CC_BTN_L, 100);
+    expect(ui_app_top() == SCR_PROFILE_MENU && cc_view()->max_hr == 189, "left on the editor is BACK: still 189");
+    press(CC_BTN_R, 100);
+    press(CC_BTN_R, 100); /* focus starts on -5: 184 */
+    for (int i = 0; i < 4; i++) press(CC_BTN_PWR, 100);
+    press(CC_BTN_R, 100); /* SAVE */
+    expect(ui_app_top() == SCR_PROFILE_MENU && cc_view()->max_hr == 184, "the buttons save: 189 - 5 = 184");
+    shot("profile_menu_set");
+    tap(120, 58 + 23);
+    expect(ui_app_top() == SCR_PROFILE && m->ftp_edit == cc_view()->ftp, "a tap on the FTP row opens the FTP editor");
+    {
+        int f0 = cc_view()->ftp;
+        tap(8 + 3 * 58 + 25, 200);
+        tap(200, 300);
+        expect(ui_app_top() == SCR_PROFILE_MENU && cc_view()->ftp == f0 + 5, "FTP: +5 then footer SAVE saves (not +5 again)");
+        tap(120, 58 + 23);
+        tap(8 + 25, 200);
+        tap(200, 300);
+        expect(ui_app_top() == SCR_PROFILE_MENU && cc_view()->ftp == f0, "FTP: -5 then footer SAVE restores it");
+    }
+    press(CC_BTN_L, 100);
+    press(CC_BTN_L, 100);
+    expect(ui_app_top() == SCR_READY, "back to Ready");
+
     /* Ride: START, then the four pages */
     if (fx_load(&fx, "core/tests/fixtures/route_ride.csv") != 0) return 1;
     fx_row = 0;
@@ -286,6 +357,8 @@ int app_walk(const char *dir, int perf)
     ride_for(30);
     expect(cc_view()->ring_n == 4, "four pages in the ring with a workout and a route");
     expect(ui_app_visible() == SCR_MAIN, "first page is Main");
+    expect(cc_view()->hr_ok && cc_view()->hr_zone >= 1 && cc_view()->hr_zone == cc_zone_of_hr(cc_view()->hr, 184),
+           "the HEART RATE field has its zone at max HR 184");
     shot("page_main");
     static const ui_screen_id_t pages[3] = {SCR_WORKOUT, SCR_CLIMB, SCR_NAV};
     static const char *names[3] = {"page_workout", "page_climb", "page_nav"};

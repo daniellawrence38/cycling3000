@@ -379,7 +379,8 @@ static int list_len(ui_screen_id_t s)
     case SCR_SETTINGS: return 6;
     case SCR_SENSORS: return 2 + !(U.m.pm_paired && U.m.hr_paired);
     case SCR_ADD_SENSOR: return U.m.n_scan;
-    case SCR_PROFILE: return 5;
+    case SCR_PROFILE: case SCR_MAX_HR: return 5;
+    case SCR_PROFILE_MENU: return 2;
     case SCR_CONFIRM: return 2;
     case SCR_POWER_METER: case SCR_HEART_RATE: return 2; /* the button (or nothing), then the kebab */
     case SCR_PHONE: return U.m.phone == UI_PHONE_CONNECTED ? 2 : 1;
@@ -416,14 +417,18 @@ static void activate(void)
         m->page = 0;
         break;
     case SCR_MENU: {
-        static const ui_screen_id_t to[7] = {SCR_WORKOUTS, SCR_ROUTES, SCR_SENSORS, SCR_PROFILE, SCR_HISTORY, SCR_PHONE, SCR_SETTINGS};
+        /* Profile opens the Profile menu (FTP and max heart rate, QUESTIONS Q47) */
+        static const ui_screen_id_t to[7] = {SCR_WORKOUTS, SCR_ROUTES, SCR_SENSORS, SCR_PROFILE_MENU, SCR_HISTORY, SCR_PHONE, SCR_SETTINGS};
         int f = m->focus;
         if (to[f] == SCR_WORKOUTS || to[f] == SCR_ROUTES || to[f] == SCR_HISTORY)
             ui_app_refresh_lists();
         push(to[f]);
-        if (to[f] == SCR_PROFILE) m->ftp_edit = m->v.ftp;
         break;
     }
+    case SCR_PROFILE_MENU:
+        if (m->focus == 0) { push(SCR_PROFILE); m->ftp_edit = m->v.ftp; }
+        else { push(SCR_MAX_HR); m->maxhr_edit = m->v.max_hr; }
+        break;
     case SCR_WORKOUTS:
         if (m->focus < m->n_workouts && ui_big_mem()) {
             int n = load_object(1, m->workouts[m->focus].id, obj_buf, CC_WO_MAX_BYTES);
@@ -521,6 +526,22 @@ static void activate(void)
             pop();
         }
         break;
+    case SCR_MAX_HR:
+        if (m->focus < 4) {
+            /* As FTP, plus "off" below the range: from off the first step starts at
+               CC_MAXHR_START_BPM; a step down from the minimum turns the zones off. */
+            static const int d[4] = {-5, -1, 1, 5};
+            int v = m->maxhr_edit;
+            if (v == CC_MAXHR_OFF) v = CC_MAXHR_START_BPM + d[m->focus];
+            else if (v + d[m->focus] < CC_MAXHR_MIN_BPM) v = v > CC_MAXHR_MIN_BPM ? CC_MAXHR_MIN_BPM : CC_MAXHR_OFF;
+            else v += d[m->focus];
+            m->maxhr_edit = v > CC_MAXHR_MAX_BPM ? CC_MAXHR_MAX_BPM : v;
+        } else {
+            if (m->maxhr_edit != m->v.max_hr) cc_cmd_set_max_hr((uint16_t)m->maxhr_edit);
+            pop();
+            m->focus = 1; /* back on the Max heart rate row */
+        }
+        break;
     case SCR_PHONE:
         if (m->phone == UI_PHONE_NOT_PAIRED) {
             if (U.has_hooks && U.hooks.pair_window) {
@@ -581,8 +602,10 @@ static void back(void)
     }
     if (s == SCR_POWER_METER && U.has_hooks && U.hooks.cal_ack) U.hooks.cal_ack();
     if (s == SCR_PROFILE) U.m.ftp_edit = U.m.v.ftp; /* BACK discards */
+    if (s == SCR_MAX_HR) U.m.maxhr_edit = U.m.v.max_hr;
     if (s == SCR_SUMMARY) U.m.summary_from_history = 0;
     pop();
+    if (s == SCR_MAX_HR) U.m.focus = 1; /* back on the Max heart rate row */
 }
 
 /* Gestures the core hands to the UI */
@@ -632,6 +655,12 @@ static void foot_press(cc_btn_t b)
     U.last_input_ms = U.now;
     U.dirty = 1;
     if (U.blank) { U.blank = 0; return; }
+    /* A tap on the footer's SAVE / DONE saves, whichever stepper was touched last. The right button
+       still activates the focused stepper (the focus model); without this a tap on SAVE after a tap
+       on -5 stepped -5 again instead of saving (QUESTIONS Q47). */
+    ui_screen_id_t s = ui_app_top();
+    if (b == CC_BTN_R && cc_view()->state == CC_RS_READY && (s == SCR_PROFILE || s == SCR_MAX_HR))
+        U.m.focus = 4;
     cc_on_button(U.now, b, 1);
     cc_on_button(U.now, b, 0);
     gestures();
@@ -669,7 +698,7 @@ static void on_click(lv_event_t *e)
     }
     ui_screen_id_t s = ui_app_top();
     /* the header back button is the first item on screens that have one */
-    int has_back = s == SCR_WORKOUT_DETAIL || s == SCR_ADD_SENSOR || s == SCR_POWER_METER || s == SCR_PROFILE ||
+    int has_back = s == SCR_WORKOUT_DETAIL || s == SCR_ADD_SENSOR || s == SCR_POWER_METER || s == SCR_PROFILE || s == SCR_MAX_HR ||
                    s == SCR_ROUTE_DETAIL || s == SCR_CONFIRM || s == SCR_HEART_RATE || s == SCR_PHONE;
     if (has_back && idx == 0) { back(); return; }
     if (ui_is_kebab(lv_event_get_target_obj(e))) { U.m.focus = 1; activate(); return; }
@@ -712,12 +741,12 @@ static void tap_xy(int16_t x, int16_t y)
     }
     if (v->state == CC_RS_SUMMARY) return;
     ui_screen_id_t s = ui_app_top();
-    int has_back = s == SCR_WORKOUT_DETAIL || s == SCR_ADD_SENSOR || s == SCR_POWER_METER || s == SCR_PROFILE ||
+    int has_back = s == SCR_WORKOUT_DETAIL || s == SCR_ADD_SENSOR || s == SCR_POWER_METER || s == SCR_PROFILE || s == SCR_MAX_HR ||
                    s == SCR_ROUTE_DETAIL || s == SCR_CONFIRM || s == SCR_HEART_RATE || s == SCR_PHONE;
     if (has_back && x < 56 && y >= 22 && y < 66) { back(); return; }
     int has_kebab = s == SCR_POWER_METER || s == SCR_HEART_RATE || (s == SCR_PHONE && U.m.phone == UI_PHONE_CONNECTED);
     if (has_kebab && x >= 184 && y >= 22 && y < 66) { U.m.focus = 1; activate(); return; }
-    if (is_scrollable_list(s) || s == SCR_SENSORS) {
+    if (is_scrollable_list(s) || s == SCR_SENSORS || s == SCR_PROFILE_MENU) {
         if (y >= 58 && y < 282) {
             int idx = (y - 58) / 46 + (is_scrollable_list(s) ? U.m.scroll : 0);
             if (idx >= 0 && idx < list_len(s)) { U.m.focus = idx; activate(); }
@@ -729,7 +758,7 @@ static void tap_xy(int16_t x, int16_t y)
         if (idx < U.m.n_scan) { U.m.focus = idx; activate(); }
         return;
     }
-    if (s == SCR_PROFILE && y >= 170 && y < 234) {
+    if ((s == SCR_PROFILE || s == SCR_MAX_HR) && y >= 170 && y < 234) {
         int col = (x - 4) / 58;
         if (col >= 0 && col < 4) { U.m.focus = col; activate(); }
         return;

@@ -63,6 +63,7 @@ typedef struct {
     uint32_t avg_speed_mms;
     int32_t avg_power; int avg_power_ok;
     int zone;                         /* of the 3 s power, 0 if invalid */
+    int hr_zone;                      /* 1..5 of hr at max_hr (zones.h), 0 if hr invalid or max HR not set */
     int grad_ok; int32_t grad_x10; int steep;
     int alt_ok; int32_t alt_m; uint32_t ascent_m;
     /* status */
@@ -95,6 +96,7 @@ typedef struct {
     int storage_error;
     int power_off_request;
     uint16_t ftp;
+    uint16_t max_hr;                  /* bpm, CC_MAXHR_OFF (0) when not set (QUESTIONS Q47) */
     cc_settings_t settings;
     uint32_t ride_id;
     int ride_count;
@@ -126,6 +128,10 @@ void cc_cmd_pause_menu_select(uint32_t now_ms, int row);  /* touch on a pause me
 void cc_cmd_confirm_select(uint32_t now_ms, int button);  /* touch on a Confirm button */
 void cc_cmd_summary_done(void);
 int cc_cmd_set_ftp(uint16_t ftp);                         /* stopped only; 0 on success */
+/* Max HR for the heart-rate zones (QUESTIONS Q47): CC_MAXHR_OFF or CC_MAXHR_MIN_BPM..CC_MAXHR_MAX_BPM.
+ * Stopped only; 0 on success, -1 while a ride is active, -2 out of range. Unit only: the link
+ * protocol has no message for it yet. */
+int cc_cmd_set_max_hr(uint16_t bpm);
 int cc_cmd_settings(const cc_settings_t *s);              /* brightness, screen off, units, auto-pause */
 int cc_cmd_load_workout(const uint8_t id[8]);
 int cc_cmd_load_route(const uint8_t id[8]);

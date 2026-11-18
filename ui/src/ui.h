@@ -43,6 +43,8 @@ typedef enum {
     SCR_ADD_SENSOR, SCR_POWER_METER, SCR_PROFILE, SCR_ROUTES, SCR_ROUTE_DETAIL, SCR_HISTORY, SCR_SUMMARY, SCR_PAUSED,
     SCR_PAUSE_MENU, SCR_CONFIRM, SCR_ALERTS, SCR_EMPTY, SCR_HEART_RATE, SCR_PHONE, SCR_SETTINGS,
     SCR_HR_GRAPH, /* not a mockup board: the heart-rate graph Daniel asked for (QUESTIONS) */
+    SCR_PROFILE_MENU, /* not a mockup board: Profile with FTP and max heart rate (QUESTIONS Q47) */
+    SCR_MAX_HR,       /* not a mockup board: the max heart rate editor, laid out as Profile (FTP) */
     SCR_COUNT
 } ui_screen_id_t;
 
@@ -95,6 +97,7 @@ typedef struct {
     char last_sync[24];
     /* profile */
     int ftp_edit;                /* value being edited */
+    int maxhr_edit;              /* max HR being edited (bpm, 0 = off), set when the editor opens */
     /* confirm, empty */
     ui_confirm_kind_t confirm;
     ui_empty_kind_t empty;
@@ -198,6 +201,13 @@ void scr_heart_rate(lv_obj_t *r, const ui_model_t *m);
 void scr_phone(lv_obj_t *r, const ui_model_t *m);
 void scr_settings(lv_obj_t *r, const ui_model_t *m);
 void scr_hr_graph(lv_obj_t *r, const ui_model_t *m); /* heart rate, last 5 min (screens_hrgraph.c) */
+void scr_profile_menu(lv_obj_t *r, const ui_model_t *m); /* FTP and max HR rows, the heart-rate zones */
+void scr_max_hr(lv_obj_t *r, const ui_model_t *m);       /* max heart rate editor */
+
+/* A zone chip ("Z4" on the zone colour, or "--" on a panel when zone is 0) ending at x_right. */
+void ui_zone_chip(lv_obj_t *p, int x_right, int y, int h, const lv_font_t *f, int zone, uint32_t rgb);
+/* c mixed over the background at alpha a256 of 256, as one opaque colour (cheap to draw). */
+uint32_t ui_mix_bg(uint32_t c, int a256);
 
 /* 1 if (x, y) is on Main's HEART RATE field, the tap that opens the heart-rate graph. */
 int ui_hr_field_hit(int x, int y);

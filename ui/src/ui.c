@@ -29,6 +29,8 @@ static const struct { const char *name; void (*build)(lv_obj_t *, const ui_model
     [SCR_PHONE] = {"Phone", scr_phone},
     [SCR_SETTINGS] = {"Settings", scr_settings},
     [SCR_HR_GRAPH] = {"HrGraph", scr_hr_graph},
+    [SCR_PROFILE_MENU] = {"ProfileMenu", scr_profile_menu},
+    [SCR_MAX_HR] = {"MaxHr", scr_max_hr},
 };
 
 const char *ui_screen_name(ui_screen_id_t id) { return id < SCR_COUNT ? SCREENS[id].name : "?"; }
