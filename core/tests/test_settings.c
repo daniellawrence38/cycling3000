@@ -230,7 +230,7 @@ static void test_profile_round_trip_and_alternates(void)
 static void test_profile_decode_rules(void)
 {
     cc_profile_t p, r;
-    uint8_t b[32];
+    uint8_t b[64];
     uint32_t seq;
     cc_profile_defaults(&p);
     p.max_hr = 188;
