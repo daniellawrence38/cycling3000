@@ -838,3 +838,27 @@ warnings.
   - a recorded ride saved as `.fit` and recovered after a power cut;
   - workouts and routes received over the link;
   - the stock firmware still booting with a `CC700` folder present on the volume.
+
+## 18 November 2026 · Sensors, touch, and the phone bond surviving a reboot
+
+- **BLE sensors** (`outputs/sensors-2.txt`, `ad9fa45`). The CYCPLUS H1 (`H1_91764`) and the GEOID PM500
+  (`PM500_58918`) were both found, paired and subscribed at the same time. Both were saved to
+  `config/sensors` and reconnected after a power-off.
+- **Touch** (`outputs/touch-1.txt`). The panel is accurate: 0 px of wander, and the debug dot sat under
+  the finger. Two hit-mapping bugs were fixed in `684f5c5`:
+  - the kebab on Heart rate did nothing;
+  - Add sensor opened Heart rate when only the strap was paired.
+- **Phone pairing** (`outputs/phone-1.txt`, `27cc5ce`). Pairing and workout upload worked, but the bond
+  was lost at every reboot. Cause: ESP-IDF NimBLE re-initialises its store at the first host sync.
+- **Fixed in `128d993`, confirmed in `outputs/phone-2.txt`:**
+  - The log reads `bond: stored on the eMMC` after pairing.
+  - After the power-cycle it reads `bond: read from the eMMC (slot a, seq 3): 1 phone`, then
+    `put into the BLE store at sync`.
+  - The phone reconnected on its own with `link encrypted with the stored bond`, with no pairing
+    dialog, and MTU 247.
+- **Handshake.** `outputs/phone-1.txt` shows a boot whose handshake failed before it had heard the nRF:
+  0 queries sent, with no barometer and no GNSS for the whole session. Since `128d993` the query
+  window counts from the first frame heard. `outputs/phone-2.txt` shows a normal QUERY, then POWER_ON,
+  then RUNNING.
+- **Still to confirm:** that the protocol exchange (HELLO and the lists) runs after the automatic
+  reconnect. The capture ended 6 s after it.
