@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import cc700.route.plan.BikeProfile
 import cc700.sync.ClimbThresholds
 import cc700.sync.ElevationSource
 import cc700.sync.PairedUnit
@@ -35,6 +36,12 @@ data class AppSettings(
     /** Intervals.icu base URL; changed only to point at a mock server for testing. */
     val intervalsBase: String = "https://intervals.icu",
     val paired: PairedUnit? = null,
+    /** Route planner: the bike, whether to favour cycle paths, the last ride length asked for, and the
+     * average speed that turns minutes into kilometres (null: the profile's default). */
+    val planProfile: BikeProfile = BikeProfile.ROAD,
+    val planFavourPaths: Boolean = true,
+    val planMinutes: Int = 60,
+    val planSpeedKmh: Double? = null,
 )
 
 /** Settings in DataStore. The API key is not here: it is in [KeyStore]. */
@@ -51,6 +58,10 @@ class SettingsRepo(private val ctx: Context, scope: CoroutineScope) : PairingSto
         val unitName = stringPreferencesKey("unit_name")
         val unitAddr = stringPreferencesKey("unit_address")
         val unitSim = booleanPreferencesKey("unit_simulated")
+        val planProfile = stringPreferencesKey("plan_profile")
+        val planPaths = booleanPreferencesKey("plan_favour_paths")
+        val planMinutes = intPreferencesKey("plan_minutes")
+        val planSpeed = doublePreferencesKey("plan_speed_kmh")
     }
 
     private fun read(p: Preferences): AppSettings {
@@ -65,6 +76,10 @@ class SettingsRepo(private val ctx: Context, scope: CoroutineScope) : PairingSto
             simPort = p[K.simPort] ?: d.simPort,
             intervalsBase = p[K.base] ?: d.intervalsBase,
             paired = if (name != null && addr != null) PairedUnit(name, addr) else null,
+            planProfile = p[K.planProfile]?.let { runCatching { BikeProfile.valueOf(it) }.getOrNull() } ?: d.planProfile,
+            planFavourPaths = p[K.planPaths] ?: d.planFavourPaths,
+            planMinutes = p[K.planMinutes] ?: d.planMinutes,
+            planSpeedKmh = p[K.planSpeed],
         )
     }
 
@@ -82,6 +97,11 @@ class SettingsRepo(private val ctx: Context, scope: CoroutineScope) : PairingSto
             p[K.simHost] = s.simHost
             p[K.simPort] = s.simPort
             p[K.base] = s.intervalsBase
+            p[K.planProfile] = s.planProfile.name
+            p[K.planPaths] = s.planFavourPaths
+            p[K.planMinutes] = s.planMinutes
+            val speed = s.planSpeedKmh
+            if (speed == null) p.remove(K.planSpeed) else p[K.planSpeed] = speed
         }
     }
 

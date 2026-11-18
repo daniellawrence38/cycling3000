@@ -1,5 +1,6 @@
 package cc700.app.ui
 
+import android.Manifest
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -24,11 +25,14 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,8 +46,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cc700.app.data.ConnectionMode
+import cc700.app.data.Here
 import cc700.link.ObjInfo
 import cc700.route.cr1HasProfile
+import cc700.route.plan.BikeProfile
+import cc700.route.plan.Scored
+import cc700.route.plan.defaultSpeedKmh
+import kotlin.math.roundToInt
 import cc700.sync.ElevationSource
 import cc700.sync.LinkState
 import cc700.sync.RideRecord
@@ -267,6 +276,7 @@ fun RoutesScreen(m: AppModel) {
         items(st.routes) { o ->
             RowItem(o.name, "${km(o.a)}, ${o.b} m up, ${o.c} climbs", trailing = { TextButton(onClick = { delete = o }) { Text("Delete") } })
         }
+        if (imp == null) planSection(m)
         header("Import")
         when (val r = imp) {
             null -> item { Buttons { Button(onClick = { pick.launch(arrayOf("*/*")) }) { Text("Import GPX") } } }
@@ -326,6 +336,97 @@ fun RoutesScreen(m: AppModel) {
     delete?.let { o -> Confirm("Delete ${o.name}?", "It is removed from the unit. The phone's copy stays.", "Delete",
         { m.deleteOnUnit(o) }, { delete = null }) }
 }
+
+// ------------------------------------------------------------------ 3a. Plan a ride
+private fun LazyListScope.planSection(m: AppModel) {
+    header("Plan a ride")
+    item { PlanForm(m) }
+    item { PlanOptions(m) }
+}
+
+@Composable
+private fun PlanForm(m: AppModel) {
+    val ctx = LocalContext.current
+    val s by m.settings.collectAsState()
+    val hasKey by m.hasOrsKey.collectAsState()
+    val busy by m.busy.collectAsState()
+    var minutes by remember(s.planMinutes) { mutableFloatStateOf(s.planMinutes.toFloat()) }
+    var manual by remember { mutableStateOf("") }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+        if (granted.values.any { it }) m.planRide(minutes.roundToInt(), null)
+        else m.say("Location was not allowed. Type a start point instead.")
+    }
+    Column(Modifier.padding(horizontal = 16.dp)) {
+        if (!hasKey) {
+            Note("Planning uses OpenRouteService. Add a free key in Settings to start.")
+            return@Column
+        }
+        Text("${minutes.roundToInt()} min, about ${"%.0f".format(minutes / 60 * m.prefs(s).speedKmh)} km", color = Tok.text)
+        Slider(minutes, { minutes = (it / 15).roundToInt() * 15f }, valueRange = 30f..240f, steps = 13)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            for (p in BikeProfile.entries) {
+                RadioButton(s.planProfile == p, { m.updateSettings { it.copy(planProfile = p) } })
+                Text(p.name.lowercase().replaceFirstChar { it.uppercase() }, color = Tok.text, modifier = Modifier.padding(end = 8.dp))
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(s.planFavourPaths, { v -> m.updateSettings { it.copy(planFavourPaths = v) } })
+            Spacer(Modifier.width(8.dp))
+            Text("Favour cycle paths", color = Tok.text)
+        }
+        Buttons {
+            Button(onClick = {
+                if (Here.permitted(ctx)) m.planRide(minutes.roundToInt(), null)
+                else ask.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+            }, enabled = busy == null) { Text("Plan from here") }
+        }
+        if (Here.approximateOnly(ctx)) Note("Only approximate location is allowed, so the start may be a kilometre or more out.")
+        OutlinedTextField(manual, { manual = it }, label = { Text("Or start at (lat, lon)") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth())
+        val typed = Here.parse(manual)
+        Buttons {
+            OutlinedButton(onClick = { typed?.let { m.planRide(minutes.roundToInt(), it) } }, enabled = typed != null && busy == null) {
+                Text("Plan from there")
+            }
+        }
+        Note("Your start point is sent to OpenRouteService to make the loops. Nothing else is.")
+    }
+}
+
+@Composable
+private fun PlanOptions(m: AppModel) {
+    val plan by m.plan.collectAsState()
+    val p = plan ?: return
+    var exporting by remember { mutableStateOf<Pair<Scored, Int>?>(null) }
+    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/gpx+xml")) { uri ->
+        val e = exporting
+        if (uri != null && e != null) m.exportPlanned(e.first, e.second, uri)
+        exporting = null
+    }
+    val speed = m.prefs().speedKmh
+    Column {
+        for ((i, o) in p.options.withIndex()) {
+            val n = i + 1
+            val c = o.candidate
+            val b = o.breakdown
+            val mins = (c.distanceM / 1000 / speed * 60).roundToInt()
+            val sub = "${km(c.distanceM.toLong())}, ${c.ascentM.roundToInt()} m up, about ${hms(mins * 60L)}\n" +
+                "${pct(b.cyclePath)} cycle path, ${pct(b.quietRoad)} quiet streets, ${pct(b.busyRoad)} main road" +
+                (if (b.unpaved >= 0.05) ", ${pct(b.unpaved)} unpaved" else "") +
+                (if (b.backtrack >= 0.1) ", ${pct(b.backtrack)} doubles back" else "")
+            RowItem("Option $n", sub, trailing = {
+                Row {
+                    TextButton(onClick = { m.usePlanned(o, n) }) { Text("Use") }
+                    TextButton(onClick = { exporting = o to n; save.launch(m.suggestedGpxName(o, n)) }) { Text("GPX") }
+                }
+            })
+        }
+        if (p.failedTries > 0) Note("${p.failedTries} of the tries returned no loop.")
+        Buttons { OutlinedButton(onClick = { m.clearPlan() }) { Text("Clear options") } }
+    }
+}
+
+private fun pct(f: Double) = "${(f * 100).roundToInt()} %"
 
 // ------------------------------------------------------------------ 4. Rides
 private val DAY = DateTimeFormatter.ofPattern("EEE d MMM yyyy, HH:mm")
@@ -442,6 +543,8 @@ fun SettingsScreen(m: AppModel) {
                 Note("From intervals.icu, Settings, Developer Settings. Stored encrypted on this phone only.")
             }
         }
+        header("Route planner")
+        item { RoutePlannerSettings(m) }
         header("Climbs")
         item {
             Column(Modifier.padding(horizontal = 16.dp)) {
@@ -481,6 +584,33 @@ fun SettingsScreen(m: AppModel) {
         } }
         header("About")
         item { RowItem("CC700 app", "v0.1.0. Workouts in the coach format v1, GPX routes, Intervals.icu upload.") }
+    }
+}
+
+@Composable
+private fun RoutePlannerSettings(m: AppModel) {
+    val s by m.settings.collectAsState()
+    val hasKey by m.hasOrsKey.collectAsState()
+    var key by remember { mutableStateOf("") }
+    Column(Modifier.padding(horizontal = 16.dp)) {
+        Text(if (hasKey) "An OpenRouteService key is saved." else "No OpenRouteService key saved.", color = Tok.text)
+        OutlinedTextField(key, { key = it }, label = { Text("New OpenRouteService key") }, singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
+        Buttons {
+            Button(onClick = { m.saveOrsKey(key); key = "" }, enabled = key.isNotBlank()) { Text("Save key") }
+            if (hasKey) OutlinedButton(onClick = { m.clearOrsKey() }) { Text("Remove key") }
+        }
+        Note("Free from openrouteservice.org (sign up, then Dashboard, then Tokens). Stored encrypted on this phone only.")
+        val speed = s.planSpeedKmh ?: defaultSpeedKmh(s.planProfile)
+        NumberField("Average speed for planning (km/h)", speed.roundToInt()) { v ->
+            if (v in 5..50) m.updateSettings { it.copy(planSpeedKmh = v.toDouble()) }
+        }
+        Note(if (s.planSpeedKmh == null) "Default for ${s.planProfile.name.lowercase()}. Set your own to match your rides."
+             else "Turns the ride length in minutes into a distance.")
+        if (s.planSpeedKmh != null) Buttons {
+            OutlinedButton(onClick = { m.updateSettings { it.copy(planSpeedKmh = null) } }) { Text("Use default") }
+        }
     }
 }
 
