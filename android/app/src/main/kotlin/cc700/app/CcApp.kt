@@ -57,7 +57,7 @@ class Graph(private val ctx: Context) {
     val settings = SettingsRepo(ctx, scope)
     val keys = KeyStore(ctx)
     val orsKey = KeyStore(ctx, KeySlot.ORS)
-    val anthropicKey = KeyStore(ctx, KeySlot.ANTHROPIC)
+    val assistKey = KeyStore(ctx, KeySlot.OPENROUTER)
     val http: OkHttpClient = OkHttpClient.Builder().callTimeout(90, TimeUnit.SECONDS).build()
     /** Route planning on the phone; the key is read from [orsKey] for each request and kept nowhere else. */
     val routing = OrsClient(http, { orsKey.get() })

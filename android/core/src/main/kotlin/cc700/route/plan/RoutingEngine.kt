@@ -35,6 +35,14 @@ interface RoutingEngine {
     fun route(waypoints: List<Pt>, profile: BikeProfile, favourPaths: Boolean): Candidate
 }
 
+/** A named place near the start, for routes "via the reservoir" or "with a café stop". */
+data class Place(val name: String, val pt: Pt, val distanceKm: Double?)
+
+/** Searches places by name or kind near a point. */
+interface PlaceSearch {
+    fun searchPlaces(query: String, near: Pt, radiusKm: Double, max: Int = 5): List<Place>
+}
+
 /** Errors a [RoutingEngine] reports. Network failures surface as `java.io.IOException`. */
 sealed class RoutingError(msg: String) : Exception(msg) {
     /** No key set, or the service refused it: ask for a key in Settings. */

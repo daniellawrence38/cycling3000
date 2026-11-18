@@ -12,7 +12,7 @@
          Asked for only when Plan is used; BLUETOOTH_SCAN above stays neverForLocation. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- Intervals.icu, the elevation services, OpenRouteService, Anthropic, and simunit over TCP. -->
+    <!-- Intervals.icu, the elevation services, OpenRouteService, OpenRouter, and simunit over TCP. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />

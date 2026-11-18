@@ -13,7 +13,7 @@ import java.io.File
 enum class KeySlot(val fileName: String, val associatedData: String) {
     INTERVALS("intervals.key.enc", "intervals.icu api key"),
     ORS("ors.key.enc", "openrouteservice api key"),
-    ANTHROPIC("anthropic.key.enc", "anthropic api key"),
+    OPENROUTER("openrouter.key.enc", "openrouter api key"),
 }
 
 /**

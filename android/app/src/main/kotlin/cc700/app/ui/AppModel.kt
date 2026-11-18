@@ -8,6 +8,8 @@ import cc700.app.data.AppSettings
 import cc700.app.data.Here
 import cc700.app.graph
 import cc700.route.Pt
+import cc700.route.assist.AssistError
+import cc700.route.assist.AssistPlanner
 import cc700.route.plan.GpxWriter
 import cc700.route.plan.Plan
 import cc700.route.plan.PlanPrefs
@@ -167,7 +169,57 @@ class AppModel(app: Application) : AndroidViewModel(app) {
     private val _plan = MutableStateFlow<Plan?>(null)
     /** The options from the last plan; null before planning or after one is used. */
     val plan: StateFlow<Plan?> = _plan.asStateFlow()
-    fun clearPlan() { _plan.value = null }
+    fun clearPlan() { _plan.value = null; _reasons.value = emptyMap() }
+    private val _reasons = MutableStateFlow<Map<String, String>>(emptyMap())
+    /** The assistant's one-line reason for each option it chose, by candidate id; empty for a plain plan. */
+    val reasons: StateFlow<Map<String, String>> = _reasons.asStateFlow()
+    private val _hasAssistKey = MutableStateFlow(g.assistKey.hasKey())
+    val hasAssistKey: StateFlow<Boolean> = _hasAssistKey.asStateFlow()
+
+    /** Asks the OpenRouter model to plan from [request]. It only sees ids and stats, never the position. */
+    fun askAi(minutes: Int, start: Pt?, request: String) {
+        viewModelScope.launch {
+            g.settings.update { it.copy(planMinutes = minutes) }
+            _busy.value = "Finding your position"
+            try {
+                val from = start ?: Here.fix(getApplication())
+                if (from == null) {
+                    _message.value = "No position yet. Turn on location, or type a start point."
+                    return@launch
+                }
+                _busy.value = "Asking ${settings.value.assistModel.substringAfter('/')}"
+                val ap = withContext(Dispatchers.IO) {
+                    AssistPlanner(g.http, { g.assistKey.get() }, g.routing, g.routing, settings.value.assistModel)
+                        .plan(from, minutes, request, prefs())
+                }
+                _plan.value = Plan(ap.targetM, ap.options.map { it.scored }, 0)
+                _reasons.value = ap.options.associate { it.scored.candidate.id to it.reason }
+            } catch (e: RoutingError.NeedsKey) {
+                _message.value = "Add an OpenRouteService key in Settings, or check the one saved."
+            } catch (e: RoutingError) {
+                _message.value = e.message
+            } catch (e: AssistError) {
+                _message.value = e.message
+            } catch (e: java.io.IOException) {
+                _message.value = "Could not reach OpenRouter or the routing service. Check the connection."
+            } finally {
+                _busy.value = null
+            }
+        }
+    }
+
+    fun saveAssistKey(key: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (key.isBlank()) return@launch
+            g.assistKey.set(key)
+            _hasAssistKey.value = true
+            _message.value = "OpenRouter key saved"
+        }
+    }
+
+    fun clearAssistKey() {
+        viewModelScope.launch(Dispatchers.IO) { g.assistKey.clear(); _hasAssistKey.value = false }
+    }
 
     fun prefs(s: AppSettings = settings.value) = PlanPrefs(
         profile = s.planProfile,
@@ -189,6 +241,7 @@ class AppModel(app: Application) : AndroidViewModel(app) {
                 _busy.value = "Planning ${minutes} min loops"
                 val p = withContext(Dispatchers.IO) { Planner(g.routing).plan(from, minutes, prefs()) }
                 _plan.value = p
+                _reasons.value = emptyMap()
                 if (p.options.isEmpty()) _message.value = "No loops came back. Try a different length or start."
             } catch (e: RoutingError.NeedsKey) {
                 _message.value = "Add an OpenRouteService key in Settings, or check the one saved."

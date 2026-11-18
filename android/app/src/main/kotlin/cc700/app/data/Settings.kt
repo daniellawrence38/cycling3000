@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import cc700.route.assist.AssistPlanner
 import cc700.route.plan.BikeProfile
 import cc700.sync.ClimbThresholds
 import cc700.sync.ElevationSource
@@ -42,6 +43,8 @@ data class AppSettings(
     val planFavourPaths: Boolean = true,
     val planMinutes: Int = 60,
     val planSpeedKmh: Double? = null,
+    /** The OpenRouter model for "Ask AI" route planning. */
+    val assistModel: String = AssistPlanner.DEFAULT_MODEL,
 )
 
 /** Settings in DataStore. The API key is not here: it is in [KeyStore]. */
@@ -62,6 +65,7 @@ class SettingsRepo(private val ctx: Context, scope: CoroutineScope) : PairingSto
         val planPaths = booleanPreferencesKey("plan_favour_paths")
         val planMinutes = intPreferencesKey("plan_minutes")
         val planSpeed = doublePreferencesKey("plan_speed_kmh")
+        val assistModel = stringPreferencesKey("assist_model")
     }
 
     private fun read(p: Preferences): AppSettings {
@@ -80,6 +84,7 @@ class SettingsRepo(private val ctx: Context, scope: CoroutineScope) : PairingSto
             planFavourPaths = p[K.planPaths] ?: d.planFavourPaths,
             planMinutes = p[K.planMinutes] ?: d.planMinutes,
             planSpeedKmh = p[K.planSpeed],
+            assistModel = p[K.assistModel]?.takeIf { it.isNotBlank() } ?: d.assistModel,
         )
     }
 
@@ -102,6 +107,7 @@ class SettingsRepo(private val ctx: Context, scope: CoroutineScope) : PairingSto
             p[K.planMinutes] = s.planMinutes
             val speed = s.planSpeedKmh
             if (speed == null) p.remove(K.planSpeed) else p[K.planSpeed] = speed
+            p[K.assistModel] = s.assistModel
         }
     }
 

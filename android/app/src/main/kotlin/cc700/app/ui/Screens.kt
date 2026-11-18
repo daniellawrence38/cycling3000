@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import cc700.app.data.ConnectionMode
 import cc700.app.data.Here
 import cc700.link.ObjInfo
+import cc700.route.assist.AssistPlanner
 import cc700.route.cr1HasProfile
 import cc700.route.plan.BikeProfile
 import cc700.route.plan.Scored
@@ -349,6 +350,7 @@ private fun PlanForm(m: AppModel) {
     val ctx = LocalContext.current
     val s by m.settings.collectAsState()
     val hasKey by m.hasOrsKey.collectAsState()
+    val hasAssist by m.hasAssistKey.collectAsState()
     val busy by m.busy.collectAsState()
     var minutes by remember(s.planMinutes) { mutableFloatStateOf(s.planMinutes.toFloat()) }
     var manual by remember { mutableStateOf("") }
@@ -390,12 +392,30 @@ private fun PlanForm(m: AppModel) {
             }
         }
         Note("Your start point is sent to OpenRouteService to make the loops. Nothing else is.")
+        if (hasAssist) {
+            var ask by remember { mutableStateOf("") }
+            OutlinedTextField(ask, { ask = it.take(500) }, label = { Text("Ask AI") }, minLines = 2,
+                placeholder = { Text("e.g. mostly cycle paths, a café stop halfway, avoid the A316") },
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+            Buttons {
+                Button(onClick = {
+                    val from = typed
+                    when {
+                        from != null -> m.askAi(minutes.roundToInt(), from, ask)
+                        Here.permitted(ctx) -> m.askAi(minutes.roundToInt(), null, ask)
+                        else -> m.say("Allow location with Plan from here first, or type a start point.")
+                    }
+                }, enabled = busy == null) { Text(if (typed != null) "Ask AI (from there)" else "Ask AI") }
+            }
+            Note("${s.assistModel} on OpenRouter sees your request and each route's distance, climbing and road types, not your position or the map.")
+        }
     }
 }
 
 @Composable
 private fun PlanOptions(m: AppModel) {
     val plan by m.plan.collectAsState()
+    val reasons by m.reasons.collectAsState()
     val p = plan ?: return
     var exporting by remember { mutableStateOf<Pair<Scored, Int>?>(null) }
     val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/gpx+xml")) { uri ->
@@ -413,7 +433,8 @@ private fun PlanOptions(m: AppModel) {
             val sub = "${km(c.distanceM.toLong())}, ${c.ascentM.roundToInt()} m up, about ${hms(mins * 60L)}\n" +
                 "${pct(b.cyclePath)} cycle path, ${pct(b.quietRoad)} quiet streets, ${pct(b.busyRoad)} main road" +
                 (if (b.unpaved >= 0.05) ", ${pct(b.unpaved)} unpaved" else "") +
-                (if (b.backtrack >= 0.1) ", ${pct(b.backtrack)} doubles back" else "")
+                (if (b.backtrack >= 0.1) ", ${pct(b.backtrack)} doubles back" else "") +
+                (reasons[c.id]?.takeIf { it.isNotBlank() }?.let { "\nAI: $it" } ?: "")
             RowItem("Option $n", sub, trailing = {
                 Row {
                     TextButton(onClick = { m.usePlanned(o, n) }) { Text("Use") }
@@ -611,6 +632,29 @@ private fun RoutePlannerSettings(m: AppModel) {
         if (s.planSpeedKmh != null) Buttons {
             OutlinedButton(onClick = { m.updateSettings { it.copy(planSpeedKmh = null) } }) { Text("Use default") }
         }
+
+        val hasAssist by m.hasAssistKey.collectAsState()
+        var ak by remember { mutableStateOf("") }
+        Text("Ask AI (optional, OpenRouter)", color = Tok.text, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
+        Text(if (hasAssist) "An OpenRouter key is saved." else "No OpenRouter key saved.", color = Tok.text)
+        OutlinedTextField(ak, { ak = it }, label = { Text("New OpenRouter API key") }, singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
+        Buttons {
+            Button(onClick = { m.saveAssistKey(ak); ak = "" }, enabled = ak.isNotBlank()) { Text("Save key") }
+            if (hasAssist) OutlinedButton(onClick = { m.clearAssistKey() }) { Text("Remove key") }
+        }
+        Note("From openrouter.ai, Keys. Stored encrypted on this phone only. Each plan is a few model calls, billed to that account.")
+        var model by remember(s.assistModel) { mutableStateOf(s.assistModel) }
+        OutlinedTextField(model, { model = it.trim() }, label = { Text("Model") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        Buttons {
+            OutlinedButton(onClick = { m.updateSettings { it.copy(assistModel = model) } },
+                enabled = model.contains('/') && model != s.assistModel) { Text("Set model") }
+            if (s.assistModel != AssistPlanner.DEFAULT_MODEL) OutlinedButton(onClick = {
+                m.updateSettings { it.copy(assistModel = AssistPlanner.DEFAULT_MODEL) }
+            }) { Text("Default") }
+        }
+        Note("Any OpenRouter model id that supports tool calling. Default ${AssistPlanner.DEFAULT_MODEL}.")
     }
 }
 

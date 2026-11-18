@@ -31,7 +31,7 @@ class OrsClient(
     private val http: OkHttpClient,
     private val key: () -> String?,
     private val base: HttpUrl = "https://api.openrouteservice.org".toHttpUrl(),
-) : RoutingEngine {
+) : RoutingEngine, PlaceSearch {
     private val json = Json { ignoreUnknownKeys = true }
 
     /** Which ORS profile a plan uses. Road riders who favour cycle paths get the regular cycling
@@ -61,6 +61,35 @@ class OrsClient(
         }
         val id = "r" + Integer.toHexString(waypoints.hashCode())
         return request(orsProfile(profile, favourPaths), body, id)
+    }
+
+    /** ORS geocoding (Pelias) `GET /geocode/search`, limited to a circle around [near]. */
+    override fun searchPlaces(query: String, near: Pt, radiusKm: Double, max: Int): List<Place> {
+        val k = key()?.takeIf { it.isNotBlank() } ?: throw RoutingError.NeedsKey()
+        val url = base.newBuilder().addPathSegments("geocode/search")
+            .addQueryParameter("text", query)
+            .addQueryParameter("focus.point.lat", near.latDeg().toString())
+            .addQueryParameter("focus.point.lon", near.lonDeg().toString())
+            .addQueryParameter("boundary.circle.lat", near.latDeg().toString())
+            .addQueryParameter("boundary.circle.lon", near.lonDeg().toString())
+            .addQueryParameter("boundary.circle.radius", radiusKm.coerceIn(0.5, 100.0).toString())
+            .addQueryParameter("size", max.coerceIn(1, 10).toString())
+            .build()
+        http.newCall(Request.Builder().url(url).header("Authorization", k).build()).execute().use { r ->
+            val text = r.body?.string().orEmpty()
+            if (!r.isSuccessful) throw classify(r.code, text)
+            val feats = ((json.parseToJsonElement(text) as? JsonObject)?.get("features") as? JsonArray) ?: return emptyList()
+            return feats.mapNotNull { f ->
+                val o = f as? JsonObject ?: return@mapNotNull null
+                val c = ((o["geometry"] as? JsonObject)?.get("coordinates") as? JsonArray) ?: return@mapNotNull null
+                if (c.size < 2) return@mapNotNull null
+                val lon = (c[0] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
+                val lat = (c[1] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
+                val p = o["properties"] as? JsonObject
+                val name = (p?.get("label") as? JsonPrimitive)?.content ?: (p?.get("name") as? JsonPrimitive)?.content ?: return@mapNotNull null
+                Place(name, Pt((lat * 1e7).roundToInt(), (lon * 1e7).roundToInt()), (p?.get("distance") as? JsonPrimitive)?.doubleOrNull)
+            }
+        }
     }
 
     private fun kotlinx.serialization.json.JsonObjectBuilder.common() {
