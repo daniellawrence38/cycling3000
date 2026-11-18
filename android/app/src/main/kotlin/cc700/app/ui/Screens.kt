@@ -109,7 +109,7 @@ fun UnitScreen(m: AppModel) {
         item {
             val stateText = when (st.state) {
                 LinkState.NOT_PAIRED -> "Not paired"
-                LinkState.DISCONNECTED -> "Not connected"
+                LinkState.DISCONNECTED -> if (st.needsRepair) "Not recognised" else "Not connected"
                 LinkState.CONNECTING -> "Connecting"
                 LinkState.CONNECTED -> when (st.unitState) { 1 -> "Connected, recording"; 2 -> "Connected, paused"; else -> "Connected" }
             }
@@ -126,12 +126,18 @@ fun UnitScreen(m: AppModel) {
             Buttons {
                 when (st.state) {
                     LinkState.NOT_PAIRED -> Button(onClick = { m.scan() }) { Text("Add unit") }
-                    LinkState.DISCONNECTED -> Button(onClick = { m.connect() }) { Text("Connect") }
+                    // Once the unit has refused this phone, Connect would only pop pairing requests.
+                    LinkState.DISCONNECTED -> if (!st.needsRepair) Button(onClick = { m.connect() }) { Text("Connect") }
                     LinkState.CONNECTED -> OutlinedButton(onClick = { m.disconnect() }) { Text("Disconnect") }
                     LinkState.CONNECTING -> {}
                 }
                 if (st.unit != null) OutlinedButton(onClick = { forget = true }) { Text("Forget unit") }
             }
+        }
+        if (st.needsRepair) item {
+            // The row above already shows REPAIR_TEXT as the error; this says how.
+            Note("To pair again: Forget unit here, then on the unit open Menu, Phone, PAIR and choose Add unit " +
+                "within 60 s. (If the unit still lists this phone, forget it there too: Phone, menu, Forget phone.)")
         }
         if (st.state == LinkState.NOT_PAIRED) item {
             Note(if (settings.mode == ConnectionMode.SIMULATED)

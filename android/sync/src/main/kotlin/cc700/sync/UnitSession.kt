@@ -20,6 +20,20 @@ data class FoundUnit(val name: String, val address: String)
 class PairingException(msg: String) : Exception(msg)
 
 /**
+ * Thrown by [Connector.connect] when the unit refused this phone's bond: the link failed to encrypt,
+ * Android started a new pairing by itself (which the connector cancels), the phone's bond is gone, or
+ * the unit closed the link at once. Never thrown for "out of range". Two in a row stop the automatic
+ * reconnect ([UnitSession.needsRepair]), so the phone does not keep popping pairing requests.
+ */
+class AuthRefused(msg: String) : java.io.IOException(msg)
+
+/** What the app shows once the unit has refused this phone twice in a row. */
+const val REPAIR_TEXT = "The unit no longer recognises this phone: Forget unit, then pair again"
+
+/** Consecutive [AuthRefused] connects before the app stops trying. */
+const val AUTH_FAILURES_TO_STOP = 2
+
+/**
  * How the app reaches a unit. :app implements it over BLE (Nordic library: scan for the service UUID,
  * bond with the passkey, MTU 247, notifications on TX); [SimulatedConnector] reaches simunit over TCP.
  */
@@ -72,6 +86,8 @@ data class UnitStatus(
     val routes: List<ObjInfo> = emptyList(),
     val rides: List<RideInfo> = emptyList(),
     val error: String? = null,
+    /** The unit refused this phone's bond twice in a row: only Forget unit and a new pairing help. */
+    val needsRepair: Boolean = false,
 ) {
     val connected get() = state == LinkState.CONNECTED
     /** 0 ready, 1 recording, 2 paused (HELLO, EVENT_STATE). */
@@ -128,10 +144,20 @@ class UnitSession(
         private set
     private var lastAttemptMs = Long.MIN_VALUE
 
+    /**
+     * Set after [AUTH_FAILURES_TO_STOP] consecutive [AuthRefused] connects. While set, [connect] makes
+     * no attempt at all (not even from the Connect button or the app coming to the front), because every
+     * attempt can make Android pop a pairing request. Cleared only by a pairing ([pair]) or [forget].
+     * The count is reset by a successful connect, not by an ordinary failure such as "out of range".
+     */
+    @Volatile var needsRepair = false
+        private set
+    private var authFailures = 0
+
     /** Tries [connect] at most once every [everyMs] while [autoReconnect] holds and a unit is paired.
      * Returns true if it tried. */
     fun reconnectIfDue(nowMs: Long, everyMs: Long = 20_000): Boolean {
-        if (!autoReconnect || connected || pairing.load() == null) return false
+        if (!autoReconnect || needsRepair || connected || pairing.load() == null) return false
         if (lastAttemptMs != Long.MIN_VALUE && nowMs - lastAttemptMs < everyMs) return false
         lastAttemptMs = nowMs
         connect()
@@ -150,11 +176,13 @@ class UnitSession(
                 open(t)
                 pairing.save(PairedUnit(unit.name, unit.address))
                 autoReconnect = true
+                needsRepair = false
+                authFailures = 0
                 mirror(PairedUnit(unit.name, unit.address))
             } catch (e: Exception) {
                 drop(null)
                 _status.value = UnitStatus(if (pairing.load() == null) LinkState.NOT_PAIRED else LinkState.DISCONNECTED,
-                    pairing.load(), error = e.message ?: "Pairing failed")
+                    pairing.load(), error = e.message ?: "Pairing failed", needsRepair = needsRepair && pairing.load() != null)
                 return _status.value
             }
         }
@@ -166,12 +194,28 @@ class UnitSession(
     fun connect(): UnitStatus {
         synchronized(lock) {
             val u = pairing.load() ?: return _status.value
+            if (needsRepair) {
+                _status.value = _status.value.copy(state = LinkState.DISCONNECTED, unit = u, error = REPAIR_TEXT,
+                    needsRepair = true)
+                return _status.value
+            }
             autoReconnect = true
             if (client != null) return _status.value
             _status.value = _status.value.copy(state = LinkState.CONNECTING, unit = u, error = null)
             try {
                 open(connector.connect(u.address))
                 mirror(u)
+                authFailures = 0
+            } catch (e: AuthRefused) {
+                authFailures++
+                if (authFailures >= AUTH_FAILURES_TO_STOP) {
+                    needsRepair = true
+                    autoReconnect = false
+                    drop(REPAIR_TEXT)
+                } else {
+                    drop(e.message ?: "The unit refused this phone")
+                }
+                return _status.value
             } catch (e: Exception) {
                 drop(e.message ?: "Could not connect")
                 return _status.value
@@ -186,6 +230,8 @@ class UnitSession(
     /** Forget unit: removes the phone's bond and the stored unit. */
     fun forget() = synchronized(lock) {
         autoReconnect = false
+        needsRepair = false
+        authFailures = 0
         val u = pairing.load()
         drop(null)
         if (u != null) connector.forget(u.address)
@@ -304,6 +350,7 @@ class UnitSession(
         client = null
         val u = pairing.load()
         _status.value = _status.value.copy(
-            state = if (u == null) LinkState.NOT_PAIRED else LinkState.DISCONNECTED, unit = u, error = reason)
+            state = if (u == null) LinkState.NOT_PAIRED else LinkState.DISCONNECTED, unit = u, error = reason,
+            needsRepair = needsRepair && u != null)
     }
 }

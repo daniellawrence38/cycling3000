@@ -12,10 +12,13 @@ import android.content.Context
 import android.os.ParcelUuid
 import android.util.Log
 import cc700.link.LinkTransport
+import cc700.sync.AuthRefused
 import cc700.sync.Connector
 import cc700.sync.FoundUnit
 import cc700.sync.PairingException
 import no.nordicsemi.android.ble.BleManager
+import no.nordicsemi.android.ble.observer.BondingObserver
+import no.nordicsemi.android.ble.observer.ConnectionObserver
 import java.util.UUID
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.TimeUnit
@@ -94,32 +97,117 @@ class CcBleManager(ctx: Context) : BleManager(ctx) {
      */
     @SuppressLint("MissingPermission")
     fun open(device: BluetoothDevice, bond: Boolean) {
+        if (bond) pairNew(device) else reconnect(device)
+    }
+
+    // What went wrong with the bond on a reconnect, set by the observers below (any thread).
+    @Volatile private var authProblem: String? = null
+    @Volatile private var connectedAtMs = 0L
+    @Volatile private var disconnectReason = Int.MIN_VALUE
+    @Volatile private var reconnecting = false
+
+    init {
+        setBondingObserver(object : BondingObserver {
+            override fun onBondingRequired(device: BluetoothDevice) {
+                // On a reconnect this means Android began a new pairing by itself (the unit no longer has
+                // the key): the system pairing dialog is coming. Never let a reconnect pair.
+                if (reconnecting) authProblem = "Android started a new pairing on a reconnect"
+            }
+            override fun onBonded(device: BluetoothDevice) {}
+            override fun onBondingFailed(device: BluetoothDevice) {
+                if (reconnecting) authProblem = "bonding failed on a reconnect"
+            }
+        })
+        setConnectionObserver(object : ConnectionObserver {
+            override fun onDeviceConnecting(device: BluetoothDevice) {}
+            override fun onDeviceConnected(device: BluetoothDevice) { connectedAtMs = System.currentTimeMillis() }
+            override fun onDeviceFailedToConnect(device: BluetoothDevice, reason: Int) {}
+            override fun onDeviceReady(device: BluetoothDevice) {}
+            override fun onDeviceDisconnecting(device: BluetoothDevice) {}
+            override fun onDeviceDisconnected(device: BluetoothDevice, reason: Int) { disconnectReason = reason }
+        })
+    }
+
+    /**
+     * Reconnect to a bonded unit. Never creates a bond and never lets Android pair: if the unit refuses
+     * the stored key, Android may start a pairing by itself and pop its dialog, so the link is dropped at
+     * once and [AuthRefused] tells the session (two in a row stop the automatic reconnect). The signs:
+     * the phone's bond is gone before or after the attempt, the bond state turns to bonding or none, a
+     * bonding failure, or the unit closing the link within 10 s of connecting without a first
+     * notification (the unit refuses a pairing by disconnecting with 0x05; Nordic's library reports a
+     * peer termination or an unknown reason, not the raw code).
+     */
+    @SuppressLint("MissingPermission")
+    private fun reconnect(device: BluetoothDevice) {
         lost = false
         inbox.clear()
-        if (!bond && device.bondState != BluetoothDevice.BOND_BONDED)
-            throw java.io.IOException("This phone is not paired with the unit any more. In the app: Forget unit, " +
-                "then Add unit while the unit shows Menu, Phone, PAIR.")
-        Log.i(TAG, "connecting (bond=$bond, phone bond state ${device.bondState})")
-        connect(device).useAutoConnect(false).retry(3, 200).timeout(15_000).await()
-        if (bond) {
-            createBondInsecure().enqueue() // createBond() is deprecated in 2.9 in its favour; same request
-            val until = System.currentTimeMillis() + 60_000
-            while (device.bondState != BluetoothDevice.BOND_BONDED) {
-                if (System.currentTimeMillis() > until) throw java.io.IOException("not bonded within 60 s")
-                if (!isConnected) throw java.io.IOException("the unit closed the link while pairing")
-                Thread.sleep(200)
+        authProblem = null
+        disconnectReason = Int.MIN_VALUE
+        connectedAtMs = 0L
+        if (device.bondState != BluetoothDevice.BOND_BONDED)
+            throw AuthRefused("This phone's pairing with the unit is gone")
+        reconnecting = true
+        try {
+            Log.i(TAG, "reconnecting (bonded)")
+            try {
+                connect(device).useAutoConnect(false).retry(3, 200).timeout(15_000).await()
+            } catch (e: Exception) {
+                refusedOrNull(device)?.let { throw AuthRefused(it) }
+                throw e
             }
-            Log.i(TAG, "bonded")
+            val until = System.currentTimeMillis() + READY_WAIT_MS
+            while (inbox.isEmpty() && System.currentTimeMillis() < until) {
+                refusedOrNull(device)?.let { throw AuthRefused(it) }
+                if (!isConnected) throw java.io.IOException("the unit closed the link")
+                Thread.sleep(50)
+            }
+            refusedOrNull(device)?.let { throw AuthRefused(it) }
+            Log.i(TAG, if (inbox.isEmpty()) "no first notification within 5 s; going ahead" else "unit ready, MTU $mtu")
+        } catch (e: AuthRefused) {
+            Log.w(TAG, "the unit refused this phone's bond: ${e.message}")
+            runCatching { disconnect().enqueue() } // ends any pairing Android began, and its dialog
+            throw e
+        } finally {
+            reconnecting = false
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun refusedOrNull(device: BluetoothDevice): String? {
+        authProblem?.let { return it }
+        when (device.bondState) {
+            BluetoothDevice.BOND_BONDING -> return "Android started a new pairing on a reconnect"
+            BluetoothDevice.BOND_NONE -> return "this phone's pairing with the unit was removed"
+        }
+        val r = disconnectReason
+        val early = connectedAtMs != 0L && System.currentTimeMillis() - connectedAtMs < 10_000
+        if (!isConnected && early && inbox.isEmpty() && (r == ConnectionObserver.REASON_TERMINATE_PEER_USER ||
+                r == ConnectionObserver.REASON_UNKNOWN || r == ConnectionObserver.REASON_NOT_SUPPORTED))
+            return "the unit closed the link right after connecting (reason $r)"
+        return null
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun pairNew(device: BluetoothDevice) {
+        lost = false
+        inbox.clear()
+        Log.i(TAG, "connecting to pair (phone bond state ${device.bondState})")
+        connect(device).useAutoConnect(false).retry(3, 200).timeout(15_000).await()
+        // The only place the app starts a pairing: the explicit Add unit flow (UnitSession.pair).
+        createBondInsecure().enqueue() // createBond() is deprecated in 2.9 in its favour; same request
+        val bondBy = System.currentTimeMillis() + 60_000
+        while (device.bondState != BluetoothDevice.BOND_BONDED) {
+            if (System.currentTimeMillis() > bondBy) throw java.io.IOException("not bonded within 60 s")
+            if (!isConnected) throw java.io.IOException("the unit closed the link while pairing")
+            Thread.sleep(200)
+        }
+        Log.i(TAG, "bonded")
         val until = System.currentTimeMillis() + READY_WAIT_MS
         while (inbox.isEmpty() && System.currentTimeMillis() < until) {
             if (!isConnected) throw java.io.IOException("the unit closed the link")
             Thread.sleep(50)
         }
         Log.i(TAG, if (inbox.isEmpty()) "no first notification within 5 s; going ahead" else "unit ready, MTU $mtu")
-        if (!bond && device.bondState != BluetoothDevice.BOND_BONDED)
-            throw java.io.IOException("The unit refused this phone's key. In the app: Forget unit, then Add unit " +
-                "while the unit shows Menu, Phone, PAIR.")
     }
 
     fun shut() {
@@ -202,11 +290,13 @@ class BleConnector(private val ctx: Context) : Connector {
         val m = CcBleManager(ctx)
         try {
             m.open(adapter.getRemoteDevice(address), bond = false)
+        } catch (e: AuthRefused) {
+            runCatching { m.shut() }
+            throw e // UnitSession counts these and stops after two (REPAIR_TEXT)
         } catch (e: Exception) {
             Log.w(TAG, "connect failed: ${e.message}")
             runCatching { m.shut() }
-            val why = e.message
-            throw java.io.IOException(if (why != null && why.startsWith("Th")) why else "The unit is not in range")
+            throw java.io.IOException("The unit is not in range")
         }
         return BleLink(m)
     }
