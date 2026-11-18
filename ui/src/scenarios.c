@@ -286,7 +286,7 @@ static int hrg_demo_bpm(int s)
     else if (s < 200) v = 138 + (s - 60) * 20 / 140;     /* on the interval: 138 to 158 */
     else if (s < 250) v = 158 - (s - 200) * 26 / 50;     /* easy: back down to 132 */
     else v = 132 + (s - 250) * 20 / 50;                  /* the next interval starting */
-    return v + (s * 7) % 5 - 2;                          /* beat-to-beat wobble */
+    return v + (s / 4) % 3 - 1;                          /* a little beat-to-beat wobble */
 }
 
 static void hrg_fill(ui_model_t *m, int secs, int gap_a, int gap_b, int gap_c, int gap_d)

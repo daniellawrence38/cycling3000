@@ -344,8 +344,9 @@ int app_walk(const char *dir, int perf)
     shot("hr_graph");
     press(CC_BTN_R, 100);
     run_ms(200);
-    expect(ui_app_visible() == SCR_HR_GRAPH && cc_view()->banner.id == CC_AL_LAP,
-           "right on the graph is still a lap, and the LAP banner shows over it");
+    /* lap_s restarts at a lap (the LAP banner may queue behind a workout banner, so it is not the check) */
+    expect(ui_app_visible() == SCR_HR_GRAPH && cc_view()->lap_s <= 1,
+           "right on the graph is still a lap, and the graph stays open");
     shot("hr_graph_lap");
     press(CC_BTN_L, 100);
     expect(ui_app_visible() == SCR_MAIN && m->page == 0, "left closes the graph to Main, not the next page");

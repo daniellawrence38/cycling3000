@@ -121,7 +121,7 @@ void scr_hr_graph(lv_obj_t *r, const ui_model_t *m)
     ui_text(r, HRG_X, 266, 0, 14, &font_b600_11, C_MUTED, LV_TEXT_ALIGN_LEFT, 0, "\xE2\x88\x92" "5:00");
     ui_text(r, HRG_X, 266, HRG_W, 14, &font_b600_11, C_MUTED, LV_TEXT_ALIGN_CENTER, 0, "\xE2\x88\x92" "2:30");
     ui_text(r, HRG_X + HRG_W, 266, 0, 14, &font_b600_11, C_MUTED, LV_TEXT_ALIGN_RIGHT, 1, "NOW");
-    ui_vline(r, HRG_X + HRG_W / 2, HRG_Y, HRG_H, C_DIV);
+    if (ok) ui_vline(r, HRG_X + HRG_W / 2, HRG_Y, HRG_H, C_DIV); /* the −2:30 mark */
 
     if (!ok) {
         hrg.any = 0;
@@ -151,7 +151,7 @@ void scr_hr_graph(lv_obj_t *r, const ui_model_t *m)
         lv_obj_t *plot = lv_obj_create(r);
         lv_obj_remove_style_all(plot);
         lv_obj_set_scrollable(plot, false);
-        lv_obj_remove_flag(plot, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_set_clickable(plot, false);
         lv_obj_set_pos(plot, HRG_X - HRG_PAD, HRG_Y - HRG_PAD);
         lv_obj_set_size(plot, HRG_W + 2 * HRG_PAD, HRG_H + 2 * HRG_PAD);
         lv_obj_set_user_data(plot, &hrg);
