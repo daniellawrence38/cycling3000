@@ -463,6 +463,27 @@ void ui_dashed_ring(lv_obj_t *p, int cx, int cy, int r, uint32_t c)
     lv_obj_add_event_cb(o, ring_draw, LV_EVENT_DRAW_MAIN, NULL);
 }
 
+/* ------------------------------------------------------------------ zones */
+void ui_zone_chip(lv_obj_t *r, int xr, int y, int h, const lv_font_t *f, int zone, uint32_t rgb)
+{
+    char t[12];
+    if (zone >= 1) snprintf(t, sizeof t, "Z%d", zone);
+    else snprintf(t, sizeof t, "--");
+    int w = ui_text_w(f, 0, t) + 16;
+    ui_rect(r, xr - w, y, w, h, zone >= 1 ? rgb : C_PANEL, 5);
+    ui_text(r, xr - w + 8, y, 0, h, f, zone >= 1 ? C_BG : C_MUTED, LV_TEXT_ALIGN_LEFT, 0, t);
+}
+
+uint32_t ui_mix_bg(uint32_t c, int a)
+{
+    uint32_t o = 0;
+    for (int s = 0; s <= 16; s += 8) {
+        int fg = (int)((c >> s) & 0xFF), bg = (int)((C_BG >> s) & 0xFF);
+        o |= (uint32_t)((bg * (256 - a) + fg * a) >> 8) << s;
+    }
+    return o;
+}
+
 void ui_bars(lv_obj_t *p, int x, int y, int n)
 {
     static const int bx[4] = {0, 5, 11, 16}, by[4] = {11, 7, 4, 0};
