@@ -231,6 +231,7 @@ ui_model_t *ui_app_model(void);
 void ui_app_refresh_lists(void);       /* reloads workout, route and ride lists from the store */
 void ui_app_touch(int down, int16_t x, int16_t y); /* feeds pointer state for drag scroll, swipe and tap */
 void ui_app_post_touch(void);          /* dispatches a released tap if LVGL's click event did not fire */
+int ui_is_kebab(const lv_obj_t *o);  /* the header's three-dot button (ui_kit.c) */
 const char *ui_app_last_tap(uint32_t *seq); /* what the last tap did, for a bring-up log */
 
 /* ------------------------------------------------------------------ scenarios (screenshot tool) */

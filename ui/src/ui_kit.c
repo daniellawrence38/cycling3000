@@ -412,6 +412,11 @@ lv_obj_t *ui_text_bottom(lv_obj_t *p, int x, int bottom_y, const lv_font_t *f, u
     return ui_text(p, x, bottom_y - flh, 0, flh, f, color, al, ls, s);
 }
 
+int ui_is_kebab(const lv_obj_t *o)
+{
+    return o && lv_obj_get_user_data((lv_obj_t *)o) == (void *)KEBAB_TAG;
+}
+
 void ui_kebab_late(lv_obj_t *root)
 {
     uint32_t n = lv_obj_get_child_count(root);

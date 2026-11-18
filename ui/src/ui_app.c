@@ -472,9 +472,13 @@ static void activate(void)
         pop();
         break;
     case SCR_SENSORS: {
+        /* Rows in drawing order (scr_sensors): power meter if paired, heart rate if paired, then
+           Add sensor if either is missing. */
         int f = m->focus;
-        if (f == 0 && m->pm_paired) push(SCR_POWER_METER);
-        else if ((f == 1 || (f == 0 && !m->pm_paired)) && m->hr_paired) push(SCR_HEART_RATE);
+        int pm_row = m->pm_paired ? 0 : -1;
+        int hr_row = m->hr_paired ? (m->pm_paired ? 1 : 0) : -1;
+        if (f == pm_row) push(SCR_POWER_METER);
+        else if (f == hr_row) push(SCR_HEART_RATE);
         else {
             push(SCR_ADD_SENSOR);
             m->scanning = 1;
@@ -661,6 +665,7 @@ static void on_click(lv_event_t *e)
     int has_back = s == SCR_WORKOUT_DETAIL || s == SCR_ADD_SENSOR || s == SCR_POWER_METER || s == SCR_PROFILE ||
                    s == SCR_ROUTE_DETAIL || s == SCR_CONFIRM || s == SCR_HEART_RATE || s == SCR_PHONE;
     if (has_back && idx == 0) { back(); return; }
+    if (ui_is_kebab(lv_event_get_target_obj(e))) { U.m.focus = 1; activate(); return; }
     U.m.focus = idx - has_back + (is_scrollable_list(s) ? U.m.scroll : 0);
     if (s == SCR_CONFIRM) U.m.focus = idx == 1 ? 0 : 1; /* safe button is first in the order */
     activate();
