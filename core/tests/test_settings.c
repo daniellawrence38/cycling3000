@@ -177,9 +177,131 @@ static void test_bonds_one_of_each_kind(void)
     TEST_ASSERT_NOT_NULL(cc_bonds_find(&r, 2));
 }
 
+/* ---------------------------------------------------------------- rider profile (max HR, Q47) */
+
+/* A unit set up before the profile record existed: its settings load exactly as before and max HR
+   is not set (no zones). Neither record touches the other's files. */
+static void test_profile_absent_on_an_existing_unit(void)
+{
+    cc_settings_t s, r;
+    cc_slots_t sl, psl;
+    cc_settings_defaults(&s);
+    s.ftp = 275;
+    s.ride_counter = 41;
+    uint8_t rec[64];
+    TEST_ASSERT_EQUAL_UINT(39, cc_settings_encode(&s, 7, rec)); /* the brief 5.9 record, unchanged */
+    TEST_ASSERT_EQUAL_UINT8(2, rec[2]);
+    memfs_put(fs, CC_SETTINGS_A, rec, 39);
+    TEST_ASSERT_EQUAL_INT(1, cc_settings_load(fs, &r, &sl));
+    TEST_ASSERT_EQUAL_UINT16(275, r.ftp);
+    TEST_ASSERT_EQUAL_UINT32(41, r.ride_counter);
+    cc_profile_t p;
+    TEST_ASSERT_EQUAL_INT(0, cc_profile_load(fs, &p, &psl));
+    TEST_ASSERT_EQUAL_UINT16(CC_MAXHR_OFF, p.max_hr);
+    TEST_ASSERT_EQUAL_INT(-1, psl.newest);
+    p.max_hr = 186;
+    TEST_ASSERT_EQUAL_INT(0, cc_profile_save(fs, &p, &psl));
+    TEST_ASSERT_TRUE(memfs_exists(fs, CC_PROFILE_A));
+    TEST_ASSERT_FALSE(memfs_exists(fs, CC_PROFILE_B));
+    TEST_ASSERT_EQUAL_INT64(39, memfs_file_size(fs, CC_SETTINGS_A));
+    TEST_ASSERT_FALSE(memfs_exists(fs, CC_SETTINGS_B));
+    TEST_ASSERT_EQUAL_INT(1, cc_settings_load(fs, &r, &sl));
+    TEST_ASSERT_EQUAL_UINT16(275, r.ftp);
+}
+
+static void test_profile_round_trip_and_alternates(void)
+{
+    cc_profile_t p, r;
+    cc_slots_t sl;
+    cc_profile_load(fs, &p, &sl);
+    static const uint16_t vals[] = {180, 0, 100, 230, 191, 0, 187};
+    for (unsigned i = 0; i < sizeof vals / sizeof vals[0]; i++) {
+        p.max_hr = vals[i];
+        TEST_ASSERT_EQUAL_INT(0, cc_profile_save(fs, &p, &sl));
+        TEST_ASSERT_EQUAL_INT((int)(i % 2), sl.newest);
+        cc_slots_t l2;
+        TEST_ASSERT_EQUAL_INT(1, cc_profile_load(fs, &r, &l2));
+        TEST_ASSERT_EQUAL_UINT16(vals[i], r.max_hr);
+        TEST_ASSERT_EQUAL_UINT32(sl.seq, l2.seq);
+    }
+    TEST_ASSERT_EQUAL_INT64(CC_PROFILE_LEN, memfs_file_size(fs, CC_PROFILE_A));
+}
+
+static void test_profile_decode_rules(void)
+{
+    cc_profile_t p, r;
+    uint8_t b[32];
+    uint32_t seq;
+    cc_profile_defaults(&p);
+    p.max_hr = 188;
+    TEST_ASSERT_EQUAL_UINT(13, cc_profile_encode(&p, 5, b));
+    TEST_ASSERT_EQUAL_INT(1, cc_profile_decode(b, 13, &r, &seq));
+    TEST_ASSERT_EQUAL_UINT16(188, r.max_hr);
+    TEST_ASSERT_EQUAL_UINT32(5, seq);
+    /* a longer record of the same version (later fields) still loads */
+    memset(b + 13, 0xA5, 8);
+    TEST_ASSERT_EQUAL_INT(1, cc_profile_decode(b, 21, &r, &seq));
+    TEST_ASSERT_EQUAL_UINT16(188, r.max_hr);
+    /* every flipped byte and every truncation is refused */
+    for (int i = 0; i < 13; i++) {
+        cc_profile_encode(&p, 5, b);
+        b[i] ^= 0x10;
+        TEST_ASSERT_EQUAL_INT(0, cc_profile_decode(b, 13, &r, &seq));
+    }
+    cc_profile_encode(&p, 5, b);
+    for (size_t n = 0; n < 13; n++)
+        TEST_ASSERT_EQUAL_INT(0, cc_profile_decode(b, n, &r, &seq));
+    /* the settings magic is not a profile */
+    cc_settings_t s;
+    cc_settings_defaults(&s);
+    cc_settings_encode(&s, 1, b);
+    TEST_ASSERT_EQUAL_INT(0, cc_profile_decode(b, 39, &r, &seq));
+    /* out of range with a good CRC: loads as "not set" */
+    static const uint16_t bad[] = {1, 99, 231, 0xFFFF};
+    for (unsigned i = 0; i < sizeof bad / sizeof bad[0]; i++) {
+        p.max_hr = bad[i];
+        cc_profile_encode(&p, 9, b);
+        TEST_ASSERT_EQUAL_INT(1, cc_profile_decode(b, 13, &r, &seq));
+        TEST_ASSERT_EQUAL_UINT16(CC_MAXHR_OFF, r.max_hr);
+    }
+    TEST_ASSERT_TRUE(cc_max_hr_valid(0));
+    TEST_ASSERT_TRUE(cc_max_hr_valid(100));
+    TEST_ASSERT_TRUE(cc_max_hr_valid(230));
+    TEST_ASSERT_FALSE(cc_max_hr_valid(99));
+    TEST_ASSERT_FALSE(cc_max_hr_valid(231));
+}
+
+static void test_profile_power_cut_every_byte(void)
+{
+    for (int cut = 0; cut <= CC_PROFILE_LEN + 1; cut++) {
+        memfs_reset(fs);
+        cc_profile_t p, r;
+        cc_slots_t sl;
+        cc_profile_load(fs, &p, &sl);
+        p.max_hr = 180; cc_profile_save(fs, &p, &sl);
+        p.max_hr = 185; cc_profile_save(fs, &p, &sl);
+        p.max_hr = 190;
+        memfs_cut_after_bytes(fs, cut);
+        int rc = cc_profile_save(fs, &p, &sl);
+        memfs_power_cycle(fs);
+        cc_slots_t l2;
+        TEST_ASSERT_EQUAL_INT_MESSAGE(1, cc_profile_load(fs, &r, &l2), "nothing loadable");
+        if (cut < CC_PROFILE_LEN) {
+            TEST_ASSERT_NOT_EQUAL(0, rc);
+            TEST_ASSERT_EQUAL_UINT16_MESSAGE(185, r.max_hr, "previous max HR lost");
+        } else {
+            TEST_ASSERT_EQUAL_UINT16(190, r.max_hr);
+        }
+    }
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_profile_absent_on_an_existing_unit);
+    RUN_TEST(test_profile_round_trip_and_alternates);
+    RUN_TEST(test_profile_decode_rules);
+    RUN_TEST(test_profile_power_cut_every_byte);
     RUN_TEST(test_bonds_one_of_each_kind);
     RUN_TEST(test_defaults_when_empty);
     RUN_TEST(test_alternates_and_newest_wins);

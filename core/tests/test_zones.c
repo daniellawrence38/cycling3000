@@ -125,9 +125,65 @@ static void test_target_zone_of_p10(void)
     TEST_ASSERT_EQUAL_INT(2, cc_zone_of_p10(555));  /* rounds to 56 */
 }
 
+/* Heart-rate zones (QUESTIONS Q47): five zones of max HR, each starting at its exact percentage */
+static void test_hr_zone_floors(void)
+{
+    /* max HR, then the first bpm of Z1..Z5: ceil(max * 50, 60, 70, 80, 90 %) */
+    static const int32_t rows[][6] = {
+        {185, 93, 111, 130, 148, 167},
+        {190, 95, 114, 133, 152, 171},
+        {187, 94, 113, 131, 150, 169},
+        {100, 50, 60, 70, 80, 90},
+        {230, 115, 138, 161, 184, 207},
+    };
+    for (unsigned i = 0; i < sizeof rows / sizeof rows[0]; i++)
+        for (int z = 1; z <= CC_HR_ZONES; z++)
+            TEST_ASSERT_EQUAL_INT32(rows[i][z], cc_hr_zone_floor(rows[i][0], z));
+    TEST_ASSERT_EQUAL_INT32(0, cc_hr_zone_floor(0, 2));
+    TEST_ASSERT_EQUAL_INT32(0, cc_hr_zone_floor(185, 0));
+    TEST_ASSERT_EQUAL_INT32(0, cc_hr_zone_floor(185, 6));
+}
+
+static void test_zone_of_hr(void)
+{
+    /* bpm, zone at max HR 185: each boundary from both sides */
+    static const int32_t rows[][2] = {
+        {1, 1}, {60, 1}, {92, 1}, {93, 1}, {110, 1}, {111, 2}, {129, 2}, {130, 3}, {147, 3},
+        {148, 4}, {166, 4}, {167, 5}, {185, 5}, {200, 5}, {254, 5},
+    };
+    for (unsigned i = 0; i < sizeof rows / sizeof rows[0]; i++)
+        TEST_ASSERT_EQUAL_INT(rows[i][1], cc_zone_of_hr(rows[i][0], 185));
+    /* zones off, or no reading */
+    TEST_ASSERT_EQUAL_INT(0, cc_zone_of_hr(150, 0));
+    TEST_ASSERT_EQUAL_INT(0, cc_zone_of_hr(0, 185));
+    TEST_ASSERT_EQUAL_INT(0, cc_zone_of_hr(-5, 185));
+    /* Every max HR the Profile accepts and every bpm a strap can send, against the definition in exact
+       integers: zone z starts where 100 * bpm >= pct * max */
+    for (int32_t mx = 100; mx <= 230; mx++)
+        for (int32_t bpm = 1; bpm <= 255; bpm++) {
+            int want = 1;
+            for (int z = 2; z <= 5; z++)
+                if (100 * bpm >= (40 + 10 * z) * mx) want = z;
+            TEST_ASSERT_EQUAL_INT(want, cc_zone_of_hr(bpm, mx));
+        }
+}
+
+static void test_hr_zone_colours(void)
+{
+    /* grey, blue, green, yellow, red: the power palette's Z1 to Z4 and Z6 */
+    TEST_ASSERT_EQUAL_HEX32(cc_zone_rgb[1], cc_hr_zone_rgb[1]);
+    TEST_ASSERT_EQUAL_HEX32(cc_zone_rgb[2], cc_hr_zone_rgb[2]);
+    TEST_ASSERT_EQUAL_HEX32(cc_zone_rgb[3], cc_hr_zone_rgb[3]);
+    TEST_ASSERT_EQUAL_HEX32(cc_zone_rgb[4], cc_hr_zone_rgb[4]);
+    TEST_ASSERT_EQUAL_HEX32(cc_zone_rgb[6], cc_hr_zone_rgb[5]);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_hr_zone_floors);
+    RUN_TEST(test_zone_of_hr);
+    RUN_TEST(test_hr_zone_colours);
     RUN_TEST(test_widen_and_watts);
     RUN_TEST(test_ramp_targets);
     RUN_TEST(test_floor_division_table);

@@ -44,3 +44,26 @@ int cc_zone_of_p10(int32_t p10)
 {
     return cc_band((int32_t)cc_floordiv(p10 + 5, 10));
 }
+
+/* ---------------------------------------------------------------- heart-rate zones (QUESTIONS Q47) */
+const uint32_t cc_hr_zone_rgb[6] = {0x000000, 0x8E9AA6, 0x3B8BEB, 0x3DBE6B, 0xF2C230, 0xE5484D};
+
+static const int32_t HR_ZONE_PCT[CC_HR_ZONES] = {50, 60, 70, 80, 90};
+
+int32_t cc_hr_zone_floor(int32_t max_hr, int z)
+{
+    if (max_hr <= 0 || z < 1 || z > CC_HR_ZONES)
+        return 0;
+    return (int32_t)cc_floordiv((int64_t)max_hr * HR_ZONE_PCT[z - 1] + 99, 100);
+}
+
+int cc_zone_of_hr(int32_t bpm, int32_t max_hr)
+{
+    if (max_hr <= 0 || bpm <= 0)
+        return 0;
+    int z = 1;
+    for (int k = 2; k <= CC_HR_ZONES; k++)
+        if (bpm >= cc_hr_zone_floor(max_hr, k))
+            z = k;
+    return z;
+}

@@ -17,6 +17,8 @@ typedef struct {
     hal_fs_t *fs;
     cc_settings_t set;
     cc_slots_t slots;
+    cc_profile_t prof;            /* max HR (QUESTIONS Q47), in its own two-slot record */
+    cc_slots_t prof_slots;
     /* sensors */
     cc_sensors_t sens;
     cc_sens_state_t fw_state[3];
@@ -218,6 +220,7 @@ int cc_init(hal_fs_t *fs, uint32_t now_ms)
     cc_nav_init(&S.nav);
     S.battery = -1;
     cc_settings_load(fs, &S.set, &S.slots);
+    cc_profile_load(fs, &S.prof, &S.prof_slots);
     int recovered = cc_store_boot(fs);
     if (!id_zero(S.set.workout_id) && load_workout(S.set.workout_id) != 0)
         memset(S.set.workout_id, 0, 8);
@@ -533,6 +536,20 @@ int cc_cmd_set_ftp(uint16_t ftp)
     save_settings();
     if (S.wo_loaded)
         cc_wo_engine_set_ftp(&S.eng, ftp);
+    return 0;
+}
+
+int cc_cmd_set_max_hr(uint16_t bpm)
+{
+    if (S.state != CC_RS_READY && S.state != CC_RS_SUMMARY)
+        return -1;
+    if (!cc_max_hr_valid(bpm))
+        return -2;
+    if (bpm == S.prof.max_hr)
+        return 0;
+    /* As FTP: the value holds until power-off even if the save fails (storage alerts cover that) */
+    S.prof.max_hr = bpm;
+    cc_profile_save(S.fs, &S.prof, &S.prof_slots);
     return 0;
 }
 
@@ -894,6 +911,7 @@ static void fill_view(uint32_t now_ms)
     v->avg_power_ok = S.pn > 0;
     v->avg_power = S.pn ? (int32_t)cc_div_half_up((int64_t)S.psum, S.pn) : 0;
     v->zone = v->power3_ok ? cc_zone_of_power(v->power3, S.set.ftp) : 0;
+    v->hr_zone = v->hr_ok ? cc_zone_of_hr(v->hr, S.prof.max_hr) : 0;
     v->grad_ok = S.alt.grad_valid;
     v->grad_x10 = S.alt.grad_x10;
     v->steep = S.alt.steep;
@@ -953,6 +971,7 @@ static void fill_view(uint32_t now_ms)
     v->storage_error = S.storage_alerted;
     v->power_off_request = S.power_off;
     v->ftp = S.set.ftp;
+    v->max_hr = S.prof.max_hr;
     v->settings = S.set;
     v->ride_id = S.ride_id;
     v->saved_seq = S.saved_seq;

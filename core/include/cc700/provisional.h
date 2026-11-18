@@ -14,6 +14,15 @@
 #define CC_FTP_MIN_W           50
 #define CC_FTP_MAX_W           600
 
+/* Max heart rate for the five heart-rate zones (Daniel's request, 18 November 2026; QUESTIONS Q47).
+ * 0 means not set: no zones are shown. The Profile editor's first step from "Off" starts at
+ * CC_MAXHR_START_BPM; a step down from CC_MAXHR_MIN_BPM turns the zones off again. */
+#define CC_MAXHR_OFF           0
+#define CC_MAXHR_DEFAULT_BPM   CC_MAXHR_OFF
+#define CC_MAXHR_MIN_BPM       100
+#define CC_MAXHR_MAX_BPM       230
+#define CC_MAXHR_START_BPM     180
+
 /* Sensors (brief 5.1, spec 10.7) */
 #define CC_POWER_STALE_MS      2000 /* an empty second reuses the previous bin if the last sample is this recent */
 #define CC_POWER_LOST_MS       3000

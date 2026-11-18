@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "cc700/provisional.h"
 #include "hal_fs.h"
 
 #ifdef __cplusplus
@@ -51,6 +52,30 @@ int cc_settings_save(hal_fs_t *fs, const cc_settings_t *s, cc_slots_t *slots);
 /* Encoded record (exposed for tests). Returns the length (39). */
 size_t cc_settings_encode(const cc_settings_t *s, uint32_t seq, uint8_t *out);
 int cc_settings_decode(const uint8_t *b, size_t len, cc_settings_t *s, uint32_t *seq);
+
+/* ---------------------------------------------------------------- rider profile (QUESTIONS Q47)
+ * Values added after brief 5.9 fixed the settings record, kept in their own two-slot pair so the
+ * settings record (magic CS, version 2, 39 bytes) is unchanged: firmware from before this record and
+ * firmware after it read and write each other's settings files without loss. Record: magic `CP`,
+ * version 1, seq u32, max_hr u16 (bpm, 0 = not set), CRC-32 of the preceding bytes (13 bytes). A
+ * longer record of version 1 is accepted and its extra bytes ignored, for later fields. */
+#define CC_PROFILE_A "config/profile.a"
+#define CC_PROFILE_B "config/profile.b"
+#define CC_PROFILE_LEN 13
+
+typedef struct {
+    uint16_t max_hr; /* bpm, CC_MAXHR_MIN_BPM..CC_MAXHR_MAX_BPM, or CC_MAXHR_OFF (no heart-rate zones) */
+} cc_profile_t;
+
+void cc_profile_defaults(cc_profile_t *p);
+/* As cc_settings_load: 1 if a record was found, 0 if defaults were used (no file: a unit set up before
+ * the record existed). */
+int cc_profile_load(hal_fs_t *fs, cc_profile_t *p, cc_slots_t *slots);
+int cc_profile_save(hal_fs_t *fs, const cc_profile_t *p, cc_slots_t *slots);
+size_t cc_profile_encode(const cc_profile_t *p, uint32_t seq, uint8_t *out);
+int cc_profile_decode(const uint8_t *b, size_t len, cc_profile_t *p, uint32_t *seq);
+/* 1 if v is a storable max HR: CC_MAXHR_OFF or CC_MAXHR_MIN_BPM..CC_MAXHR_MAX_BPM. */
+int cc_max_hr_valid(int32_t v);
 
 /* ---------------------------------------------------------------- sensor bonds */
 #define CC_MAX_BONDS 4
