@@ -437,7 +437,7 @@ Why it matters: these decide how long the unit keeps sending to the nRF when som
 whether a charger plug-in can restart it.
 Answer: Daniel, 17 November 2026: "go with what you think". All of 1 to 4 stay as listed. For 5, the writer is left as it is for now, and is to be fixed with the store work.
 
-### Q42 · bring-up step 6 (BLE sensors) · open
+### Q42 · bring-up step 6 (BLE sensors) · answered 18 November 2026
 Question: The spec gives the Add sensor screen ("Scanning, then results", board 10), one sensor of
 each kind, and the 10.7 backoff, but leaves these open:
 1. What the unit shows between PAIR and a working sensor, and when pairing fails.
@@ -466,12 +466,12 @@ Options and defaults used (the safest readings):
    HR strap or power meter is known to require this; the log line "encryption change" would show it.
 Why it matters: these decide what Daniel sees during the first pairing test; each is one constant or
 a few lines in `fw/main/sensors.c` if riding says otherwise.
-Answer:
+Answer: Daniel, 18 November 2026: "all ok". The defaults stand.
 Update (phone-link branch): point 5's "not handled" case is closed. `hal_ble_bonded()` now counts only
 authenticated (passkey) bonds, which a Just Works sensor never is, and phone pairing no longer depends
 on that count at all (Q44). A sensor's record is also never written to the eMMC (Q43).
 
-### Q43 · phone link · open
+### Q43 · phone link · answered 18 November 2026
 Question: Where do the phone's bond keys live across reboots? NimBLE keeps bonds in NVS, which the
 firmware never initialises because the partition belongs to the stock firmware (Q29), so until now the
 phone was forgotten at every reboot and had to pair again.
@@ -494,9 +494,9 @@ What this means: anyone who copies the eMMC's `CC700/config/phone.*` could decry
 phone's link with the unit, or impersonate the phone to the unit. That is the same exposure the stock
 firmware's NVS bond store has (flash is not encrypted on this unit), and the link carries workouts,
 routes and rides, not credentials (the Intervals.icu key never leaves the phone).
-Answer:
+Answer: Daniel, 18 November 2026: "all ok". The defaults stand.
 
-### Q44 · phone link · open
+### Q44 · phone link · answered 18 November 2026
 Question: Protocol 2.2 accepts a new pairing "only during a 60 s pairing window ... and only when no bond
 exists". On the unit, Forget phone is reachable only from the Phone screen's connected state (spec
 screen 23, kebab), and a bonded phone that is away shows the "notpaired" state with PAIR (there is no
@@ -510,9 +510,9 @@ and the passkey; and cancelling the window or a failed pairing leaves the old ph
 The window closes as soon as a pairing completes, so a second phone cannot use the rest of it. Outside
 the window every pairing request is refused, as written. Log line: `pairing: bonded with ..:xx:xx ...
 the older phone's bond was replaced`.
-Answer:
+Answer: Daniel, 18 November 2026: "all ok". The defaults stand.
 
-### Q45 · phone link · open
+### Q45 · phone link · answered 18 November 2026
 Question: Smaller choices the protocol leaves open on a real link.
 1. A central that connects and never encrypts holds the unit's one peripheral link, and the unit stops
    advertising while connected (protocol 2.3), so the real phone cannot get in.
@@ -537,9 +537,9 @@ Defaults used:
 5. Kept at 3 (no change), because the steady state is one phone and two sensors and each connection
    costs internal RAM; the unit does not advertise while the phone is connected, so a fourth slot would
    only serve a stray central. Raise it if a log ever shows a connection refused for want of a slot.
-Answer:
+Answer: Daniel, 18 November 2026: "all ok". The defaults stand.
 
-### Q46 · heart-rate graph (new screen, Daniel's request) · open
+### Q46 · heart-rate graph (new screen, Daniel's request) · answered 18 November 2026
 Question: On 18 November 2026 Daniel asked: "could you also add a screen when in a ride that i can tap
 and i will get a time series plot of the heart rate over the last 5 minutes". The spec has no such
 screen (START-HERE rule 4: no new screen not in the mockups; spec 4: touch has no job while riding).
@@ -581,7 +581,7 @@ Default used: as built, above. A stray tap (rain, glove) can open or close the g
 harmless and undone by one more tap or the left button.
 Why it matters: a new screen and new on-screen text outside the spec; Daniel reviews the screenshots
 (`docs/hr-graph/`: the four scenarios and three walk shots) before it is golden.
-Answer: Daniel asked for the screen (18 November 2026). Review of the details pending.
+Answer: Daniel, 18 November 2026: "all ok". The defaults stand, except point 4: he asked for coloured heart-rate zones, five of them, worked out from a max heart rate entered the way FTP is (being built; see the next entry).
 
 ## Document errors
 
